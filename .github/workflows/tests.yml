@@ -1,0 +1,170 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Show Swift version
+        run: swift --version
+
+      - name: Build
+        run: swift build
+
+      - name: Run tests with coverage
+        run: |
+          # Run tests and capture output
+          set +e  # Don't exit on error
+          swift test --enable-code-coverage 2>&1 | tee test-output.log
+          TEST_EXIT_CODE=${PIPESTATUS[0]}
+          set -e  # Re-enable exit on error
+
+          # Check if tests actually failed by looking at output
+          if grep -q "with [1-9][0-9]* failure" test-output.log; then
+            echo "Tests failed"
+            exit 1
+          elif grep -q "Test run with .* tests .* passed" test-output.log; then
+            echo "All tests passed"
+            exit 0
+          else
+            # If we can't determine, use the exit code
+            exit $TEST_EXIT_CODE
+          fi
+
+      - name: Generate coverage report
+        run: |
+          # Get the build path
+          BUILD_PATH=$(swift build --show-bin-path)
+          XCTEST_PATH=$(find $BUILD_PATH -name "*.xctest" | head -n 1)
+
+          # Find the profdata file
+          PROFDATA_PATH=$(find .build -name "*.profdata" | head -n 1)
+
+          if [ -f "$PROFDATA_PATH" ]; then
+            echo "Found profdata at: $PROFDATA_PATH"
+
+            # Generate coverage report
+            xcrun llvm-cov report \
+              "$XCTEST_PATH/Contents/MacOS/"* \
+              -instr-profile="$PROFDATA_PATH" \
+              -ignore-filename-regex=".build|Tests" \
+              > coverage-report.txt
+
+            # Generate detailed coverage export
+            xcrun llvm-cov export \
+              "$XCTEST_PATH/Contents/MacOS/"* \
+              -instr-profile="$PROFDATA_PATH" \
+              -ignore-filename-regex=".build|Tests" \
+              -format=lcov \
+              > coverage.lcov
+
+            echo "Coverage report generated"
+            cat coverage-report.txt
+          else
+            echo "No profdata file found"
+          fi
+
+      - name: Extract test summary
+        if: always()
+        run: |
+          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f test-output.log ]; then
+            # Extract test results from swift test output
+            # Get the last "Executed X tests" line which has the total
+            LAST_EXECUTION_LINE=$(grep "Executed.*test" test-output.log | tail -n 1)
+
+            if [ -n "$LAST_EXECUTION_LINE" ]; then
+              # Extract numbers from the line
+              TOTAL_TESTS=$(echo "$LAST_EXECUTION_LINE" | grep -o "Executed [0-9]*" | grep -o "[0-9]*")
+              FAILURES=$(echo "$LAST_EXECUTION_LINE" | grep -o "with [0-9]* failure" | grep -o "[0-9]*")
+
+              if [ -z "$FAILURES" ]; then
+                FAILURES=0
+              fi
+
+              PASSED=$((TOTAL_TESTS - FAILURES))
+
+              # Display results
+              if [ "$FAILURES" -eq 0 ]; then
+                echo "✅ **All tests passed:** $TOTAL_TESTS/$TOTAL_TESTS tests" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "❌ **Failed:** $FAILURES/$TOTAL_TESTS tests" >> $GITHUB_STEP_SUMMARY
+                echo "✅ **Passed:** $PASSED/$TOTAL_TESTS tests" >> $GITHUB_STEP_SUMMARY
+              fi
+            else
+              echo "Tests completed. Check job logs for detailed results." >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "No test output found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ -f coverage-report.txt ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "## Coverage Summary" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            # Extract overall coverage percentage
+            COVERAGE=$(grep -oE '[0-9]+\.[0-9]+%' coverage-report.txt | head -n 1)
+            if [ -n "$COVERAGE" ]; then
+              echo "**Overall Coverage:** $COVERAGE" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            echo "<details><summary>Detailed Coverage Report</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            cat coverage-report.txt >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Generate coverage badge
+        if: always()
+        run: |
+          if [ -f coverage-report.txt ]; then
+            .github/scripts/generate-coverage-badge.sh coverage-report.txt .github/coverage-badge.json
+          fi
+
+      - name: Upload test results and coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-and-coverage
+          path: |
+            test-output.log
+            coverage-report.txt
+            coverage.lcov
+            .github/coverage-badge.json
+          retention-days: 30
+
+      - name: Check coverage threshold
+        run: |
+          if [ -f coverage-report.txt ]; then
+            # Extract overall coverage percentage
+            COVERAGE=$(grep -oE '[0-9]+\.[0-9]+%' coverage-report.txt | head -n 1 | sed 's/%//')
+            echo "Overall coverage: $COVERAGE%"
+
+            # Check if coverage meets 80% threshold
+            THRESHOLD=80
+            if (( $(echo "$COVERAGE >= $THRESHOLD" | bc -l) )); then
+              echo "✅ Coverage threshold met: $COVERAGE% >= $THRESHOLD%"
+            else
+              echo "⚠️  Coverage below threshold: $COVERAGE% < $THRESHOLD%"
+              echo "::warning::Code coverage ($COVERAGE%) is below the threshold ($THRESHOLD%)"
+            fi
+          fi

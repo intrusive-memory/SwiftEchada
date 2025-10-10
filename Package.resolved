@@ -1,0 +1,33 @@
+{
+  "originHash" : "ed11de5f1e9d4f336b8d5414e161c1416a0682292043151e78101dccdd483f3c",
+  "pins" : [
+    {
+      "identity" : "swiftguion",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/stovak/SwiftGuion.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "4bae97dc9c7be28c11372fff0e519eb08b22c9ac"
+      }
+    },
+    {
+      "identity" : "textbundle",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/mcritz/TextBundle.git",
+      "state" : {
+        "revision" : "6fd4f918150abb7c2f1bbd0cc02ebf5d5b51a1a4",
+        "version" : "1.0.7"
+      }
+    },
+    {
+      "identity" : "zipfoundation",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/weichsel/ZIPFoundation",
+      "state" : {
+        "revision" : "22787ffb59de99e5dc1fbfe80b19c97a904ad48d",
+        "version" : "0.9.20"
+      }
+    }
+  ],
+  "version" : 3
+}
