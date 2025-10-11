@@ -163,7 +163,16 @@ A Swift-based character management and casting system for screenplays that integ
 - Union compliance reports
 - Production reports (who's needed when)
 
-#### 5.4 Versioning & History
+#### 5.4 Binary Data Management
+**IMPERATIVE: No File-Based Storage**
+- All binary data stored within SwiftData models as `Data` type
+- File operations only at import/export boundaries
+- No filesystem references or file paths in database
+- Self-contained, portable database
+- Eliminates orphaned file management
+- See section 7.3 for detailed requirements
+
+#### 5.5 Versioning & History
 - Track changes to character descriptions
 - Track casting decisions over time
 - Maintain audit trail for legal/production purposes
@@ -201,7 +210,9 @@ A Swift-based character management and casting system for screenplays that integ
 - Actor entity with relationships
 - Casting relationship entity
 - Support for complex queries and relationships
-- Efficient image/file storage strategy
+- **Binary data storage**: All media stored as `Data` in models (see 7.3)
+- Use `@Attribute(.externalStorage)` for large binary data
+- No file system references or external file dependencies
 - Support for versioning and history
 
 #### 7.2 AI Integration
@@ -212,11 +223,42 @@ A Swift-based character management and casting system for screenplays that integ
 - Rate limiting and error handling
 
 #### 7.3 Media Handling
-- Photo upload and storage
-- Image compression and optimization
-- Support for multiple image formats
-- Video link storage and validation
-- Document attachment support
+
+**IMPERATIVE: Binary Data Storage Strategy**
+
+All binary data (images, audio, video, documents) MUST be stored directly within SwiftData objects using `Data` types. File-based storage is ONLY used during import/export operations.
+
+**Requirements:**
+- **Images** (headshots, portfolios, concept art): Store as `Data` in SwiftData models
+- **Audio** (voice samples, audition recordings): Store as `Data` in SwiftData models
+- **Documents** (resumes, contracts): Store as `Data` in SwiftData models
+- **File I/O**: Only occurs at system boundaries (import/export)
+- **No external file references**: No file paths or URLs to external files in filesystem
+- **No file management overhead**: No orphaned files, no cleanup required
+- **Database portability**: Entire database is self-contained and portable
+
+**Rationale:**
+- Eliminates file synchronization issues
+- Prevents orphaned files and dangling references
+- Simplifies backup and restore (single database file)
+- Ensures data integrity (all data moves together)
+- Supports easy data migration and sharing
+- Reduces complexity in file management code
+
+**Implementation Notes:**
+- Use SwiftData `@Attribute(.externalStorage)` for large binary data
+- Implement lazy loading for binary data when needed
+- Provide import methods that read files and store as `Data`
+- Provide export methods that write `Data` to files
+- Compress images before storing to manage database size
+- Consider size limits and show warnings for very large files
+
+**Media Operations:**
+- Photo upload and storage (as `Data`)
+- Image compression and optimization (before storing)
+- Support for multiple image formats (JPG, PNG, HEIC)
+- Video link storage (URLs only, not binary data)
+- Document attachment support (as `Data`)
 
 #### 7.4 Performance
 - Efficient queries for large casts
@@ -262,6 +304,7 @@ A Swift-based character management and casting system for screenplays that integ
 
 ---
 
-*Document Version: 1.0*
-*Last Updated: 2025-10-10*
+*Document Version: 1.1*
+*Last Updated: 2025-10-11*
 *Project: SwiftEchada*
+*Major Change: Added binary data storage imperative (Section 7.3)*

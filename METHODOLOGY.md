@@ -76,11 +76,15 @@ This project follows a **phased, gated development methodology** where each phas
 #### 1.2 Actor Model
 - Define Actor entity with SwiftData
 - Implement core properties:
-  - Basic information (name, photo path, DOB)
+  - Basic information (name, photo data, DOB)
   - Professional info (union status, agent)
   - Contact information
 - Add model validation logic
 - Create unit tests for Actor model
+
+**⚠️ CONFLICT IDENTIFIED**: Current implementation uses `photoPath: String?` and `additionalPhotos: [String]` which store file paths. This violates the binary data storage imperative (REQUIREMENTS.md Section 7.3). These should be changed to:
+- `photoData: Data?` with `@Attribute(.externalStorage)`
+- `additionalPhotosData: [Data]` with `@Attribute(.externalStorage)`
 
 #### 1.3 Data Layer
 - Implement repository pattern for data access
@@ -222,51 +226,65 @@ This project follows a **phased, gated development methodology** where each phas
 
 ---
 
-## Phase 4: Media & File Management
+## Phase 4: Media & Binary Data Management
 
 **Duration**: 1-2 weeks
-**Goal**: Handle photos, documents, and media files for actors and characters
+**Goal**: Handle photos, documents, and binary media data for actors and characters using SwiftData `Data` storage
+
+**⚠️ IMPORTANT**: This phase implements the binary data storage imperative (REQUIREMENTS.md Section 7.3). All binary data MUST be stored as `Data` within SwiftData models using `@Attribute(.externalStorage)`. File-based storage is ONLY used at import/export boundaries.
 
 ### Deliverables
-- [ ] Photo upload and storage
-- [ ] Image optimization pipeline
-- [ ] File reference system
-- [ ] Media cleanup/garbage collection
-- [ ] Thumbnail generation
+- [ ] Photo import and binary data storage
+- [ ] Image optimization pipeline (compress before storing as `Data`)
+- [ ] Binary data storage with `@Attribute(.externalStorage)`
+- [ ] Thumbnail generation from `Data`
+- [ ] Export binary data to files
 
 ### Tasks
 
-#### 4.1 Storage Infrastructure
-- Design file storage strategy
-- Implement file upload handling
-- Store file references in models
-- Support multiple image formats
-- Implement file validation
+#### 4.1 Binary Data Storage Infrastructure
+- Implement `Data` storage in Actor and Character models
+- Add `@Attribute(.externalStorage)` for large binary data
+- Implement photo import (read file → compress → store as `Data`)
+- Support multiple image formats (JPG, PNG, HEIC)
+- Add data validation (size limits, format checks)
+- Remove file path properties (migrate from `photoPath: String?` to `photoData: Data?`)
 
 #### 4.2 Image Processing
-- Add image compression
-- Generate thumbnails
-- Optimize for display
+- Compress images before storing as `Data`
+- Generate thumbnails and store as separate `Data` properties
+- Optimize for display (lazy loading of `Data`)
 - Handle different aspect ratios
-- Implement caching strategy
+- Implement in-memory caching strategy for displayed images
 
-#### 4.3 File Management
-- Track file usage/references
-- Delete orphaned files
-- Export files with data
-- Import files with data
-- Handle file migrations
+#### 4.3 Import/Export Operations (Boundary Operations Only)
+- **Import**: Read files → process → store as `Data` in models
+- **Export**: Write `Data` from models → files on disk
+- Support batch import of photos
+- Export portfolios with binary data written to files
+- No file references stored in database
 
 ### Gate Criteria ✓
-- [ ] Photos upload and display correctly
-- [ ] Images optimized for performance
-- [ ] No memory leaks with large images
-- [ ] Orphaned files cleaned up properly
-- [ ] File operations tested (upload, delete, replace)
+- [ ] Photos import correctly and store as `Data` in SwiftData
+- [ ] Images compressed and optimized before storage
+- [ ] No memory leaks with large binary data
+- [ ] Binary data persists correctly with SwiftData
+- [ ] Import/export operations tested thoroughly
 - [ ] Works with common formats (JPG, PNG, HEIC)
-- [ ] Storage usage is reasonable
+- [ ] Database size reasonable (compression effective)
+- [ ] No file paths or external references in models
+- [ ] `@Attribute(.externalStorage)` used for photos
 
-**Decision Point**: Media handling must be stable before building UI.
+**Decision Point**: Binary data storage must be stable and performant before building UI.
+
+**Changes Required from Current Implementation**:
+- ❌ Remove `photoPath: String?` from Actor model
+- ❌ Remove `additionalPhotos: [String]` from Actor model
+- ✅ Add `photoData: Data?` with `@Attribute(.externalStorage)`
+- ✅ Add `additionalPhotosData: [Data]` with `@Attribute(.externalStorage)`
+- ✅ Add thumbnail properties (`thumbnailData: Data?`)
+- ✅ Implement import methods in repositories
+- ✅ Implement export methods in repositories
 
 ---
 
@@ -602,7 +620,7 @@ This project follows a **phased, gated development methodology** where each phas
 | 1 - Core Models | Data design | Models stable and tested | ✅ COMPLETE | Oct 11, 2025 |
 | 2 - SwiftGuion | Integration complexity | Reliable character extraction | ✅ COMPLETE | Oct 11, 2025 |
 | 3 - Casting | Business logic | Workflow complete and validated | ✅ COMPLETE | Oct 11, 2025 |
-| 4 - Media | Performance & storage | Efficient file handling | 🔄 NEXT | TBD |
+| 4 - Binary Data | Performance & storage | Efficient Data storage in SwiftData | 🔄 NEXT | TBD |
 | 5 - AI Foundation | API reliability | Stable AI integration | 2-3 weeks |
 | 6 - AI Advanced | Value proposition | AI features useful | 2-3 weeks |
 | 7 - Basic UI | Usability | Core workflows functional | 3-4 weeks |
@@ -630,11 +648,11 @@ This project follows a **phased, gated development methodology** where each phas
    - *Mitigation*: Strict phase gates, defer to Phase 2
 
 ### Medium-Risk Areas
-1. **Image Storage**: Could consume significant storage
-   - *Mitigation*: Compression, cleanup policies, cloud storage option
+1. **Binary Data Storage**: SwiftData `Data` storage could impact performance or database size
+   - *Mitigation*: Image compression before storage, `@Attribute(.externalStorage)` for large data, lazy loading, size limits with warnings
 
-2. **Data Migration**: Schema changes between phases
-   - *Mitigation*: Migration scripts, versioning strategy
+2. **Data Migration**: Schema changes between phases (especially Phase 4 model changes)
+   - *Mitigation*: Migration scripts to convert `photoPath: String?` to `photoData: Data?`, versioning strategy, backup before migration
 
 3. **Cross-platform**: Differences between macOS and iOS
    - *Mitigation*: Start with single platform, expand later
@@ -684,8 +702,9 @@ The project is successful when:
 
 ---
 
-*Document Version: 2.0*
+*Document Version: 2.1*
 *Last Updated: 2025-10-11*
 *Project: SwiftEchada*
-*Current Phase: Phase 4 - Media & File Management*
+*Current Phase: Phase 4 - Media & Binary Data Management*
 *Completed Phases: 0, 1, 2, 3 (✅)*
+*Major Change: Phase 4 updated to align with binary data storage imperative (REQUIREMENTS.md Section 7.3)*

@@ -218,11 +218,19 @@ public final class Actor {
 
     // MARK: - Basic Information
 
-    /// Primary headshot/profile photo path
-    public var photoPath: String?
+    /// Primary headshot/profile photo data (stored as binary in SwiftData)
+    @Attribute(.externalStorage)
+    public var photoData: Data?
 
-    /// Additional portfolio images paths
-    public var additionalPhotos: [String]
+    /// Thumbnail for primary photo (smaller, for performance)
+    public var thumbnailData: Data?
+
+    /// Additional portfolio images (stored as binary in SwiftData)
+    @Attribute(.externalStorage)
+    public var additionalPhotosData: [Data]
+
+    /// Thumbnails for additional photos
+    public var additionalThumbnailsData: [Data]
 
     /// Date of birth for age verification
     public var dateOfBirth: Date?
@@ -359,8 +367,10 @@ public final class Actor {
         id: UUID = UUID(),
         fullName: String,
         stageName: String? = nil,
-        photoPath: String? = nil,
-        additionalPhotos: [String] = [],
+        photoData: Data? = nil,
+        thumbnailData: Data? = nil,
+        additionalPhotosData: [Data] = [],
+        additionalThumbnailsData: [Data] = [],
         dateOfBirth: Date? = nil,
         gender: String? = nil,
         ethnicity: String? = nil,
@@ -397,8 +407,10 @@ public final class Actor {
         self.stageName = stageName
         self.createdAt = Date()
         self.updatedAt = Date()
-        self.photoPath = photoPath
-        self.additionalPhotos = additionalPhotos
+        self.photoData = photoData
+        self.thumbnailData = thumbnailData
+        self.additionalPhotosData = additionalPhotosData
+        self.additionalThumbnailsData = additionalThumbnailsData
         self.dateOfBirth = dateOfBirth
         self.gender = gender
         self.ethnicity = ethnicity

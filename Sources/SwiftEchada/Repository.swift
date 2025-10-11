@@ -390,6 +390,115 @@ public final class ActorRepository {
     public func countAvailable() throws -> Int {
         return try findAvailableActors().count
     }
+
+    // MARK: - Binary Data Import/Export
+
+    /// Import photo from file URL and store as binary Data
+    /// - Parameters:
+    ///   - actor: The actor to update
+    ///   - url: File URL of the image
+    /// - Throws: Error if file cannot be read or actor validation fails
+    public func importPhoto(for actor: Actor, from url: URL) throws {
+        let imageData = try Data(contentsOf: url)
+
+        // TODO: Add image compression in Phase 4
+        // For now, store the data directly
+        actor.photoData = imageData
+
+        // TODO: Generate thumbnail in Phase 4
+        actor.thumbnailData = imageData
+
+        actor.touch()
+        try context.save()
+    }
+
+    /// Export photo Data to file URL
+    /// - Parameters:
+    ///   - actor: The actor whose photo to export
+    ///   - url: Destination file URL
+    /// - Throws: Error if no photo data or write fails
+    public func exportPhoto(for actor: Actor, to url: URL) throws {
+        guard let photoData = actor.photoData else {
+            throw BinaryDataError.noPhotoData
+        }
+        try photoData.write(to: url)
+    }
+
+    /// Import additional photos from file URLs
+    /// - Parameters:
+    ///   - actor: The actor to update
+    ///   - urls: Array of file URLs
+    /// - Throws: Error if any file cannot be read
+    public func importAdditionalPhotos(for actor: Actor, from urls: [URL]) throws {
+        var photosData: [Data] = []
+        var thumbnailsData: [Data] = []
+
+        for url in urls {
+            let imageData = try Data(contentsOf: url)
+            photosData.append(imageData)
+
+            // TODO: Generate actual thumbnails in Phase 4
+            thumbnailsData.append(imageData)
+        }
+
+        actor.additionalPhotosData = photosData
+        actor.additionalThumbnailsData = thumbnailsData
+        actor.touch()
+        try context.save()
+    }
+
+    /// Export additional photos to directory
+    /// - Parameters:
+    ///   - actor: The actor whose photos to export
+    ///   - directory: Directory URL to write files
+    ///   - prefix: Filename prefix (default: actor's full name)
+    /// - Returns: Array of written file URLs
+    /// - Throws: Error if no photos or write fails
+    @discardableResult
+    public func exportAdditionalPhotos(
+        for actor: Actor,
+        to directory: URL,
+        prefix: String? = nil
+    ) throws -> [URL] {
+        guard !actor.additionalPhotosData.isEmpty else {
+            throw BinaryDataError.noAdditionalPhotos
+        }
+
+        let filePrefix = prefix ?? actor.fullName.replacingOccurrences(of: " ", with: "_")
+        var writtenURLs: [URL] = []
+
+        for (index, photoData) in actor.additionalPhotosData.enumerated() {
+            let filename = "\(filePrefix)_\(index + 1).jpg"
+            let fileURL = directory.appendingPathComponent(filename)
+            try photoData.write(to: fileURL)
+            writtenURLs.append(fileURL)
+        }
+
+        return writtenURLs
+    }
+}
+
+// MARK: - Binary Data Errors
+
+/// Errors related to binary data operations
+public enum BinaryDataError: Error, LocalizedError {
+    case noPhotoData
+    case noAdditionalPhotos
+    case invalidImageFormat
+    case compressionFailed
+
+    public var errorDescription: String? {
+        switch self {
+        case .noPhotoData:
+            return "No photo data available for export"
+        case .noAdditionalPhotos:
+            return "No additional photos available for export"
+        case .invalidImageFormat:
+            return "Invalid image format"
+        case .compressionFailed:
+            return "Image compression failed"
+        }
+    }
 }
 
 // MARK: - Relationship Operations

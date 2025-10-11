@@ -91,8 +91,10 @@ public enum TestFixtures {
         return Actor(
             fullName: name,
             stageName: "T. Hanks",
-            photoPath: "/photos/tom_hanks.jpg",
-            additionalPhotos: ["/photos/tom1.jpg", "/photos/tom2.jpg"],
+            photoData: nil, // Binary data storage - no test data needed
+            thumbnailData: nil,
+            additionalPhotosData: [], // Binary data storage - no test data needed
+            additionalThumbnailsData: [],
             dateOfBirth: dob,
             gender: "Male",
             ethnicity: "Caucasian",
