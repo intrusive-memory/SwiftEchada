@@ -12,8 +12,8 @@ struct SwiftEchadaTests {
 
     @Test("Version information is available")
     func testVersionInfo() async throws {
-        #expect(SwiftEchada.version == "0.1.0")
-        #expect(SwiftEchada.phase == "Phase 0: Foundation & Setup")
+        #expect(SwiftEchada.version == "0.2.0")
+        #expect(SwiftEchada.phase == "Phase 1: Core Data Models")
     }
 
     // MARK: - SwiftData Configuration Tests
