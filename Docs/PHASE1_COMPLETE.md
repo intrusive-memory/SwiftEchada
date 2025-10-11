@@ -142,9 +142,11 @@ All Phase 1 gate criteria have been met:
 - fullName: String
 - stageName: String?
 
-// Media
-- photoPath: String?
-- additionalPhotos: [String]
+// Binary Data (Updated Oct 11 - Binary Data Imperative)
+- photoData: Data? @Attribute(.externalStorage)
+- thumbnailData: Data?
+- additionalPhotosData: [Data] @Attribute(.externalStorage)
+- additionalThumbnailsData: [Data]
 
 // Timestamps
 - createdAt: Date
@@ -207,6 +209,8 @@ All Phase 1 gate criteria have been met:
 - ✅ Batch operations support
 - ✅ Advanced querying and filtering
 - ✅ Many-to-many relationships (Character ↔ Actor)
+- ✅ **Binary data storage** (Updated Oct 11) - Photos stored as `Data` with `@Attribute(.externalStorage)`
+- ✅ **Import/Export methods** (Added Oct 11) - File operations only at boundaries
 
 ### Test Results
 
@@ -259,7 +263,7 @@ All Phase 0 Tests: 22/22 still passing
 - `count(ofType:)` - Count by type
 - `count(withStatus:)` - Count by casting status
 
-### ActorRepository (15 operations)
+### ActorRepository (19 operations - Updated Oct 11)
 
 **Create**:
 - `create(_:)` - Create single actor with validation
@@ -289,6 +293,12 @@ All Phase 0 Tests: 22/22 still passing
 - `count()` - Total count
 - `count(withExperience:)` - Count by experience level
 - `countAvailable()` - Count available actors
+
+**Binary Data Import/Export** (Added Oct 11):
+- `importPhoto(for:from:)` - Import photo from file URL → store as Data
+- `exportPhoto(for:to:)` - Export photo Data → write to file
+- `importAdditionalPhotos(for:from:)` - Import multiple photos from URLs
+- `exportAdditionalPhotos(for:to:prefix:)` - Export additional photos to directory
 
 ### CastingRepository (6 operations)
 
@@ -360,8 +370,13 @@ These are intentional limitations for Phase 1, to be addressed in future phases:
 - `Tests/SwiftEchadaTests/Phase1Tests.swift` - 62 comprehensive tests
 - `Tests/SwiftEchadaTests/TestFixtures.swift` - Test data factory
 - `Docs/PHASE1_COMPLETE.md` - This file
+- `Docs/BINARY_DATA_IMPERATIVE_CONFLICTS.md` (Oct 11) - Migration plan and conflicts
 
-### Modified Files
+### Modified Files (Oct 11 - Binary Data Imperative)
+- `Sources/SwiftEchada/Models.swift` - Changed Actor photo properties from String paths to Data
+- `Sources/SwiftEchada/Repository.swift` - Added 4 import/export methods for binary data
+- `Tests/SwiftEchadaTests/TestFixtures.swift` - Updated to use nil photoData instead of paths
+- `Tests/SwiftEchadaTests/Phase1Tests.swift` - Updated tests to check photoData/additionalPhotosData
 - `Sources/SwiftEchada/SwiftEchada.swift` - Updated version to 0.2.0
 - `Sources/SwiftEchada/Parser.swift` - Extracted from Foundation file
 - `Tests/SwiftEchadaTests/SwiftEchadaTests.swift` - Updated to use TestFixtures

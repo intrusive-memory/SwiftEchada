@@ -112,8 +112,8 @@ struct Phase1Tests {
 
         #expect(actor.fullName == "Tom Hanks")
         #expect(actor.stageName == "T. Hanks")
-        #expect(actor.photoPath == "/photos/tom_hanks.jpg")
-        #expect(actor.additionalPhotos.count == 2)
+        #expect(actor.photoData == nil) // Binary data storage - test fixtures use nil
+        #expect(actor.additionalPhotosData.isEmpty) // Binary data storage - test fixtures use []
         #expect(actor.dateOfBirth != nil)
         #expect(actor.gender == "Male")
         #expect(actor.ethnicity == "Caucasian")
