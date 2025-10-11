@@ -1,0 +1,16 @@
+{
+  "items" : [
+
+  ],
+  "settings" : {
+    "visibility" : {
+      "comments" : true,
+      "genderAnalysis" : true,
+      "goals" : true,
+      "grammarHighlights" : true,
+      "snippets" : true,
+      "stats" : true,
+      "todoList" : true
+    }
+  }
+}

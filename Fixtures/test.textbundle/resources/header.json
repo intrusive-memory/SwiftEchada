@@ -1,0 +1,23 @@
+[
+  {
+    "alignmentGroup" : "left",
+    "id" : "0ACC1707-FF80-4417-8563-4F00D04A3EFB",
+    "position" : 0,
+    "type" : "blank",
+    "value" : ""
+  },
+  {
+    "alignmentGroup" : "center",
+    "id" : "9A25D11C-4004-4E79-B7FD-4BA524ED0B48",
+    "position" : 0,
+    "type" : "blank",
+    "value" : ""
+  },
+  {
+    "alignmentGroup" : "right",
+    "id" : "92DCA196-F459-4E6C-B235-2F81A1F3C6CF",
+    "position" : 0,
+    "type" : "blank",
+    "value" : ""
+  }
+]

@@ -1,0 +1,11 @@
+{
+  "includedFiles" : true,
+  "links" : true,
+  "markers" : true,
+  "notes" : true,
+  "referenceLinks" : true,
+  "sceneHeaders" : true,
+  "sectionHeaders" : true,
+  "synopses" : true,
+  "todos" : true
+}

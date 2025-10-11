@@ -1,0 +1,46 @@
+{
+  "editorSettings" : {
+    "revisionColorIndex" : 0,
+    "revisionMode" : false
+  },
+  "overviewSettings" : {
+    "highlightAction" : false,
+    "highlightAllDialogue" : false,
+    "highlightSceneHeaders" : false,
+    "thumbnailSize" : "medium"
+  },
+  "previewSettings" : {
+
+  },
+  "printSettings" : {
+    "automaticNumbering" : 0,
+    "printCompletedChecklistItems" : true,
+    "printCustomPages" : true,
+    "printFirstPageHeadersAndFooters" : false,
+    "printGeneratedText" : false,
+    "printInlineNotes" : false,
+    "printParagraphNumbers" : false,
+    "printRevisionColor" : false,
+    "printRevisionStars" : true,
+    "printRevisionsOnly" : false,
+    "printSections" : true,
+    "printSynopses" : false,
+    "printTitlePage" : true,
+    "printWatermark" : false,
+    "sectionOptions" : {
+      "five" : true,
+      "four" : true,
+      "one" : true,
+      "six" : true,
+      "three" : true,
+      "two" : true
+    },
+    "templateName" : null
+  },
+  "uiSettings" : {
+    "cursorPosition" : 0,
+    "scrollPosition" : -8,
+    "sidebarWidth" : 1447
+  },
+  "version" : 3
+}

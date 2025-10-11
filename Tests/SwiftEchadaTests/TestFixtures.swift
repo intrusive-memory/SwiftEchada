@@ -231,4 +231,56 @@ public enum TestFixtures {
             availabilityEnd: end
         )
     }
+
+    // MARK: - Characters for Classification Testing
+
+    public static func createLeadCharacterForClassification() -> Character {
+        // 20+ dialogue, 10+ scenes
+        Character(
+            name: "Lead Character",
+            totalScenes: 12,
+            dialogueCount: 25,
+            characterType: .lead
+        )
+    }
+
+    public static func createSupportingCharacterForClassification() -> Character {
+        // 10+ dialogue OR 5+ scenes
+        Character(
+            name: "Supporting Character",
+            totalScenes: 3,
+            dialogueCount: 12,
+            characterType: .supporting
+        )
+    }
+
+    public static func createFeaturedCharacterForClassification() -> Character {
+        // dialogueCount > 0 but < 10
+        Character(
+            name: "Featured Character",
+            totalScenes: 2,
+            dialogueCount: 5,
+            characterType: .featured
+        )
+    }
+
+    public static func createBackgroundCharacterForClassification() -> Character {
+        // sceneCount > 0, dialogueCount == 0
+        Character(
+            name: "Background Character",
+            totalScenes: 2,
+            dialogueCount: 0,
+            characterType: .background
+        )
+    }
+
+    public static func createExtraCharacterForClassification() -> Character {
+        // sceneCount == 0, dialogueCount == 0
+        Character(
+            name: "Extra Character",
+            totalScenes: 0,
+            dialogueCount: 0,
+            characterType: .extra
+        )
+    }
 }

@@ -1,0 +1,938 @@
+[
+  {
+    "id" : "D48ED0C2-C4AB-40E2-83FF-844957557F39",
+    "index" : 0,
+    "isCollapsed" : false,
+    "level" : 2,
+    "range" : [
+      0,
+      12
+    ],
+    "rawString" : "## CHAPTER 1",
+    "string" : "CHAPTER 1",
+    "type" : "sectionHeader"
+  },
+  {
+    "id" : "3B3D10F2-1A86-4107-95BC-B05DB68B359C",
+    "index" : 1,
+    "isCollapsed" : false,
+    "level" : 3,
+    "range" : [
+      77,
+      19
+    ],
+    "rawString" : "### PROLOGUE S#1001",
+    "string" : "PROLOGUE S#1001",
+    "type" : "sectionHeader"
+  },
+  {
+    "id" : "FC244454-C603-42DD-ADA9-3009C131C916",
+    "index" : 2,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      229,
+      22
+    ],
+    "rawString" : "INT. STEAM ROOM - DAY ",
+    "string" : "INT. STEAM ROOM - DAY ",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "9FC3C60B-E2ED-4FC5-84C0-079C921CCED2",
+    "index" : 3,
+    "isCollapsed" : false,
+    "level" : 3,
+    "range" : [
+      1265,
+      33
+    ],
+    "rawString" : "### THE MURDER S#{{SERIES: 1002}}",
+    "string" : "THE MURDER S#{{SERIES: 1002}}",
+    "type" : "sectionHeader"
+  },
+  {
+    "id" : "A90F33E6-9CB2-4B11-A41E-B8EC4C5E0E2C",
+    "index" : 4,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      1313,
+      34
+    ],
+    "rawString" : "INT. HOME - BERNARD’S CASITA - DAY",
+    "string" : "INT. HOME - BERNARD’S CASITA - DAY",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "8B6FE21E-926D-4A0D-A902-59D3A5EBC3E8",
+    "index" : 5,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      2223,
+      34
+    ],
+    "rawString" : "INT. HOME - POOL AREA - CONTINUOUS",
+    "string" : "INT. HOME - POOL AREA - CONTINUOUS",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "B8BC895E-3A32-4411-B74C-9FE422CC1EFB",
+    "index" : 6,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      2408,
+      35
+    ],
+    "rawString" : "INT. HOME - FRONT ROOM - CONTINUOUS",
+    "string" : "INT. HOME - FRONT ROOM - CONTINUOUS",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "7E5E21B1-B2C1-4768-9CFB-8BC64075010F",
+    "index" : 7,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      3788,
+      19
+    ],
+    "rawString" : "EXT. HOUSE PRE-DAWN",
+    "string" : "EXT. HOUSE PRE-DAWN",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "51AEBE66-3345-47F9-9E52-52E7CFAED88F",
+    "index" : 8,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      4246,
+      51
+    ],
+    "rawString" : "EXT. THE CV-LINK ON RIVERSIDE DRIVE - EARLY MORNING",
+    "string" : "EXT. THE CV-LINK ON RIVERSIDE DRIVE - EARLY MORNING",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "37B96711-8C02-493E-AD9D-4AF900817203",
+    "index" : 9,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      4299,
+      9
+    ],
+    "rawString" : ".ONE-SHOT",
+    "string" : ".ONE-SHOT",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "1E08DB6E-0C87-4F83-A421-A108A05F5B41",
+    "index" : 10,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      4310,
+      28
+    ],
+    "rawString" : ".SHOT: FIRST CAMERA POSITION",
+    "string" : ".SHOT: FIRST CAMERA POSITION",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "4E4F0F58-40AF-482A-8627-1771CD41A795",
+    "index" : 11,
+    "isCollapsed" : false,
+    "level" : 2,
+    "range" : [
+      4511,
+      107
+    ],
+    "rawString" : "## SHOT: Brooks running shoes on asphalt, then concrete, then wood. Match this shot to Chapter 4’s opening.",
+    "string" : "SHOT: Brooks running shoes on asphalt, then concrete, then wood. Match this shot to Chapter 4’s opening.",
+    "type" : "sectionHeader"
+  },
+  {
+    "id" : "92150E7A-94B0-4FF8-A94E-4BD61DFE120F",
+    "index" : 12,
+    "isCollapsed" : false,
+    "level" : 3,
+    "range" : [
+      4850,
+      29
+    ],
+    "rawString" : ".SHOT: SECOND CAMERA POSITION",
+    "string" : ".SHOT: SECOND CAMERA POSITION",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "96D3F9FF-A255-4036-9583-86D9FF2C3DF5",
+    "index" : 13,
+    "isCollapsed" : false,
+    "level" : 3,
+    "range" : [
+      5299,
+      28
+    ],
+    "rawString" : ".SHOT: THIRD CAMERA POSITION",
+    "string" : ".SHOT: THIRD CAMERA POSITION",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "F9EE8FA8-3446-4584-99B4-F9D870AD20BD",
+    "index" : 14,
+    "isCollapsed" : false,
+    "level" : 3,
+    "range" : [
+      5555,
+      29
+    ],
+    "rawString" : ".SHOT: FOURTH CAMERA POSITION",
+    "string" : ".SHOT: FOURTH CAMERA POSITION",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "D2A57E06-628C-4FA4-8DD1-C4557B24CBD6",
+    "index" : 15,
+    "isCollapsed" : false,
+    "level" : 3,
+    "range" : [
+      5968,
+      28
+    ],
+    "rawString" : ".SHOT: FIFTH CAMERA POSITION",
+    "string" : ".SHOT: FIFTH CAMERA POSITION",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "63AF597C-6143-474F-A8F5-7B5E43A82ED2",
+    "index" : 16,
+    "isCollapsed" : false,
+    "level" : 3,
+    "range" : [
+      6221,
+      43
+    ],
+    "rawString" : "EXT. UNDER SUNRISE WAY NEAR MESQUITE - DAWN",
+    "string" : "EXT. UNDER SUNRISE WAY NEAR MESQUITE - DAWN",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "D04976D9-EB6A-4E8D-A57D-5B296A272598",
+    "index" : 17,
+    "isCollapsed" : false,
+    "level" : 3,
+    "range" : [
+      8284,
+      23
+    ],
+    "rawString" : "EXT. SUNRISE WAY - DAWN",
+    "string" : "EXT. SUNRISE WAY - DAWN",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "99A8F703-D339-4925-826E-403251D6C82C",
+    "index" : 18,
+    "isCollapsed" : false,
+    "level" : 3,
+    "range" : [
+      8406,
+      11
+    ],
+    "rawString" : ".DRONE SHOT",
+    "string" : ".DRONE SHOT",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "EBB9737A-49AE-4CFC-9E24-2D3FCF147F5C",
+    "index" : 19,
+    "isCollapsed" : false,
+    "level" : 3,
+    "range" : [
+      8617,
+      47
+    ],
+    "rawString" : "### CABARET - Blame it on Me S#{{SERIES: 1003}}",
+    "string" : "CABARET - Blame it on Me S#{{SERIES: 1003}}",
+    "type" : "sectionHeader"
+  },
+  {
+    "id" : "5ED32C73-A69A-4BEB-8A65-9B66642025AD",
+    "index" : 20,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      8666,
+      20
+    ],
+    "rawString" : "INT. CABARET - NIGHT",
+    "string" : "INT. CABARET - NIGHT",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "FEB67FDB-47F8-483B-AC8E-88D8B8C5676C",
+    "index" : 21,
+    "isCollapsed" : false,
+    "level" : 3,
+    "range" : [
+      9438,
+      34
+    ],
+    "rawString" : "### THE FUNERAL S#{{SERIES: 1004}}",
+    "string" : "THE FUNERAL S#{{SERIES: 1004}}",
+    "type" : "sectionHeader"
+  },
+  {
+    "id" : "7E5837E2-2B16-4822-9C57-A61CE8D65BFA",
+    "index" : 22,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      9474,
+      19
+    ],
+    "rawString" : "EST. CEMETERY - DAY",
+    "string" : "EST. CEMETERY - DAY",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "EEC9F9E2-4CF0-4A7D-B327-D2F728C5572B",
+    "index" : 23,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      9495,
+      39
+    ],
+    "rawString" : ".MUSIC: CONTINUATION OF BERNARD SINGING",
+    "string" : ".MUSIC: CONTINUATION OF BERNARD SINGING",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "0C5A5A31-4C31-4B33-84DD-985AF6BBC830",
+    "index" : 24,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      9711,
+      27
+    ],
+    "rawString" : "INT.\/EXT. AUTOMOBILE - DAY ",
+    "string" : "INT.\/EXT. AUTOMOBILE - DAY ",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "70892374-4188-430B-8F07-0FD0450D128F",
+    "index" : 25,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      9740,
+      46
+    ],
+    "rawString" : ".TRACKING: BERNARD BEHIND THE WHEEL OF HIS SUV",
+    "string" : ".TRACKING: BERNARD BEHIND THE WHEEL OF HIS SUV",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "DD75D7D4-CC70-43DB-BB0D-44CDDB371D38",
+    "index" : 26,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      10134,
+      19
+    ],
+    "rawString" : "EXT. CEMETERY - DAY",
+    "string" : "EXT. CEMETERY - DAY",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "3977732E-3079-4D8C-8B0F-41C2A4617018",
+    "index" : 27,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      10155,
+      60
+    ],
+    "rawString" : ".LONG SHOT: Large open grassy cemetery where MOURNERS gather",
+    "string" : ".LONG SHOT: Large open grassy cemetery where MOURNERS gather",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "65225A39-3345-47A2-8514-61095828A6C8",
+    "index" : 28,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      10480,
+      70
+    ],
+    "rawString" : ".PULL BACK REVEAL: Bernard watches standing under a nearby shade tree.",
+    "string" : ".PULL BACK REVEAL: Bernard watches standing under a nearby shade tree.",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "67C96EAB-ECD1-41CB-8DE2-77DDF4AA4FA4",
+    "index" : 29,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      10552,
+      19
+    ],
+    "rawString" : ".CU: Bernard’s face",
+    "string" : ".CU: Bernard’s face",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "82808C05-05F6-45EA-85F7-B10FB4345A23",
+    "index" : 30,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      10573,
+      19
+    ],
+    "rawString" : ".MED SHOT: Mourners",
+    "string" : ".MED SHOT: Mourners",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "1FA5FC10-D753-4363-A087-4CD1CE7EBDD6",
+    "index" : 31,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      11467,
+      16
+    ],
+    "rawString" : "INT. HOUSE - DAY",
+    "string" : "INT. HOUSE - DAY",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "D4319338-2BF4-4F26-AB5F-765B5E8F2DC2",
+    "index" : 32,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      13420,
+      13
+    ],
+    "rawString" : ".CU: THE VIAL",
+    "string" : ".CU: THE VIAL",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "6CCB0C1D-BF20-40FF-9099-1A058DCCBF0A",
+    "index" : 33,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      13584,
+      34
+    ],
+    "rawString" : ".COWBOY SHOT: Bernard and the vase",
+    "string" : ".COWBOY SHOT: Bernard and the vase",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "EC0DA7F9-58AA-4F99-899C-16FA7C0724D0",
+    "index" : 34,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      14875,
+      26
+    ],
+    "rawString" : "EXT. HOUSE POOL AREA - DAY",
+    "string" : "EXT. HOUSE POOL AREA - DAY",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "83BD5425-47C4-4962-979B-4422D305C2A3",
+    "index" : 35,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      15101,
+      16
+    ],
+    "rawString" : "INT. SAUNA - DAY",
+    "string" : "INT. SAUNA - DAY",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "A02457D3-FA1B-4A23-AA3A-6855BE664A0D",
+    "index" : 36,
+    "isCollapsed" : false,
+    "level" : 2,
+    "range" : [
+      15616,
+      16
+    ],
+    "rawString" : "## END CHAPTER 1",
+    "string" : "END CHAPTER 1",
+    "type" : "sectionHeader"
+  },
+  {
+    "id" : "B42A0FFD-0A10-4DC4-B484-3864D7867837",
+    "index" : 37,
+    "isCollapsed" : false,
+    "level" : 2,
+    "range" : [
+      15661,
+      12
+    ],
+    "rawString" : "## CHAPTER 2",
+    "string" : "CHAPTER 2",
+    "type" : "sectionHeader"
+  },
+  {
+    "id" : "8AB8D1C2-7366-440A-B921-7B29AE7212FA",
+    "index" : 38,
+    "isCollapsed" : false,
+    "level" : 3,
+    "range" : [
+      15716,
+      33
+    ],
+    "rawString" : "### Steam Room S#{{SERIES: 2001}}",
+    "string" : "Steam Room S#{{SERIES: 2001}}",
+    "type" : "sectionHeader"
+  },
+  {
+    "id" : "62EFA8F1-1311-4B93-858A-C0D7DDD8EF57",
+    "index" : 39,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      15817,
+      21
+    ],
+    "rawString" : "INT. STEAM ROOM - DAY",
+    "string" : "INT. STEAM ROOM - DAY",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "62703A2F-FD99-43BA-BB51-6470953DCB88",
+    "index" : 40,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      15840,
+      53
+    ],
+    "rawString" : ".LONG SHOT -> TWO SHOT: STEAM ROOM ENTRANCE - PUSH IN",
+    "string" : ".LONG SHOT -> TWO SHOT: STEAM ROOM ENTRANCE - PUSH IN",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "D8C29EBC-E329-41CE-90B0-C88FA27E67E3",
+    "index" : 41,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      16422,
+      32
+    ],
+    "rawString" : ".COVERAGE: SHOT\/REVERSE\/TWO-SHOT",
+    "string" : ".COVERAGE: SHOT\/REVERSE\/TWO-SHOT",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "2FEC9EF8-05BB-4191-872B-BDD6EC561AA5",
+    "index" : 42,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      17591,
+      40
+    ],
+    "rawString" : ".TWO SHOT. THEY’RE SITTING SIDE-BY-SIDE.",
+    "string" : ".TWO SHOT. THEY’RE SITTING SIDE-BY-SIDE.",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "98E1AE2A-924D-43A1-9281-809B5AD73890",
+    "index" : 43,
+    "isCollapsed" : false,
+    "level" : 3,
+    "range" : [
+      18104,
+      38
+    ],
+    "rawString" : "### The Video Shoot S#{{SERIES: 2002}}",
+    "string" : "The Video Shoot S#{{SERIES: 2002}}",
+    "type" : "sectionHeader"
+  },
+  {
+    "id" : "42F303D9-2FF2-411C-B7BE-1E96D387FF19",
+    "index" : 44,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      18144,
+      34
+    ],
+    "rawString" : "INT. MID-CENTURY MODERN HOME - DAY",
+    "string" : "INT. MID-CENTURY MODERN HOME - DAY",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "D97A2B79-FC8B-4749-BA85-B5A2F32DB411",
+    "index" : 45,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      19846,
+      23
+    ],
+    "rawString" : "INT. EDITING ROOM - DAY",
+    "string" : "INT. EDITING ROOM - DAY",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "C8FF5528-6F8A-4AFA-BDCE-32261F1D3FA1",
+    "index" : 46,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      20723,
+      36
+    ],
+    "rawString" : "INT. BLAZE VIDEO MERCHANDISING - DAY",
+    "string" : "INT. BLAZE VIDEO MERCHANDISING - DAY",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "19E4ECBB-5A9E-4E95-8302-609AACD26AE8",
+    "index" : 47,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      22408,
+      23
+    ],
+    "rawString" : "INT. EDITING ROOM - DAY",
+    "string" : "INT. EDITING ROOM - DAY",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "1CD71720-9058-4939-88E5-92B2A85CAA00",
+    "index" : 48,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      22526,
+      28
+    ],
+    "rawString" : ".MONTAGE - VARIOUS LOCATIONS",
+    "string" : ".MONTAGE - VARIOUS LOCATIONS",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "D55D7969-F926-483D-B01B-8713A84FD08F",
+    "index" : 49,
+    "isCollapsed" : false,
+    "level" : 3,
+    "range" : [
+      23146,
+      46
+    ],
+    "rawString" : "### Strangers in a Bathroom S#{{SERIES: 2003}}",
+    "string" : "Strangers in a Bathroom S#{{SERIES: 2003}}",
+    "type" : "sectionHeader"
+  },
+  {
+    "id" : "E92AF8C2-3CA2-4086-A6BB-DC7EAF5DF773",
+    "index" : 50,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      23194,
+      23
+    ],
+    "rawString" : "INT.\/EXT. PSSC - SUNSET",
+    "string" : "INT.\/EXT. PSSC - SUNSET",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "F090B623-48A1-410A-8742-2A2CF529D828",
+    "index" : 51,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      23975,
+      54
+    ],
+    "rawString" : ".MUSIC: Opening PIANO version of “Take Your Momma Out”",
+    "string" : ".MUSIC: Opening PIANO version of “Take Your Momma Out”",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "7A9B87D3-6048-4738-8E84-C593F0419013",
+    "index" : 52,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      24059,
+      42
+    ],
+    "rawString" : "EXT. PALM SPRINGS CULTURAL CENTER - SUNSET",
+    "string" : "EXT. PALM SPRINGS CULTURAL CENTER - SUNSET",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "69A2CEEA-672F-4E0C-8208-F731627B3CC3",
+    "index" : 53,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      24427,
+      20
+    ],
+    "rawString" : "INT. CABARET - NIGHT",
+    "string" : "INT. CABARET - NIGHT",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "4F45BCE8-6629-4C6D-9160-1514556C4616",
+    "index" : 54,
+    "isCollapsed" : false,
+    "level" : 5,
+    "range" : [
+      24449,
+      246
+    ],
+    "rawString" : "[[NOTE: the concept for this cabaret number is something tiki-esque. Tiki idols on stage and fake simulated fire from some “torches” as well as a xylophone for color. Maybe even film the performance at the Tonga Hut. Someone on the Bongo Drums?]]",
+    "string" : "NOTE: the concept for this cabaret number is something tiki-esque. Tiki idols on stage and fake simulated fire from some “torches” as well as a xylophone for color. Maybe even film the performance at the Tonga Hut. Someone on the Bongo Drums?",
+    "type" : "note"
+  },
+  {
+    "id" : "B7AC9F40-0C59-4681-9692-8C74D02AA180",
+    "index" : 55,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      24961,
+      33
+    ],
+    "rawString" : "INT. PSCC - CONTINUES FROM BEFORE",
+    "string" : "INT. PSCC - CONTINUES FROM BEFORE",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "42B6405F-EDDF-4073-8479-4F677C4FF565",
+    "index" : 56,
+    "isCollapsed" : false,
+    "level" : 3,
+    "range" : [
+      26128,
+      52
+    ],
+    "rawString" : "### CABARET - Take Your Momma Out S#{{SERIES: 2004}}",
+    "string" : "CABARET - Take Your Momma Out S#{{SERIES: 2004}}",
+    "type" : "sectionHeader"
+  },
+  {
+    "id" : "65013877-0160-4FF4-968C-0824E04E85C5",
+    "index" : 57,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      26182,
+      20
+    ],
+    "rawString" : "INT. CABARET - NIGHT",
+    "string" : "INT. CABARET - NIGHT",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "21F4F7E1-505E-44F2-BA5A-7F1C9657BB10",
+    "index" : 58,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      26328,
+      33
+    ],
+    "rawString" : "INT. PSCC - CONTINUES FROM BEFORE",
+    "string" : "INT. PSCC - CONTINUES FROM BEFORE",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "A97A74BC-4657-4E9A-930B-3F6C97783040",
+    "index" : 59,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      26859,
+      41
+    ],
+    "rawString" : "INT. PALM SPRINGS CULTURAL CENTER - LATER",
+    "string" : "INT. PALM SPRINGS CULTURAL CENTER - LATER",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "E93C1D87-7350-455D-AAFC-115416021DB9",
+    "index" : 60,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      27176,
+      34
+    ],
+    "rawString" : "INT. PSCC - MENS ROOM - CONTINUOUS",
+    "string" : "INT. PSCC - MENS ROOM - CONTINUOUS",
+    "type" : "sceneHeader"
+  },
+  {
+    "id" : "9B12CD29-17BF-4E63-8043-701781902C2B",
+    "index" : 61,
+    "isCollapsed" : false,
+    "level" : 5,
+    "range" : [
+      27212,
+      89
+    ],
+    "rawString" : "[[ NOTE: I’d like to do this as a one-er re-framing the camera for each emotional beat ]]",
+    "string" : " NOTE: I’d like to do this as a one-er re-framing the camera for each emotional beat ",
+    "type" : "note"
+  },
+  {
+    "id" : "17F2C25E-B6F1-4944-9DF3-473F69C6D275",
+    "index" : 62,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      27303,
+      43
+    ],
+    "rawString" : "#### SHOT: CU Killian’s face in the mirror.",
+    "string" : "SHOT: CU Killian’s face in the mirror.",
+    "type" : "sectionHeader"
+  },
+  {
+    "id" : "9477D1BE-E9CC-4DE4-86CB-9CECAE812019",
+    "index" : 63,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      27445,
+      111
+    ],
+    "rawString" : "#### REFRAME: Reframe the face so that we see it’s actually Killian looking into the bathroom mirror, pull out.",
+    "string" : "REFRAME: Reframe the face so that we see it’s actually Killian looking into the bathroom mirror, pull out.",
+    "type" : "sectionHeader"
+  },
+  {
+    "id" : "B4548951-AD8C-4890-9402-A78DC7900F2B",
+    "index" : 64,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      27652,
+      79
+    ],
+    "rawString" : "#### REFRAME: Bernard appears behind him, slipping into the bathroom unnoticed.",
+    "string" : "REFRAME: Bernard appears behind him, slipping into the bathroom unnoticed.",
+    "type" : "sectionHeader"
+  },
+  {
+    "id" : "C2460DFA-8885-4D2A-86D4-0745E820E4CD",
+    "index" : 65,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      27873,
+      48
+    ],
+    "rawString" : "#### REFRAME: BERNARD and KILLIAN as adversaries",
+    "string" : "REFRAME: BERNARD and KILLIAN as adversaries",
+    "type" : "sectionHeader"
+  },
+  {
+    "id" : "3684D2DD-B6B3-4837-A188-8F26A6E17458",
+    "index" : 66,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      28113,
+      64
+    ],
+    "rawString" : "#### REFRAME: The question takes the wind out of Killian’s sails",
+    "string" : "REFRAME: The question takes the wind out of Killian’s sails",
+    "type" : "sectionHeader"
+  },
+  {
+    "id" : "F6F6B830-71E7-4BD2-8269-DC2D9AFBBA74",
+    "index" : 67,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      28485,
+      82
+    ],
+    "rawString" : "#### REFRAME: BERNARD’s MONOLOGUE, he’s taking the driver’s seat away from Killian",
+    "string" : "REFRAME: BERNARD’s MONOLOGUE, he’s taking the driver’s seat away from Killian",
+    "type" : "sectionHeader"
+  },
+  {
+    "id" : "F12D5582-2967-4AA2-AF29-46D51099C6F4",
+    "index" : 68,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      29178,
+      99
+    ],
+    "rawString" : "#### SHOT: Reframe to show Killian looking at his own reflection again, Bernard “over his shoulder”",
+    "string" : "SHOT: Reframe to show Killian looking at his own reflection again, Bernard “over his shoulder”",
+    "type" : "sectionHeader"
+  },
+  {
+    "id" : "2C082EEA-500B-463C-9C45-58DA8FC82243",
+    "index" : 69,
+    "isCollapsed" : false,
+    "level" : 4,
+    "range" : [
+      29889,
+      87
+    ],
+    "rawString" : "#### OFF: WE END THE SCENE WITH THE “BAD ANGEL” ANGLE AND BERNARD’S UNSPOKEN SUGGESTION",
+    "string" : "OFF: WE END THE SCENE WITH THE “BAD ANGEL” ANGLE AND BERNARD’S UNSPOKEN SUGGESTION",
+    "type" : "sectionHeader"
+  },
+  {
+    "id" : "0AA045F4-F034-4A6E-8DAA-72388E0678AC",
+    "index" : 70,
+    "isCollapsed" : false,
+    "level" : 2,
+    "range" : [
+      29978,
+      16
+    ],
+    "rawString" : "## END CHAPTER 2",
+    "string" : "END CHAPTER 2",
+    "type" : "sectionHeader"
+  },
+  {
+    "id" : "3030FEA0-7C09-4E09-81B3-9C2826CE5CFC",
+    "index" : 71,
+    "isCollapsed" : false,
+    "level" : -1,
+    "range" : [
+      30073,
+      0
+    ],
+    "rawString" : "",
+    "string" : "",
+    "type" : "blank"
+  }
+]
