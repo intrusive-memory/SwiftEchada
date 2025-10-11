@@ -136,36 +136,14 @@ struct SwiftEchadaTests {
 
     @Test("Sample screenplay file exists")
     func testSampleScreenplayExists() async throws {
-        let testBundle = Bundle.module
-        let resourceURL = testBundle.url(
-            forResource: "sample",
-            withExtension: "fountain",
-            subdirectory: "Resources"
-        )
-
-        #expect(resourceURL != nil, "Sample screenplay should exist in Resources")
-
-        if let url = resourceURL {
-            let fileExists = FileManager.default.fileExists(atPath: url.path)
-            #expect(fileExists, "Sample screenplay file should be accessible")
-        }
+        let fileExists = FileManager.default.fileExists(atPath: Fijos.sampleScreenplay.path)
+        #expect(fileExists, "Sample screenplay file should be accessible")
     }
 
     @Test("Parser can extract characters from sample screenplay")
     func testScreenplayParsing() async throws {
-        let testBundle = Bundle.module
-
-        guard let resourceURL = testBundle.url(
-            forResource: "sample",
-            withExtension: "fountain",
-            subdirectory: "Resources"
-        ) else {
-            Issue.record("Sample screenplay not found")
-            return
-        }
-
         let service = ScreenplayParserService()
-        let characters = try await service.parseScreenplay(from: resourceURL)
+        let characters = try await service.parseScreenplay(from: Fijos.sampleScreenplay)
 
         // Our sample script has SARAH, MARK, and BARISTA
         #expect(characters.count == 3, "Should extract 3 characters from sample screenplay")
@@ -178,19 +156,8 @@ struct SwiftEchadaTests {
 
     @Test("Parsed characters have dialogue counts")
     func testParsedCharactersHaveDialogue() async throws {
-        let testBundle = Bundle.module
-
-        guard let resourceURL = testBundle.url(
-            forResource: "sample",
-            withExtension: "fountain",
-            subdirectory: "Resources"
-        ) else {
-            Issue.record("Sample screenplay not found")
-            return
-        }
-
         let service = ScreenplayParserService()
-        let characters = try await service.parseScreenplay(from: resourceURL)
+        let characters = try await service.parseScreenplay(from: Fijos.sampleScreenplay)
 
         // All speaking characters should have dialogue count > 0
         let speakingCharacters = characters.filter { $0.dialogueCount > 0 }
@@ -199,19 +166,8 @@ struct SwiftEchadaTests {
 
     @Test("Character type classification works")
     func testCharacterTypeClassification() async throws {
-        let testBundle = Bundle.module
-
-        guard let resourceURL = testBundle.url(
-            forResource: "sample",
-            withExtension: "fountain",
-            subdirectory: "Resources"
-        ) else {
-            Issue.record("Sample screenplay not found")
-            return
-        }
-
         let service = ScreenplayParserService()
-        let characters = try await service.parseScreenplay(from: resourceURL)
+        let characters = try await service.parseScreenplay(from: Fijos.sampleScreenplay)
 
         // Verify that characters are classified
         for character in characters {
@@ -231,18 +187,8 @@ struct SwiftEchadaTests {
         let context = ModelContext(config.modelContainer)
 
         // 2. Parse screenplay
-        let testBundle = Bundle.module
-        guard let resourceURL = testBundle.url(
-            forResource: "sample",
-            withExtension: "fountain",
-            subdirectory: "Resources"
-        ) else {
-            Issue.record("Sample screenplay not found")
-            return
-        }
-
         let service = ScreenplayParserService()
-        let characters = try await service.parseScreenplay(from: resourceURL)
+        let characters = try await service.parseScreenplay(from: Fijos.sampleScreenplay)
 
         // 3. Persist characters
         for character in characters {

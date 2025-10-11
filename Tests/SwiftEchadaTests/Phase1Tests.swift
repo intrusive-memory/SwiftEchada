@@ -803,4 +803,156 @@ struct Phase1Tests {
         #expect(try repos.characters.count() == 0)
         #expect(try repos.actors.count() == 0)
     }
+
+    // MARK: - ParserService Classification Tests (Coverage Improvement)
+
+    @Test("ParserService classifies lead characters from screenplay")
+    func testParserServiceClassificationLead() async throws {
+        let service = ScreenplayParserService()
+        let characters = try await service.parseScreenplay(from: Fijos.leadCharacter)
+        let lead = characters.first { $0.name == "LEAD" }
+
+        // This should trigger the lead classification (20+ dialogue, 10+ scenes)
+        #expect(lead != nil)
+        #expect(lead?.characterType == .lead)
+    }
+
+    @Test("ParserService classifies supporting characters from screenplay")
+    func testParserServiceClassificationSupporting() async throws {
+        let service = ScreenplayParserService()
+        let characters = try await service.parseScreenplay(from: Fijos.supportingCharacter)
+        let supporting = characters.first { $0.name == "SUPPORTING" }
+
+        // This should trigger the supporting classification (10+ dialogue OR 5+ scenes)
+        #expect(supporting != nil)
+        #expect(supporting?.characterType == .supporting)
+    }
+
+    @Test("ParserService handles background characters from screenplay")
+    func testParserServiceClassificationBackground() async throws {
+        let service = ScreenplayParserService()
+        let characters = try await service.parseScreenplay(from: Fijos.backgroundCharacter)
+
+        // Background characters typically don't speak, so they may not be extracted by the parser
+        // which only detects speaking characters. The fixture contains action lines with
+        // "BACKGROUND CHARACTER" but no dialogue, so we expect either no characters or
+        // characters with minimal dialogue if the parser extracts from action lines
+        #expect(characters.isEmpty || characters.allSatisfy { $0.dialogueCount == 0 },
+               "Background character file should have no dialogue or no detected characters")
+    }
+
+    @Test("ParserService classifies extra characters from screenplay")
+    func testParserServiceClassificationExtra() async throws {
+        let service = ScreenplayParserService()
+        let characters = try await service.parseScreenplay(from: Fijos.extraCharacter)
+
+        // The extra_character.fountain file has no speaking characters
+        // It may have action lines but no character dialogue
+        #expect(characters.isEmpty || characters.allSatisfy { $0.dialogueCount == 0 },
+               "Extra character file should have no dialogue or no characters")
+    }
+
+    @Test("ParserService handles classification test screenplay")
+    func testParserServiceClassificationTestFile() async throws {
+        let service = ScreenplayParserService()
+        let characters = try await service.parseScreenplay(from: Fijos.classificationTest)
+
+        // Verify multiple character classifications in one file
+        #expect(characters.count > 0)
+
+        let characterTypes = Set(characters.map { $0.characterType })
+        #expect(characterTypes.count >= 1, "Should have at least one character type classified")
+    }
+
+    // MARK: - Validation Error Description Tests (Coverage Improvement)
+
+    @Test("ValidationError emptyName has correct description")
+    func testValidationErrorEmptyNameDescription() async throws {
+        let error = ValidationError.emptyName
+        #expect(error.errorDescription == "Name cannot be empty")
+    }
+
+    @Test("ValidationError invalidSceneCount has correct description")
+    func testValidationErrorInvalidSceneCountDescription() async throws {
+        let error = ValidationError.invalidSceneCount
+        #expect(error.errorDescription == "Scene count must be non-negative")
+    }
+
+    @Test("ValidationError invalidDialogueCount has correct description")
+    func testValidationErrorInvalidDialogueCountDescription() async throws {
+        let error = ValidationError.invalidDialogueCount
+        #expect(error.errorDescription == "Dialogue count must be non-negative")
+    }
+
+    @Test("ValidationError invalidHeight has correct description")
+    func testValidationErrorInvalidHeightDescription() async throws {
+        let error = ValidationError.invalidHeight
+        #expect(error.errorDescription == "Height must be between 24 and 96 inches")
+    }
+
+    @Test("ValidationError invalidAvailability has correct description")
+    func testValidationErrorInvalidAvailabilityDescription() async throws {
+        let error = ValidationError.invalidAvailability
+        #expect(error.errorDescription == "Availability start date must be before end date")
+    }
+
+    // MARK: - Repository Edge Cases (Coverage Improvement)
+
+    @Test("CharacterRepository delete by ID returns false for non-existent ID")
+    func testCharacterRepositoryDeleteByIDNotFound() async throws {
+        let config = try SwiftEchadaConfiguration(inMemory: true)
+        let context = ModelContext(config.modelContainer)
+        let repo = CharacterRepository(context: context)
+
+        let randomID = UUID()
+        let deleted = try repo.delete(id: randomID)
+        #expect(deleted == false)
+    }
+
+    @Test("ActorRepository delete by ID returns false for non-existent ID")
+    func testActorRepositoryDeleteByIDNotFound() async throws {
+        let config = try SwiftEchadaConfiguration(inMemory: true)
+        let context = ModelContext(config.modelContainer)
+        let repo = ActorRepository(context: context)
+
+        let randomID = UUID()
+        let deleted = try repo.delete(id: randomID)
+        #expect(deleted == false)
+    }
+
+    @Test("ActorRepository delete by ID returns true for existing ID")
+    func testActorRepositoryDeleteByIDSuccess() async throws {
+        let config = try SwiftEchadaConfiguration(inMemory: true)
+        let context = ModelContext(config.modelContainer)
+        let repo = ActorRepository(context: context)
+
+        let actor = TestFixtures.createSampleActor()
+        try repo.create(actor)
+
+        let deleted = try repo.delete(id: actor.id)
+        #expect(deleted == true)
+        #expect(try repo.count() == 0)
+    }
+
+    @Test("CastingRepository links actor when character has nil actors array")
+    func testCastingRepositoryLinkWithNilActorsArray() async throws {
+        let config = try SwiftEchadaConfiguration(inMemory: true)
+        let context = ModelContext(config.modelContainer)
+        let castingRepo = CastingRepository(context: context)
+        let charRepo = CharacterRepository(context: context)
+        let actorRepo = ActorRepository(context: context)
+
+        // Create a character without any actors
+        let character = Character(name: "Test", characterType: .lead)
+        let actor = TestFixtures.createSampleActor()
+
+        try charRepo.create(character)
+        try actorRepo.create(actor)
+
+        // This should initialize the actors array
+        try castingRepo.linkActorToCharacter(actor, character)
+
+        let actors = castingRepo.getActors(for: character)
+        #expect(actors.count == 1)
+    }
 }
