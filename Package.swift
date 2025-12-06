@@ -28,6 +28,9 @@ let package = Package(
             name: "SwiftEchada",
             dependencies: [
                 .product(name: "SwiftGuion", package: "SwiftGuion")
+            ],
+            swiftSettings: [
+                .enableUpcomingFeature("StrictConcurrency"),
             ]
         ),
         .testTarget(
@@ -35,7 +38,11 @@ let package = Package(
             dependencies: ["SwiftEchada"],
             resources: [
                 .copy("Resources")
+            ],
+            swiftSettings: [
+                .enableUpcomingFeature("StrictConcurrency"),
             ]
         ),
-    ]
+    ],
+    swiftLanguageModes: [.v6]
 )
