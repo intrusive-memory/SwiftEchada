@@ -2,7 +2,7 @@
 
 [![Build](https://github.com/stovak/SwiftEchada/actions/workflows/tests.yml/badge.svg)](https://github.com/stovak/SwiftEchada/actions/workflows/tests.yml)
 [![Swift 6.2+](https://img.shields.io/badge/Swift-6.2+-orange.svg)](https://swift.org)
-[![Platform](https://img.shields.io/badge/platform-macOS%2026%2B-lightgrey.svg)](https://www.apple.com/macos)
+[![Platform](https://img.shields.io/badge/platform-macOS%2026%2B%20|%20iOS%2026%2B-lightgrey.svg)](https://www.apple.com)
 
 **Screenplay Character Manager & Casting Library for Swift**
 
@@ -23,7 +23,7 @@ See [METHODOLOGY.md](METHODOLOGY.md) for detailed phase information.
 
 ## Requirements
 
-- **macOS**: 26.0 or later (Sequoia)
+- **Platforms**: macOS 26.0+ / iOS 26.0+
 - **Swift**: 6.2 or later
 - **Xcode**: Latest version supporting Swift 6.2
 
