@@ -17,12 +17,15 @@ public struct CharacterExtractor: Sendable {
     /// - Parameter queryFn: A function that takes (userPrompt, systemPrompt) and returns the LLM response string.
     /// - Returns: Updated `ProjectFrontMatter` with the merged cast list.
     public func extractAll(
-        queryFn: @Sendable (String, String) async throws -> String
+        queryFn: @Sendable (String, String) async throws -> String,
+        progressFn: (@Sendable (String, Int, Int) -> Void)? = nil
     ) async throws -> ProjectFrontMatter {
         let fileURLs = try discoverFiles()
         var allExtracted: [[CharacterInfo]] = []
+        let total = fileURLs.count
 
-        for fileURL in fileURLs {
+        for (index, fileURL) in fileURLs.enumerated() {
+            progressFn?(fileURL.lastPathComponent, index + 1, total)
             do {
                 let characters = try await extractCharacters(from: fileURL, queryFn: queryFn)
                 allExtracted.append(characters)

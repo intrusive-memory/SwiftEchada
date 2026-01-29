@@ -41,15 +41,23 @@ struct ExtractCommand: AsyncParsableCommand {
         )
 
         let modelId = model
-        let updated = try await extractor.extractAll { userPrompt, systemPrompt in
-            try await Bruja.query(
-                userPrompt,
-                model: modelId,
-                temperature: 0.3,
-                maxTokens: 1024,
-                system: systemPrompt
-            )
-        }
+        let isQuiet = quiet
+        let updated = try await extractor.extractAll(
+            queryFn: { userPrompt, systemPrompt in
+                try await Bruja.query(
+                    userPrompt,
+                    model: modelId,
+                    temperature: 0.3,
+                    maxTokens: 1024,
+                    system: systemPrompt
+                )
+            },
+            progressFn: { filename, current, total in
+                if !isQuiet {
+                    print("[\(current)/\(total)] Extracting: \(filename)")
+                }
+            }
+        )
 
         if let cast = updated.cast {
             if !quiet {

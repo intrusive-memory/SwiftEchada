@@ -17,7 +17,8 @@ A Swift library and CLI that analyzes screenplay files referenced in a PROJECT.m
 - **CharacterInfo** — Codable/Sendable struct for extracted character data
 - **CastMatcher** — Matches cast members to TTS voices using LLM selection with retry logic
 - **CLI (`echada`)** — Three subcommands: `extract`, `match`, `download`
-- **Test suite** — 16 tests covering CharacterInfo, CharacterMerger, CharacterExtractor (all passing)
+- **CLI progress output** — Download command has a visual progress bar; extract command shows per-file progress
+- **Test suite** — 28 tests across 5 suites (all passing)
 - **Dependency resolution** — SwiftHablare `swift-transformers` bumped to 1.1.6 (PR #84)
 
 ### Architecture
@@ -62,7 +63,8 @@ public struct CharacterInfo: Codable, Sendable, Equatable {
 public struct CharacterExtractor: Sendable {
     public init(projectDirectory: URL, frontMatter: ProjectFrontMatter)
     public func extractAll(
-        queryFn: @Sendable (String, String) async throws -> String
+        queryFn: @Sendable (String, String) async throws -> String,
+        progressFn: (@Sendable (String, Int, Int) -> Void)? = nil
     ) async throws -> ProjectFrontMatter
     public func extractCharacters(
         from fileURL: URL,
