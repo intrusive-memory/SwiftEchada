@@ -2,9 +2,9 @@ name: Tests
 
 on:
   push:
-    branches: [main, master]
+    branches: [main]
   pull_request:
-    branches: [main, master]
+    branches: [main]
 
 jobs:
   test:
@@ -23,8 +23,12 @@ jobs:
 
       - name: Build
         run: swift build
+        env:
+          GIT_LFS_SKIP_SMUDGE: "1"
 
       - name: Run tests with coverage
+        env:
+          GIT_LFS_SKIP_SMUDGE: "1"
         run: |
           # Run tests and capture output
           set +e  # Don't exit on error
@@ -45,6 +49,8 @@ jobs:
           fi
 
       - name: Generate coverage report
+        env:
+          GIT_LFS_SKIP_SMUDGE: "1"
         run: |
           # Get the build path
           BUILD_PATH=$(swift build --show-bin-path)
