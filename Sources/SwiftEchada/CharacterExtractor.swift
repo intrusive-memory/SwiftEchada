@@ -60,6 +60,7 @@ public struct CharacterExtractor: Sendable {
     }
 
     /// Extract characters from a single screenplay file.
+    /// For large files, automatically chunks by scenes to fit within token limits.
     public func extractCharacters(
         from fileURL: URL,
         queryFn: @Sendable (String, String) async throws -> String
@@ -78,10 +79,31 @@ public struct CharacterExtractor: Sendable {
             Only include characters with dialogue (exclude action-only characters).
             """
 
-        let userPrompt = "Extract characters from this screenplay:\n\n\(content)"
+        // Check if content needs chunking (conservative limit: 2000 tokens ≈ 8000 chars)
+        let needsChunking = estimateTokens(content) > 2000
 
-        let response = try await queryFn(userPrompt, systemPrompt)
-        return try parseCharacters(from: response)
+        if needsChunking {
+            // Split into scene-based chunks and extract from each
+            let chunks = chunkScreenplay(content, maxTokens: 2000)
+            var allCharacters: [[CharacterInfo]] = []
+
+            for chunk in chunks {
+                let userPrompt = "Extract characters from this screenplay:\n\n\(chunk)"
+                let response = try await queryFn(userPrompt, systemPrompt)
+                let characters = try parseCharacters(from: response)
+                allCharacters.append(characters)
+            }
+
+            // Merge characters from all chunks (deduplicate by name)
+            let merger = CharacterMerger()
+            let merged = merger.merge(extracted: allCharacters, existingCast: nil)
+            return merged.map { CharacterInfo(name: $0.character, description: nil) }
+        } else {
+            // Small file - process as single unit
+            let userPrompt = "Extract characters from this screenplay:\n\n\(content)"
+            let response = try await queryFn(userPrompt, systemPrompt)
+            return try parseCharacters(from: response)
+        }
     }
 
     // MARK: - Private
@@ -138,6 +160,90 @@ public struct CharacterExtractor: Sendable {
         }
 
         return try JSONDecoder().decode([CharacterInfo].self, from: data)
+    }
+
+    /// Estimate token count (rough approximation: 1 token ≈ 4 characters)
+    private func estimateTokens(_ text: String) -> Int {
+        return text.count / 4
+    }
+
+    /// Split screenplay into scene-based chunks that fit within token limits
+    private func chunkScreenplay(_ content: String, maxTokens: Int) -> [String] {
+        let lines = content.components(separatedBy: .newlines)
+        var scenes: [String] = []
+        var currentScene: [String] = []
+
+        // Split into scenes based on scene headings
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if isSceneHeading(trimmed) {
+                // Start new scene
+                if !currentScene.isEmpty {
+                    scenes.append(currentScene.joined(separator: "\n"))
+                    currentScene = []
+                }
+            }
+            currentScene.append(line)
+        }
+
+        // Add final scene
+        if !currentScene.isEmpty {
+            scenes.append(currentScene.joined(separator: "\n"))
+        }
+
+        // Group scenes into chunks that fit token limits
+        var chunks: [String] = []
+        var currentChunk: [String] = []
+        var currentChunkTokens = 0
+        let maxChunkTokens = maxTokens
+
+        for scene in scenes {
+            let sceneTokens = estimateTokens(scene)
+
+            // If single scene exceeds limit, add it as its own chunk
+            if sceneTokens > maxChunkTokens {
+                if !currentChunk.isEmpty {
+                    chunks.append(currentChunk.joined(separator: "\n\n"))
+                    currentChunk = []
+                    currentChunkTokens = 0
+                }
+                chunks.append(scene)
+                continue
+            }
+
+            // If adding this scene would exceed limit, start new chunk
+            if currentChunkTokens + sceneTokens > maxChunkTokens {
+                chunks.append(currentChunk.joined(separator: "\n\n"))
+                currentChunk = [scene]
+                currentChunkTokens = sceneTokens
+            } else {
+                currentChunk.append(scene)
+                currentChunkTokens += sceneTokens
+            }
+        }
+
+        // Add final chunk
+        if !currentChunk.isEmpty {
+            chunks.append(currentChunk.joined(separator: "\n\n"))
+        }
+
+        return chunks
+    }
+
+    /// Check if a line is a Fountain scene heading
+    private func isSceneHeading(_ line: String) -> Bool {
+        let upper = line.uppercased()
+        let sceneHeadingPrefixes = [
+            "INT.", "EXT.", "INT/EXT.", "I/E.", "EST.", "INT ", "EXT "
+        ]
+
+        for prefix in sceneHeadingPrefixes {
+            if upper.hasPrefix(prefix) {
+                return true
+            }
+        }
+
+        return false
     }
 }
 
