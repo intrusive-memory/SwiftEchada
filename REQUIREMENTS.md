@@ -1,310 +1,224 @@
-# SwiftEchada - Screenplay Character Manager & Casting Library
+# SwiftEchada - Character Extraction via Local LLM
 
-## Project Overview
-A Swift-based character management and casting system for screenplays that integrates with SwiftGuion for script parsing. The system manages both fictional character data and real-world casting information, with support for AI-generated content.
+## Overview
 
-## Core Requirements
+A Swift library that analyzes screenplay files referenced in a PROJECT.md, extracts character lists using MLX-based local LLM inference, merges them into a unified cast list, and writes the result back to the PROJECT.md YAML front matter.
 
-### 1. Character Model (SwiftData)
+**Core Responsibility**: Character extraction from screenplays (not voice assignment or audio generation).
 
-#### 1.1 Character Identity
-- **Name**: Character's name as it appears in the screenplay
-- **Aliases**: Alternative names, nicknames, or pseudonyms used in the script
-- **Character ID**: Unique identifier for tracking across scripts
-- **Script Reference**: Link to source script (SwiftGuion integration)
-- **First Appearance**: Scene/page number where character first appears
-- **Last Appearance**: Scene/page number where character last appears
-- **Total Scenes**: Count of scenes featuring this character
+## Workflow
 
-#### 1.2 Character Description (Fictional)
-- **Age**: Character's age or age range
-- **Gender**: Character's gender identity
-- **Physical Description**: Height, build, distinguishing features
-- **Personality Traits**: Key character traits and behaviors
-- **Background**: Character history and backstory
-- **Relationships**: Connections to other characters in the script
-- **Character Arc**: Brief description of character journey
-- **Dialogue Lines**: Count or notable quotes
-- **Character Type**: Lead, Supporting, Featured, Background, Extra
+1. **Read** PROJECT.md via `ProjectMarkdownParser` (SwiftProyecto) → get project directory and episode file patterns
+2. **Discover** screenplay files matching the project's `filePatterns` (e.g., `*.fountain`)
+3. **Extract** characters from each screenplay file:
+   - Read file content
+   - Query MLX model with screenplay text → get structured JSON character list
+   - Parse JSON response into `CharacterInfo` structs
+4. **Merge** character lists from all files into unified cast list (deduplicate by character name)
+5. **Write** unified cast list as `CastMember` array back to PROJECT.md YAML front matter (preserves existing voice assignments if present)
 
-#### 1.3 AI-Generated Content
-- **AI Physical Description**: AI-generated detailed physical attributes
-- **AI Personality Profile**: AI-analyzed character psychology
-- **AI Casting Suggestions**: AI-recommended actor types or specific actors
-- **AI Visual Reference**: AI-generated character image/concept art
-- **AI Voice Description**: Suggested voice characteristics
-- **AI Generation Metadata**:
-  - Model used (GPT-4, Claude, Midjourney, etc.)
-  - Generation date
-  - Prompt used
-  - Version/iteration number
-- **AI Analysis**:
-  - Character complexity score
-  - Emotional range requirements
-  - Physical demands of role
-  - Dialogue complexity
+## Architecture
 
-#### 1.4 Casting Information
-- **Casting Status**: Not Cast, Auditioned, Offered, Cast, Declined
-- **Actor ID**: Reference to cast actor
-- **Audition Date**: When auditions occurred
-- **Callback Status**: Whether actor received callbacks
-- **Screen Test**: Links to screen test recordings/notes
-- **Contract Status**: Pending, Signed, Declined
-- **Casting Director Notes**: Professional notes about the role
-- **Casting Requirements**:
-  - Union requirements (SAG-AFTRA, etc.)
-  - Age range for casting
-  - Special skills required (singing, dancing, stunts, accents)
-  - Physical requirements
-  - Availability dates
+### Library Target: `SwiftEchada`
 
-### 2. Actor Model (SwiftData)
+Core logic, reusable from Produciesta and other Swift packages.
 
-#### 2.1 Basic Information
-- **Actor ID**: Unique identifier
-- **Full Name**: Legal name
-- **Stage Name**: Professional name (if different)
-- **Photo**: Primary headshot/profile photo
-- **Additional Photos**: Portfolio images, character stills
-- **Date of Birth**: For age verification
-- **Gender**: Actor's gender identity
-- **Ethnicity**: Self-identified ethnicity
-- **Height**: Physical measurements
-- **Build**: Body type description
+#### Key Components
 
-#### 2.2 Professional Information
-- **Union Status**: SAG-AFTRA, non-union, etc.
-- **Agent Information**:
-  - Agent name
-  - Agency
-  - Contact information
-- **Manager Information**: If applicable
-- **Resume/CV**: Link or embedded document
-- **Reel**: Link to demo reel
-- **IMDB Link**: Professional profile
-- **Social Media**: Professional accounts
-- **Website**: Personal or professional website
+**CharacterExtractor** - Orchestrates character extraction workflow:
+- Takes a `ProjectFrontMatter` (from SwiftProyecto) and project directory URL
+- Discovers screenplay files using project's `filePatterns` (default: `["*.fountain"]`)
+- For each file:
+  - Reads screenplay content
+  - Queries MLX model with extraction prompt
+  - Parses structured JSON response → `[CharacterInfo]`
+- Merges all character lists (deduplicates by character name)
+- Maps `CharacterInfo` → `CastMember` (preserves existing voice assignments)
+- Returns updated `ProjectFrontMatter` with merged cast list
 
-#### 2.3 Skills & Capabilities
-- **Special Skills**: Dancing, singing, martial arts, stunts, etc.
-- **Languages**: Languages spoken and proficiency level
-- **Accents/Dialects**: Accents actor can perform
-- **Training**: Acting schools, workshops, certifications
-- **Experience Level**: Beginner, Intermediate, Professional, Star
-- **Genre Experience**: Comedy, Drama, Action, Horror, etc.
+**MLXQueryService** - Wrapper around MLX inference:
+- `query(prompt: String, systemPrompt: String?) async throws -> String`
+- Uses MLX Python bindings or native Swift MLX library
+- Returns structured JSON response (character list)
 
-#### 2.4 Availability & Logistics
-- **Current Availability**: Dates available
-- **Location**: Current city/region
-- **Willing to Relocate**: Boolean
-- **Willing to Travel**: Boolean
-- **Visa/Work Authorization**: For international productions
-- **Rate**: Typical day rate or project rate
-- **Conflicts**: Other booked projects
+**CharacterMerger** - Deduplicates and merges character lists:
+- Takes `[[CharacterInfo]]` (one array per screenplay file)
+- Deduplicates by character name (case-insensitive)
+- Preserves existing voice assignments from PROJECT.md if character already in cast
+- Returns unified `[CastMember]` array
 
-### 3. Character-Actor Relationship (Casting)
+**PROJECT.md I/O** - Read/write via `ProjectMarkdownParser` (from SwiftProyecto):
+- Read existing cast list from YAML front matter
+- Write merged cast list back (preserves other front matter fields)
 
-#### 3.1 Casting Link
-- **Character ID**: Reference to character
-- **Actor ID**: Reference to actor
-- **Status**: Auditioned, Callback, Offered, Cast, Declined
-- **Audition Date**: Date of audition
-- **Audition Notes**: Director/casting notes
-- **Audition Recording**: Link to video/audio
-- **Chemistry Tests**: Notes on pairings with other actors
-- **Fit Score**: Numerical or qualitative rating
-- **Director Approval**: Boolean and notes
-- **Producer Approval**: Boolean and notes
+### Key Types
 
-#### 3.2 Comparison & Analysis
-- **AI Similarity Score**: How well actor matches AI generation
-- **Physical Match**: Comparison of physical attributes
-- **Type Match**: How well actor fits character type
-- **Experience Match**: Whether actor has suitable experience
-- **Availability Match**: Whether schedules align
-- **Budget Match**: Whether actor fits budget constraints
+```swift
+/// Character extracted from screenplay
+public struct CharacterInfo: Codable {
+    let name: String           // Character name (e.g., "NARRATOR", "PROTAGONIST")
+    let description: String?   // Brief character description from screenplay
+}
 
-### 4. SwiftGuion Integration
+/// Merged cast member (maps to SwiftProyecto's CastMember)
+// CastMember from SwiftProyecto:
+// - character: String
+// - actor: String?
+// - voices: [String]  // VoiceURI array
+```
 
-#### 4.1 Script Parsing
-- **Character Extraction**: Automatically extract character names from script
-- **Scene Tracking**: Track which scenes each character appears in
-- **Dialogue Extraction**: Pull character dialogue for analysis
-- **Stage Directions**: Extract physical descriptions from stage directions
-- **Character Relationships**: Infer relationships from scene pairings
-- **Speaking vs. Non-Speaking**: Categorize character types
+### API Design
 
-#### 4.2 Synchronization
-- **Script Updates**: Handle changes when script is revised
-- **Character Merging**: Handle when characters are consolidated
-- **Character Splitting**: Handle when characters are split
-- **Name Changes**: Update character references across database
-- **Scene Changes**: Update appearance tracking when scenes change
+```swift
+/// Main entry point for character extraction
+public struct CharacterExtractor {
+    public init(
+        projectURL: URL,
+        mlxModel: String = "mlx-community/Llama-3.2-3B-Instruct-4bit"
+    )
 
-### 5. Data Management Features
+    /// Extract characters from all screenplay files and merge into cast list
+    public func extractAndMergeCast() async throws -> [CastMember]
 
-#### 5.1 Search & Filter
-- Search characters by name, type, status
-- Filter actors by availability, skills, union status
-- Search casting by status, dates
-- Full-text search across notes and descriptions
+    /// Extract characters from a single screenplay file
+    public func extractCharacters(from fileURL: URL) async throws -> [CharacterInfo]
+}
 
-#### 5.2 Import/Export
-- Import actor data from CSV/JSON
-- Export casting sheets
-- Export to production management tools
-- Import from industry databases (IMDB, Breakdown Services)
+/// Write merged cast list back to PROJECT.md
+public struct ProjectCastWriter {
+    public init(projectURL: URL)
 
-#### 5.3 Reporting
-- Casting progress reports
-- Character breakdown reports
-- Budget analysis based on cast
-- Union compliance reports
-- Production reports (who's needed when)
+    /// Update PROJECT.md with merged cast list (preserves existing voice assignments)
+    public func updateCastList(_ cast: [CastMember]) throws
+}
+```
 
-#### 5.4 Binary Data Management
-**IMPERATIVE: No File-Based Storage**
-- All binary data stored within SwiftData models as `Data` type
-- File operations only at import/export boundaries
-- No filesystem references or file paths in database
-- Self-contained, portable database
-- Eliminates orphaned file management
-- See section 7.3 for detailed requirements
+### Dependencies
 
-#### 5.5 Versioning & History
-- Track changes to character descriptions
-- Track casting decisions over time
-- Maintain audit trail for legal/production purposes
-- Version control for AI-generated content
+| Package | Purpose |
+|---------|---------|
+| SwiftProyecto | `ProjectFrontMatter`, `CastMember`, `ProjectMarkdownParser` |
+| MLX Swift (or Python bindings) | Local LLM inference for character extraction |
 
-### 6. User Interface Requirements
+**Note**: SwiftHablare and voice assignment logic live in Produciesta, not SwiftEchada.
 
-#### 6.1 Character Management Views
-- Character list/grid view
-- Character detail view
-- Character comparison view
-- Character-script cross-reference view
+### MLX Integration Options
 
-#### 6.2 Actor Management Views
-- Actor database/search interface
-- Actor profile view
-- Actor portfolio/gallery view
-- Actor comparison view
+**Option 1: MLX Python Bindings** (simpler, requires Python)
+- Use `PythonKit` or `subprocess` to call MLX Python API
+- Pass screenplay text as prompt, get JSON response
+- Faster initial development
 
-#### 6.3 Casting Workflow Views
-- Casting board (drag-and-drop interface)
-- Audition scheduler
-- Side-by-side character/actor comparison
-- Casting status dashboard
+**Option 2: MLX Swift** (native, no Python dependency)
+- Use `mlx-swift` or native Swift bindings if available
+- Pure Swift implementation
+- Better performance and integration
 
-#### 6.4 AI Integration Views
-- AI generation interface
-- AI suggestion review interface
-- AI vs. actual comparison views
+**Recommended**: Start with Option 1 (Python bindings) for rapid prototyping, migrate to Option 2 if performance becomes an issue.
 
-### 7. Technical Requirements
+## MLX Prompt Strategy
 
-#### 7.1 SwiftData Schema
-- Character entity with relationships
-- Actor entity with relationships
-- Casting relationship entity
-- Support for complex queries and relationships
-- **Binary data storage**: All media stored as `Data` in models (see 7.3)
-- Use `@Attribute(.externalStorage)` for large binary data
-- No file system references or external file dependencies
-- Support for versioning and history
+One query per screenplay file. The prompt includes:
+- The full screenplay text (or chunked if too large)
+- Instruction to extract all speaking characters
+- JSON schema for structured output
 
-#### 7.2 AI Integration
-- API integration layer for AI services
-- Prompt management system
-- Response parsing and storage
-- Cost tracking for AI API usage
-- Rate limiting and error handling
+**Prompt Template**:
 
-#### 7.3 Media Handling
+```
+System: You are a screenplay analyst. Extract all speaking characters from the provided screenplay.
+Return ONLY a JSON array with this exact format:
+[
+  {"name": "CHARACTER_NAME", "description": "brief description"},
+  ...
+]
 
-**IMPERATIVE: Binary Data Storage Strategy**
+Character names should be in UPPERCASE as they appear in the screenplay.
+Only include characters with dialogue (exclude action-only characters).
 
-All binary data (images, audio, video, documents) MUST be stored directly within SwiftData objects using `Data` types. File-based storage is ONLY used during import/export operations.
+User: Extract characters from this screenplay:
 
-**Requirements:**
-- **Images** (headshots, portfolios, concept art): Store as `Data` in SwiftData models
-- **Audio** (voice samples, audition recordings): Store as `Data` in SwiftData models
-- **Documents** (resumes, contracts): Store as `Data` in SwiftData models
-- **File I/O**: Only occurs at system boundaries (import/export)
-- **No external file references**: No file paths or URLs to external files in filesystem
-- **No file management overhead**: No orphaned files, no cleanup required
-- **Database portability**: Entire database is self-contained and portable
+{screenplay_text}
+```
 
-**Rationale:**
-- Eliminates file synchronization issues
-- Prevents orphaned files and dangling references
-- Simplifies backup and restore (single database file)
-- Ensures data integrity (all data moves together)
-- Supports easy data migration and sharing
-- Reduces complexity in file management code
+**Expected JSON Response**:
 
-**Implementation Notes:**
-- Use SwiftData `@Attribute(.externalStorage)` for large binary data
-- Implement lazy loading for binary data when needed
-- Provide import methods that read files and store as `Data`
-- Provide export methods that write `Data` to files
-- Compress images before storing to manage database size
-- Consider size limits and show warnings for very large files
+```json
+[
+  {"name": "NARRATOR", "description": "Omniscient narrator"},
+  {"name": "PROTAGONIST", "description": "Main character"},
+  {"name": "BOB", "description": "Supporting character"}
+]
+```
 
-**Media Operations:**
-- Photo upload and storage (as `Data`)
-- Image compression and optimization (before storing)
-- Support for multiple image formats (JPG, PNG, HEIC)
-- Video link storage (URLs only, not binary data)
-- Document attachment support (as `Data`)
+## Character Merging Strategy
 
-#### 7.4 Performance
-- Efficient queries for large casts
-- Image caching strategy
-- Background syncing with SwiftGuion
-- Responsive UI for large datasets
+When merging character lists from multiple screenplay files:
 
-### 8. Future Enhancements (Phase 2)
+1. **Deduplicate by name** (case-insensitive, normalized)
+   - "NARRATOR" == "narrator" == "Narrator"
+   - First occurrence keeps its description
 
-- **Scheduling Integration**: Link to production calendar
-- **Budget Integration**: Track casting costs
-- **Contract Management**: Store and track contracts
-- **Communication Tools**: Email/message actors and agents
-- **Collaboration Features**: Multi-user support for casting teams
-- **Analytics**: ML-based casting recommendations
-- **Mobile App**: iOS app for on-set reference
-- **Cloud Sync**: Sync across devices and teams
+2. **Preserve existing voice assignments**
+   - If character already in PROJECT.md cast with voice URIs, keep them
+   - If character is new, add with empty `voices` array
+
+3. **Sort alphabetically**
+   - Final cast list sorted by character name for consistency
+
+**Example**:
+
+```yaml
+# PROJECT.md front matter (before)
+cast:
+  - character: NARRATOR
+    voices: ["apple://com.apple.voice.premium.en-US.Ava"]
+
+# After running SwiftEchada (merged from 3 screenplay files):
+cast:
+  - character: NARRATOR
+    voices: ["apple://com.apple.voice.premium.en-US.Ava"]  # Preserved
+  - character: PROTAGONIST
+    voices: []  # New character, no voice assigned yet
+  - character: BOB
+    voices: []
+```
+
+## Integration with Produciesta
+
+SwiftEchada is used as a library in Produciesta for automatic cast list discovery:
+
+```swift
+// In Produciesta CLI or GUI
+import SwiftEchada
+import SwiftProyecto
+
+let extractor = CharacterExtractor(projectURL: projectURL)
+let mergedCast = try await extractor.extractAndMergeCast()
+
+let writer = ProjectCastWriter(projectURL: projectURL)
+try writer.updateCastList(mergedCast)
+
+// Now Produciesta can proceed with voice assignment using SwiftHablare
+```
+
+**Separation of Concerns**:
+- **SwiftEchada**: Character extraction (what characters exist)
+- **Produciesta**: Voice assignment + audio generation (what voices to use, generate audio)
 
 ## Success Criteria
 
-1. Seamlessly parse characters from SwiftGuion scripts
-2. Comprehensive character and actor data models
-3. Efficient casting workflow management
-4. AI integration for character visualization and analysis
-5. Professional-grade casting tools suitable for production use
-6. Extensible architecture for future enhancements
+- Extract characters from all screenplay files matching `filePatterns` in PROJECT.md
+- MLX returns structured JSON with character names and descriptions
+- Deduplicate characters across multiple files (case-insensitive)
+- Preserve existing voice assignments when merging
+- Write merged cast list back to PROJECT.md in correct YAML format
+- Library API is simple and composable for use in Produciesta
+- Works fully offline via local MLX model (no network required)
 
-## Dependencies
+## Future Enhancements (Out of Scope for v1)
 
-- **SwiftGuion**: For script parsing (https://github.com/stovak/SwiftGuion)
-- **SwiftData**: For data persistence
-- **SwiftUI**: For user interface
-- **AI Services**: OpenAI, Anthropic Claude, or similar for AI features
-- **Image Processing**: For photo optimization and storage
-
-## Compliance & Legal
-
-- Union agreement compliance (SAG-AFTRA guidelines)
-- Privacy compliance for actor personal information
-- Photo rights and usage agreements
-- Data retention policies
-- GDPR/CCPA compliance if applicable
-
----
-
-*Document Version: 1.1*
-*Last Updated: 2025-10-11*
-*Project: SwiftEchada*
-*Major Change: Added binary data storage imperative (Section 7.3)*
+- Character relationship extraction (who interacts with whom)
+- Scene-by-scene character tracking
+- Dialogue amount estimation per character
+- Voice recommendation based on character description (this would be a separate voice matching feature)
