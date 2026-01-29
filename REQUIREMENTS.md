@@ -1,224 +1,163 @@
-# SwiftEchada - Character Extraction via Local LLM
+# SwiftEchada - AI-Powered Cast Management for Screenplays
 
 ## Overview
 
-A Swift library that analyzes screenplay files referenced in a PROJECT.md, extracts character lists using MLX-based local LLM inference, merges them into a unified cast list, and writes the result back to the PROJECT.md YAML front matter.
+A Swift library and CLI that analyzes screenplay files referenced in a PROJECT.md, extracts character lists using local LLM inference (via SwiftBruja), merges them into a unified cast list, and optionally matches characters to TTS voices. Results are written back to the PROJECT.md YAML front matter.
 
-**Core Responsibility**: Character extraction from screenplays (not voice assignment or audio generation).
+**Two core capabilities:**
+1. **Character extraction** from screenplays via LLM
+2. **Cast-to-voice matching** using TTS provider voice catalogs
 
-## Workflow
+## Implementation Status
 
-1. **Read** PROJECT.md via `ProjectMarkdownParser` (SwiftProyecto) → get project directory and episode file patterns
-2. **Discover** screenplay files matching the project's `filePatterns` (e.g., `*.fountain`)
-3. **Extract** characters from each screenplay file:
-   - Read file content
-   - Query MLX model with screenplay text → get structured JSON character list
-   - Parse JSON response into `CharacterInfo` structs
-4. **Merge** character lists from all files into unified cast list (deduplicate by character name)
-5. **Write** unified cast list as `CastMember` array back to PROJECT.md YAML front matter (preserves existing voice assignments if present)
+### Completed
 
-## Architecture
+- **CharacterExtractor** — Discovers screenplay files, queries LLM per file, parses JSON character lists, merges via CharacterMerger, returns updated ProjectFrontMatter
+- **CharacterMerger** — Deduplicates by name (case-insensitive), preserves existing voice/actor assignments, sorts alphabetically
+- **CharacterInfo** — Codable/Sendable struct for extracted character data
+- **CastMatcher** — Matches cast members to TTS voices using LLM selection with retry logic
+- **CLI (`echada`)** — Three subcommands: `extract`, `match`, `download`
+- **Test suite** — 16 tests covering CharacterInfo, CharacterMerger, CharacterExtractor (all passing)
+- **Dependency resolution** — SwiftHablare `swift-transformers` bumped to 1.1.6 (PR #84)
+
+### Architecture
+
+```
+Layer 0: SwiftFijos, SwiftBruja
+Layer 1: SwiftCompartido(→Fijos), SwiftProyecto(→Bruja)
+Layer 2: SwiftHablare(→Fijos,Compartido,Proyecto), SwiftSecuencia(→Compartido,Fijos)
+Layer 3: SwiftEchada(→Proyecto,Hablare,Bruja)
+```
 
 ### Library Target: `SwiftEchada`
 
-Core logic, reusable from Produciesta and other Swift packages.
+Depends on SwiftProyecto and SwiftHablare. Uses closure-based dependency injection (`queryFn`) so core logic is testable without MLX hardware.
 
-#### Key Components
+| Component | File | Purpose |
+|-----------|------|---------|
+| `CharacterExtractor` | `CharacterExtractor.swift` | Orchestrates file discovery, LLM extraction, merging |
+| `CharacterMerger` | `CharacterMerger.swift` | Deduplicates and merges character lists across files |
+| `CharacterInfo` | `CharacterInfo.swift` | Extracted character data struct |
+| `CastMatcher` | `CastMatcher.swift` | Matches cast members to TTS voices via LLM |
+| `SwiftEchada` | `SwiftEchada.swift` | Module version constant |
 
-**CharacterExtractor** - Orchestrates character extraction workflow:
-- Takes a `ProjectFrontMatter` (from SwiftProyecto) and project directory URL
-- Discovers screenplay files using project's `filePatterns` (default: `["*.fountain"]`)
-- For each file:
-  - Reads screenplay content
-  - Queries MLX model with extraction prompt
-  - Parses structured JSON response → `[CharacterInfo]`
-- Merges all character lists (deduplicates by character name)
-- Maps `CharacterInfo` → `CastMember` (preserves existing voice assignments)
-- Returns updated `ProjectFrontMatter` with merged cast list
+### CLI Target: `echada`
 
-**MLXQueryService** - Wrapper around MLX inference:
-- `query(prompt: String, systemPrompt: String?) async throws -> String`
-- Uses MLX Python bindings or native Swift MLX library
-- Returns structured JSON response (character list)
+Depends on SwiftEchada, SwiftBruja, and ArgumentParser.
 
-**CharacterMerger** - Deduplicates and merges character lists:
-- Takes `[[CharacterInfo]]` (one array per screenplay file)
-- Deduplicates by character name (case-insensitive)
-- Preserves existing voice assignments from PROJECT.md if character already in cast
-- Returns unified `[CastMember]` array
+| Command | File | Purpose |
+|---------|------|---------|
+| `extract` | `ExtractCommand.swift` | Extract characters from screenplay files |
+| `match` | `MatchCommand` (in EchadaCLI.swift) | Match cast to TTS voices |
+| `download` | `DownloadCommand.swift` | Download LLM models |
 
-**PROJECT.md I/O** - Read/write via `ProjectMarkdownParser` (from SwiftProyecto):
-- Read existing cast list from YAML front matter
-- Write merged cast list back (preserves other front matter fields)
-
-### Key Types
+## Key Types
 
 ```swift
-/// Character extracted from screenplay
-public struct CharacterInfo: Codable {
-    let name: String           // Character name (e.g., "NARRATOR", "PROTAGONIST")
-    let description: String?   // Brief character description from screenplay
+public struct CharacterInfo: Codable, Sendable, Equatable {
+    public let name: String
+    public let description: String?
 }
 
-/// Merged cast member (maps to SwiftProyecto's CastMember)
-// CastMember from SwiftProyecto:
-// - character: String
-// - actor: String?
-// - voices: [String]  // VoiceURI array
-```
-
-### API Design
-
-```swift
-/// Main entry point for character extraction
-public struct CharacterExtractor {
-    public init(
-        projectURL: URL,
-        mlxModel: String = "mlx-community/Llama-3.2-3B-Instruct-4bit"
-    )
-
-    /// Extract characters from all screenplay files and merge into cast list
-    public func extractAndMergeCast() async throws -> [CastMember]
-
-    /// Extract characters from a single screenplay file
-    public func extractCharacters(from fileURL: URL) async throws -> [CharacterInfo]
+public struct CharacterExtractor: Sendable {
+    public init(projectDirectory: URL, frontMatter: ProjectFrontMatter)
+    public func extractAll(
+        queryFn: @Sendable (String, String) async throws -> String
+    ) async throws -> ProjectFrontMatter
+    public func extractCharacters(
+        from fileURL: URL,
+        queryFn: @Sendable (String, String) async throws -> String
+    ) async throws -> [CharacterInfo]
 }
 
-/// Write merged cast list back to PROJECT.md
-public struct ProjectCastWriter {
-    public init(projectURL: URL)
+public struct CharacterMerger: Sendable {
+    public func merge(
+        extracted: [[CharacterInfo]],
+        existingCast: [CastMember]?
+    ) -> [CastMember]
+}
 
-    /// Update PROJECT.md with merged cast list (preserves existing voice assignments)
-    public func updateCastList(_ cast: [CastMember]) throws
+public struct CastMatcher: Sendable {
+    public init(providerId: String, languageCode: String?, model: String, force: Bool)
+    public func match(
+        frontMatter: ProjectFrontMatter,
+        queryFn: @Sendable (String, String, String) async throws -> String
+    ) async throws -> MatchResult
 }
 ```
 
-### Dependencies
+## Dependencies
 
-| Package | Purpose |
-|---------|---------|
-| SwiftProyecto | `ProjectFrontMatter`, `CastMember`, `ProjectMarkdownParser` |
-| MLX Swift (or Python bindings) | Local LLM inference for character extraction |
+| Package | Branch | Purpose |
+|---------|--------|---------|
+| SwiftProyecto | development | `ProjectFrontMatter`, `CastMember`, `ProjectMarkdownParser`, `FilePattern` |
+| SwiftHablare | development | `GenerationService`, `Voice` (for CastMatcher voice fetching) |
+| SwiftBruja | main | Local LLM inference (CLI only, injected via closure in library) |
+| swift-argument-parser | 1.3.0+ | CLI argument parsing |
 
-**Note**: SwiftHablare and voice assignment logic live in Produciesta, not SwiftEchada.
+## Workflow
 
-### MLX Integration Options
+### Character Extraction
 
-**Option 1: MLX Python Bindings** (simpler, requires Python)
-- Use `PythonKit` or `subprocess` to call MLX Python API
-- Pass screenplay text as prompt, get JSON response
-- Faster initial development
+1. Parse PROJECT.md via `ProjectMarkdownParser` → `ProjectFrontMatter`
+2. Discover screenplay files matching `resolvedFilePatterns` in project directory
+3. For each file: read content → build prompt → call `queryFn` → parse JSON `[CharacterInfo]`
+4. Merge all character lists via `CharacterMerger` (dedup, preserve voices, sort)
+5. Return updated `ProjectFrontMatter` with merged cast
 
-**Option 2: MLX Swift** (native, no Python dependency)
-- Use `mlx-swift` or native Swift bindings if available
-- Pure Swift implementation
-- Better performance and integration
+### Voice Matching
 
-**Recommended**: Start with Option 1 (Python bindings) for rapid prototyping, migrate to Option 2 if performance becomes an issue.
+1. Parse PROJECT.md → `ProjectFrontMatter` with existing cast
+2. Fetch available voices from TTS provider via `GenerationService`
+3. For each unmatched cast member: build prompt with character + voice options → call `queryFn`
+4. Parse voice ID from response, build voice URI, update cast
+5. Return updated `ProjectFrontMatter` with voice assignments
 
-## MLX Prompt Strategy
+## LLM Prompt Strategy
 
-One query per screenplay file. The prompt includes:
-- The full screenplay text (or chunked if too large)
-- Instruction to extract all speaking characters
-- JSON schema for structured output
-
-**Prompt Template**:
+**Character extraction** — one query per screenplay file:
 
 ```
-System: You are a screenplay analyst. Extract all speaking characters from the provided screenplay.
-Return ONLY a JSON array with this exact format:
-[
-  {"name": "CHARACTER_NAME", "description": "brief description"},
-  ...
-]
-
-Character names should be in UPPERCASE as they appear in the screenplay.
-Only include characters with dialogue (exclude action-only characters).
+System: You are a screenplay analyst. Extract all speaking characters...
+        Return ONLY a JSON array: [{"name": "NAME", "description": "..."}]
 
 User: Extract characters from this screenplay:
-
-{screenplay_text}
+      {screenplay_text}
 ```
 
-**Expected JSON Response**:
+**Voice matching** — one query per cast member:
 
-```json
-[
-  {"name": "NARRATOR", "description": "Omniscient narrator"},
-  {"name": "PROTAGONIST", "description": "Main character"},
-  {"name": "BOB", "description": "Supporting character"}
-]
+```
+System: You are a casting director assigning TTS voices...
+        Respond with ONLY the voice ID.
+
+User: Character: {name}, Actor: {actor}, Genre: {genre}
+      Available voices: {voice_list}
+      Which voice ID best fits?
 ```
 
-## Character Merging Strategy
+## Character Merging Rules
 
-When merging character lists from multiple screenplay files:
+1. **Deduplicate by name** — case-insensitive, whitespace-trimmed
+2. **Preserve existing data** — voice URIs, actor names, gender from PROJECT.md
+3. **New characters** — added with empty voices array
+4. **Existing-only characters** — preserved even if not in extracted files
+5. **Sort alphabetically** — by character name
 
-1. **Deduplicate by name** (case-insensitive, normalized)
-   - "NARRATOR" == "narrator" == "Narrator"
-   - First occurrence keeps its description
+## Test Coverage
 
-2. **Preserve existing voice assignments**
-   - If character already in PROJECT.md cast with voice URIs, keep them
-   - If character is new, add with empty `voices` array
+| Suite | Tests | Coverage |
+|-------|-------|----------|
+| CharacterInfoTests | 4 | JSON encode/decode, nil description |
+| CharacterMergerTests | 6 | Dedup, voice preservation, sort, multi-file merge |
+| CharacterExtractorTests | 5 | Mock queryFn, markdown blocks, empty dir, voice preservation, malformed JSON |
+| CastMatcherTests | 8 | Voice matching, skip/force logic, retry, error handling, language fallback |
+| IntegrationTests | 3 | Fixture file extraction, existing cast preservation, multi-pattern discovery |
+| SwiftEchadaTests | 1 | Version check |
+| **Total** | **28** | All passing |
 
-3. **Sort alphabetically**
-   - Final cast list sorted by character name for consistency
+## Future Work
 
-**Example**:
-
-```yaml
-# PROJECT.md front matter (before)
-cast:
-  - character: NARRATOR
-    voices: ["apple://com.apple.voice.premium.en-US.Ava"]
-
-# After running SwiftEchada (merged from 3 screenplay files):
-cast:
-  - character: NARRATOR
-    voices: ["apple://com.apple.voice.premium.en-US.Ava"]  # Preserved
-  - character: PROTAGONIST
-    voices: []  # New character, no voice assigned yet
-  - character: BOB
-    voices: []
-```
-
-## Integration with Produciesta
-
-SwiftEchada is used as a library in Produciesta for automatic cast list discovery:
-
-```swift
-// In Produciesta CLI or GUI
-import SwiftEchada
-import SwiftProyecto
-
-let extractor = CharacterExtractor(projectURL: projectURL)
-let mergedCast = try await extractor.extractAndMergeCast()
-
-let writer = ProjectCastWriter(projectURL: projectURL)
-try writer.updateCastList(mergedCast)
-
-// Now Produciesta can proceed with voice assignment using SwiftHablare
-```
-
-**Separation of Concerns**:
-- **SwiftEchada**: Character extraction (what characters exist)
-- **Produciesta**: Voice assignment + audio generation (what voices to use, generate audio)
-
-## Success Criteria
-
-- Extract characters from all screenplay files matching `filePatterns` in PROJECT.md
-- MLX returns structured JSON with character names and descriptions
-- Deduplicate characters across multiple files (case-insensitive)
-- Preserve existing voice assignments when merging
-- Write merged cast list back to PROJECT.md in correct YAML format
-- Library API is simple and composable for use in Produciesta
-- Works fully offline via local MLX model (no network required)
-
-## Future Enhancements (Out of Scope for v1)
-
-- Character relationship extraction (who interacts with whom)
-- Scene-by-scene character tracking
+- Character relationship extraction
 - Dialogue amount estimation per character
-- Voice recommendation based on character description (this would be a separate voice matching feature)
+- Large file chunking for LLM context limits
