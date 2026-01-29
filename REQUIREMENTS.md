@@ -17,8 +17,10 @@ A Swift library and CLI that analyzes screenplay files referenced in a PROJECT.m
 - **CharacterInfo** — Codable/Sendable struct for extracted character data
 - **CastMatcher** — Matches cast members to TTS voices using LLM selection with retry logic
 - **CLI (`echada`)** — Three subcommands: `extract`, `match`, `download`
-- **CLI progress output** — Download command has a visual progress bar; extract command shows per-file progress
+- **CLI progress output** — Download command has a visual progress bar; extract command shows per-file progress with stdout flushing for non-TTY environments
+- **End-to-end verified** — Full pipeline tested with real Phi-3-mini-4k model on fixture screenplay
 - **Test suite** — 28 tests across 5 suites (all passing)
+- **CI/CD** — GitHub Actions on macOS-26 with coverage reporting; branch protection on main
 - **Dependency resolution** — SwiftHablare `swift-transformers` bumped to 1.1.6 (PR #84)
 
 ### Architecture
@@ -158,8 +160,12 @@ User: Character: {name}, Actor: {actor}, Genre: {genre}
 | SwiftEchadaTests | 1 | Version check |
 | **Total** | **28** | All passing |
 
+## Known Limitations
+
+- **Context window overflow** — Full screenplays (4,000+ lines) exceed the Phi-3-mini 4k token limit, causing extremely slow or stalled inference. Screenplays under ~1,000 tokens extract correctly.
+
 ## Future Work
 
+- **Large file chunking** for LLM context limits (highest priority — required for real screenplays)
 - Character relationship extraction
 - Dialogue amount estimation per character
-- Large file chunking for LLM context limits

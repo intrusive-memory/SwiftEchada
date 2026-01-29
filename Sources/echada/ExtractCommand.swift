@@ -32,7 +32,9 @@ struct ExtractCommand: AsyncParsableCommand {
             print("Project: \(frontMatter.title)")
             print("Model: \(model)")
             print("Pattern: \(frontMatter.resolvedFilePatterns.joined(separator: ", "))")
+            print("Loading model...")
             print("")
+            fflush(stdout)
         }
 
         let extractor = CharacterExtractor(
@@ -55,6 +57,7 @@ struct ExtractCommand: AsyncParsableCommand {
             progressFn: { filename, current, total in
                 if !isQuiet {
                     print("[\(current)/\(total)] Extracting: \(filename)")
+                    fflush(stdout)
                 }
             }
         )
