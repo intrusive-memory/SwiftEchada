@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  test:
-    name: Run Tests
+  build:
+    name: Build
     runs-on: macos-26
 
     steps:
@@ -21,22 +21,48 @@ jobs:
       - name: Show Swift version
         run: swift --version
 
-      - name: Build
-        run: swift build
+      - name: Build (including tests)
         env:
           GIT_LFS_SKIP_SMUDGE: "1"
+        run: swift build --build-tests
 
-      - name: Run tests with coverage
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-directory
+          path: .build
+          retention-days: 1
+
+  unit-tests:
+    name: Unit Tests
+    needs: build
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-directory
+          path: .build
+
+      - name: Fix permissions
+        run: chmod -R u+x .build
+
+      - name: Run unit tests with coverage
         env:
           GIT_LFS_SKIP_SMUDGE: "1"
         run: |
-          # Run tests and capture output
-          set +e  # Don't exit on error
-          swift test --enable-code-coverage 2>&1 | tee test-output.log
+          set +e
+          swift test --skip SwiftEchadaIntegrationTests --enable-code-coverage 2>&1 | tee test-output.log
           TEST_EXIT_CODE=${PIPESTATUS[0]}
-          set -e  # Re-enable exit on error
+          set -e
 
-          # Check if tests actually failed by looking at output
           if grep -q "with [1-9][0-9]* failure" test-output.log; then
             echo "Tests failed"
             exit 1
@@ -44,7 +70,6 @@ jobs:
             echo "All tests passed"
             exit 0
           else
-            # If we can't determine, use the exit code
             exit $TEST_EXIT_CODE
           fi
 
@@ -52,24 +77,19 @@ jobs:
         env:
           GIT_LFS_SKIP_SMUDGE: "1"
         run: |
-          # Get the build path
           BUILD_PATH=$(swift build --show-bin-path)
           XCTEST_PATH=$(find $BUILD_PATH -name "*.xctest" | head -n 1)
-
-          # Find the profdata file
           PROFDATA_PATH=$(find .build -name "*.profdata" | head -n 1)
 
           if [ -f "$PROFDATA_PATH" ]; then
             echo "Found profdata at: $PROFDATA_PATH"
 
-            # Generate coverage report
             xcrun llvm-cov report \
               "$XCTEST_PATH/Contents/MacOS/"* \
               -instr-profile="$PROFDATA_PATH" \
               -ignore-filename-regex=".build|Tests" \
               > coverage-report.txt
 
-            # Generate detailed coverage export
             xcrun llvm-cov export \
               "$XCTEST_PATH/Contents/MacOS/"* \
               -instr-profile="$PROFDATA_PATH" \
@@ -86,16 +106,13 @@ jobs:
       - name: Extract test summary
         if: always()
         run: |
-          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "## Unit Test Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ -f test-output.log ]; then
-            # Extract test results from swift test output
-            # Get the last "Executed X tests" line which has the total
             LAST_EXECUTION_LINE=$(grep "Executed.*test" test-output.log | tail -n 1)
 
             if [ -n "$LAST_EXECUTION_LINE" ]; then
-              # Extract numbers from the line
               TOTAL_TESTS=$(echo "$LAST_EXECUTION_LINE" | grep -o "Executed [0-9]*" | grep -o "[0-9]*")
               FAILURES=$(echo "$LAST_EXECUTION_LINE" | grep -o "with [0-9]* failure" | grep -o "[0-9]*")
 
@@ -105,7 +122,6 @@ jobs:
 
               PASSED=$((TOTAL_TESTS - FAILURES))
 
-              # Display results
               if [ "$FAILURES" -eq 0 ]; then
                 echo "✅ **All tests passed:** $TOTAL_TESTS/$TOTAL_TESTS tests" >> $GITHUB_STEP_SUMMARY
               else
@@ -124,7 +140,6 @@ jobs:
             echo "## Coverage Summary" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
 
-            # Extract overall coverage percentage
             COVERAGE=$(grep -oE '[0-9]+\.[0-9]+%' coverage-report.txt | head -n 1)
             if [ -n "$COVERAGE" ]; then
               echo "**Overall Coverage:** $COVERAGE" >> $GITHUB_STEP_SUMMARY
@@ -150,7 +165,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results-and-coverage
+          name: unit-test-results
           path: |
             test-output.log
             coverage-report.txt
@@ -161,11 +176,9 @@ jobs:
       - name: Check coverage threshold
         run: |
           if [ -f coverage-report.txt ]; then
-            # Extract overall coverage percentage
             COVERAGE=$(grep -oE '[0-9]+\.[0-9]+%' coverage-report.txt | head -n 1 | sed 's/%//')
             echo "Overall coverage: $COVERAGE%"
 
-            # Check if coverage meets 80% threshold
             THRESHOLD=80
             if (( $(echo "$COVERAGE >= $THRESHOLD" | bc -l) )); then
               echo "✅ Coverage threshold met: $COVERAGE% >= $THRESHOLD%"
@@ -174,3 +187,83 @@ jobs:
               echo "::warning::Code coverage ($COVERAGE%) is below the threshold ($THRESHOLD%)"
             fi
           fi
+
+  integration-tests:
+    name: Integration Tests
+    needs: build
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-directory
+          path: .build
+
+      - name: Fix permissions
+        run: chmod -R u+x .build
+
+      - name: Run integration tests
+        env:
+          GIT_LFS_SKIP_SMUDGE: "1"
+        run: |
+          set +e
+          swift test --filter SwiftEchadaIntegrationTests 2>&1 | tee test-output.log
+          TEST_EXIT_CODE=${PIPESTATUS[0]}
+          set -e
+
+          if grep -q "with [1-9][0-9]* failure" test-output.log; then
+            echo "Tests failed"
+            exit 1
+          elif grep -q "Test run with .* tests .* passed" test-output.log; then
+            echo "All tests passed"
+            exit 0
+          else
+            exit $TEST_EXIT_CODE
+          fi
+
+      - name: Extract test summary
+        if: always()
+        run: |
+          echo "## Integration Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f test-output.log ]; then
+            LAST_EXECUTION_LINE=$(grep "Executed.*test" test-output.log | tail -n 1)
+
+            if [ -n "$LAST_EXECUTION_LINE" ]; then
+              TOTAL_TESTS=$(echo "$LAST_EXECUTION_LINE" | grep -o "Executed [0-9]*" | grep -o "[0-9]*")
+              FAILURES=$(echo "$LAST_EXECUTION_LINE" | grep -o "with [0-9]* failure" | grep -o "[0-9]*")
+
+              if [ -z "$FAILURES" ]; then
+                FAILURES=0
+              fi
+
+              PASSED=$((TOTAL_TESTS - FAILURES))
+
+              if [ "$FAILURES" -eq 0 ]; then
+                echo "✅ **All tests passed:** $TOTAL_TESTS/$TOTAL_TESTS tests" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "❌ **Failed:** $FAILURES/$TOTAL_TESTS tests" >> $GITHUB_STEP_SUMMARY
+                echo "✅ **Passed:** $PASSED/$TOTAL_TESTS tests" >> $GITHUB_STEP_SUMMARY
+              fi
+            else
+              echo "Tests completed. Check job logs for detailed results." >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "No test output found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: test-output.log
+          retention-days: 30

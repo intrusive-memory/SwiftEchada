@@ -53,6 +53,13 @@ let package = Package(
                 .enableUpcomingFeature("StrictConcurrency"),
             ]
         ),
+        .testTarget(
+            name: "SwiftEchadaIntegrationTests",
+            dependencies: ["SwiftEchada"],
+            swiftSettings: [
+                .enableUpcomingFeature("StrictConcurrency"),
+            ]
+        ),
     ],
     swiftLanguageModes: [.v6]
 )
