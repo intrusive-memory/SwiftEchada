@@ -27,6 +27,7 @@ release: resolve
 	@PRODUCT_DIR=$$(find $(DERIVED_DATA)/SwiftEchada-*/Build/Products/Release -name $(BINARY) -type f 2>/dev/null | head -1 | xargs dirname); \
 	if [ -n "$$PRODUCT_DIR" ]; then \
 		cp "$$PRODUCT_DIR/$(BINARY)" $(BIN_DIR)/; \
+		chmod +x $(BIN_DIR)/$(BINARY); \
 		if [ -d "$$PRODUCT_DIR/mlx-swift_Cmlx.bundle" ]; then \
 			rm -rf $(BIN_DIR)/mlx-swift_Cmlx.bundle; \
 			cp -R "$$PRODUCT_DIR/mlx-swift_Cmlx.bundle" $(BIN_DIR)/; \
