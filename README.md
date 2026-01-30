@@ -81,9 +81,11 @@ echada download [--model <model-id>] [--force] [--quiet]
 
 Models are cached at `~/Library/Caches/intrusive-memory/Models/LLM/`.
 
+The default model is `mlx-community/Qwen2.5-7B-Instruct-4bit` (4.4GB, reliable JSON output).
+
 ## Recommended Models
 
-SwiftEchada works best with models that reliably follow JSON formatting instructions. The default `mlx-community/Phi-3-mini-4k-instruct-4bit` is **too small** for reliable character extraction.
+SwiftEchada works best with models that reliably follow JSON formatting instructions.
 
 **Recommended models** (in order of quality):
 

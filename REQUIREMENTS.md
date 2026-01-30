@@ -182,7 +182,7 @@ User: Character: {name}, Actor: {actor}, Genre: {genre}
 
 ## Recommended Models
 
-The default `mlx-community/Phi-3-mini-4k-instruct-4bit` model is **too small** for reliable character extraction. It struggles with JSON formatting and hallucinates after a few valid entries.
+The default model is now `mlx-community/Qwen2.5-7B-Instruct-4bit` (changed from Phi-3-mini-4k which was too small for reliable JSON output).
 
 **Recommended models** (tested and verified):
 
