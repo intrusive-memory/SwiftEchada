@@ -234,7 +234,7 @@ public struct CharacterExtractor: Sendable {
     private func isSceneHeading(_ line: String) -> Bool {
         let upper = line.uppercased()
         let sceneHeadingPrefixes = [
-            "INT.", "EXT.", "INT/EXT.", "I/E.", "EST.", "INT ", "EXT "
+            "INT./EXT.", "INT/EXT.", "INT.", "EXT.", "I/E.", "EST.", "INT ", "EXT "
         ]
 
         for prefix in sceneHeadingPrefixes {
