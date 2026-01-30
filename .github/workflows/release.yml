@@ -40,6 +40,8 @@ jobs:
 
       - name: Build Release Binary
         run: make release
+        env:
+          GIT_LFS_SKIP_SMUDGE: "1"
 
       - name: Verify Binary and Metal Bundle
         run: |
