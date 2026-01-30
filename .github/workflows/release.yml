@@ -32,9 +32,9 @@ jobs:
             ~/Library/Developer/Xcode/DerivedData/SwiftEchada-*
             ~/Library/Caches/org.swift.swiftpm
             ~/Library/org.swift.swiftpm
-          key: release-deriveddata-${{ runner.os }}-${{ hashFiles('Package.resolved') }}
+          key: release-v2-${{ runner.os }}-${{ hashFiles('Package.resolved') }}
           restore-keys: |
-            release-deriveddata-${{ runner.os }}-
+            release-v2-${{ runner.os }}-
 
       - name: Determine Version
         id: version
@@ -49,6 +49,9 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Building version: ${VERSION} (tag: ${TAG})"
 
+      - name: Clean stale build products
+        run: rm -rf ./bin
+
       - name: Build Release Binary
         run: make release
         env:
@@ -56,8 +59,8 @@ jobs:
 
       - name: Verify Binary and Metal Bundle
         run: |
-          ./bin/echada --version
           file ./bin/echada
+          ./bin/echada --version
           # Verify Metal bundle exists
           test -d ./bin/mlx-swift_Cmlx.bundle || { echo "ERROR: Metal bundle not found"; exit 1; }
           test -f ./bin/mlx-swift_Cmlx.bundle/Contents/Resources/default.metallib || { echo "ERROR: metallib not found"; exit 1; }
