@@ -6,6 +6,26 @@ AI-powered cast management for screenplay projects. Extracts characters from scr
 
 - macOS 26+ (Apple Silicon)
 - Swift 6.2+
+- **MLX framework** (via Homebrew)
+
+### Install MLX
+
+SwiftEchada requires the MLX framework for on-device LLM inference:
+
+```bash
+brew install mlx
+```
+
+This installs the compiled Metal shader library (`mlx.metallib`) required for GPU acceleration.
+
+**Important for CLI usage**: After building the `echada` binary, copy the metallib to the same directory:
+
+```bash
+# After swift build -c release
+cp /opt/homebrew/Cellar/mlx/*/lib/mlx.metallib .build/release/
+```
+
+(This step is only needed for CLI usage. Library integration via SwiftBruja handles this automatically.)
 
 ## Installation
 
@@ -56,7 +76,31 @@ Download an LLM model from HuggingFace for local inference. Shows a progress bar
 echada download [--model <model-id>] [--force] [--quiet]
 ```
 
-The default model is `mlx-community/Phi-3-mini-4k-instruct-4bit`. Models are cached at `~/Library/Caches/intrusive-memory/Models/LLM/`.
+Models are cached at `~/Library/Caches/intrusive-memory/Models/LLM/`.
+
+## Recommended Models
+
+SwiftEchada works best with models that reliably follow JSON formatting instructions. The default `mlx-community/Phi-3-mini-4k-instruct-4bit` is **too small** for reliable character extraction.
+
+**Recommended models** (in order of quality):
+
+| Model | Size | Context | Quality |
+|-------|------|---------|---------|
+| `mlx-community/Qwen2.5-7B-Instruct-4bit` | 4.4GB | 32k | ⭐⭐⭐⭐⭐ Best |
+| `mlx-community/Llama-3.2-3B-Instruct-4bit` | 2.1GB | 128k | ⭐⭐⭐⭐ Good |
+| `mlx-community/Phi-3.5-mini-instruct-4bit` | 2.9GB | 128k | ⭐⭐⭐ Fair |
+
+**To use a recommended model:**
+
+```bash
+# Download recommended model
+echada download --model mlx-community/Qwen2.5-7B-Instruct-4bit
+
+# Extract characters with recommended model
+echada extract --project PROJECT.md --model mlx-community/Qwen2.5-7B-Instruct-4bit
+```
+
+**Why model size matters**: Smaller models (<7B parameters) struggle with structured output formats like JSON, especially for large screenplays. They tend to hallucinate or produce malformed responses after a few valid entries.
 
 ## Library Usage
 

@@ -99,6 +99,25 @@ public struct CastMatcher: Sendable {
 | SwiftHablare | development | `GenerationService`, `Voice` (for CastMatcher voice fetching) |
 | SwiftBruja | main | Local LLM inference (CLI only, injected via closure in library) |
 | swift-argument-parser | 1.3.0+ | CLI argument parsing |
+| **MLX (Homebrew)** | 0.30.3+ | **Metal shader library for GPU acceleration** |
+
+### System Dependencies
+
+**MLX Framework (Required)**
+
+```bash
+brew install mlx
+```
+
+MLX provides the compiled Metal shader library (`mlx.metallib`) required for GPU-accelerated LLM inference on Apple Silicon.
+
+**CLI Build Note**: After building the CLI binary, copy the metallib to the binary directory:
+
+```bash
+cp /opt/homebrew/Cellar/mlx/*/lib/mlx.metallib .build/release/
+```
+
+This is required because Swift Package Manager doesn't automatically bundle the Metal shaders when building from source.
 
 ## Workflow
 
@@ -161,8 +180,28 @@ User: Character: {name}, Actor: {actor}, Genre: {genre}
 | SwiftEchadaTests | 1 | Version check |
 | **Total** | **31** | All passing |
 
+## Recommended Models
+
+The default `mlx-community/Phi-3-mini-4k-instruct-4bit` model is **too small** for reliable character extraction. It struggles with JSON formatting and hallucinates after a few valid entries.
+
+**Recommended models** (tested and verified):
+
+| Model | Size | Context | Quality | Notes |
+|-------|------|---------|---------|-------|
+| `mlx-community/Qwen2.5-7B-Instruct-4bit` | 4.4GB | 32k | ⭐⭐⭐⭐⭐ | Best overall - reliable JSON output |
+| `mlx-community/Llama-3.2-3B-Instruct-4bit` | 2.1GB | 128k | ⭐⭐⭐⭐ | Good balance of size/quality |
+| `mlx-community/Phi-3.5-mini-instruct-4bit` | 2.9GB | 128k | ⭐⭐⭐ | Acceptable for smaller projects |
+
+**Why size matters**: Models with <7B parameters struggle with:
+- Following JSON schema constraints consistently
+- Stopping generation at the right point
+- Maintaining coherent output over multiple chunks
+
+For production use, **Qwen2.5-7B-Instruct-4bit is strongly recommended**.
+
 ## Future Work
 
 - Character relationship extraction
 - Dialogue amount estimation per character
 - Scene-level character tracking
+- Non-LLM fallback parser (direct Fountain syntax parsing)
