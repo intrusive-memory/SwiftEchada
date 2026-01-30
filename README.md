@@ -21,7 +21,10 @@ This installs the compiled Metal shader library (`mlx.metallib`) required for GP
 **Important for CLI usage**: After building the `echada` binary, copy the metallib to the same directory:
 
 ```bash
-# After swift build -c release
+# Quick setup (installs MLX and copies metallib)
+./Scripts/setup-mlx.sh
+
+# Or manually after swift build -c release
 cp /opt/homebrew/Cellar/mlx/*/lib/mlx.metallib .build/release/
 ```
 
