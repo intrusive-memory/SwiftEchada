@@ -1,310 +1,207 @@
-# SwiftEchada - Screenplay Character Manager & Casting Library
+# SwiftEchada - AI-Powered Cast Management for Screenplays
 
-## Project Overview
-A Swift-based character management and casting system for screenplays that integrates with SwiftGuion for script parsing. The system manages both fictional character data and real-world casting information, with support for AI-generated content.
+## Overview
 
-## Core Requirements
+A Swift library and CLI that analyzes screenplay files referenced in a PROJECT.md, extracts character lists using local LLM inference (via SwiftBruja), merges them into a unified cast list, and optionally matches characters to TTS voices. Results are written back to the PROJECT.md YAML front matter.
 
-### 1. Character Model (SwiftData)
+**Two core capabilities:**
+1. **Character extraction** from screenplays via LLM
+2. **Cast-to-voice matching** using TTS provider voice catalogs
 
-#### 1.1 Character Identity
-- **Name**: Character's name as it appears in the screenplay
-- **Aliases**: Alternative names, nicknames, or pseudonyms used in the script
-- **Character ID**: Unique identifier for tracking across scripts
-- **Script Reference**: Link to source script (SwiftGuion integration)
-- **First Appearance**: Scene/page number where character first appears
-- **Last Appearance**: Scene/page number where character last appears
-- **Total Scenes**: Count of scenes featuring this character
+## Implementation Status
 
-#### 1.2 Character Description (Fictional)
-- **Age**: Character's age or age range
-- **Gender**: Character's gender identity
-- **Physical Description**: Height, build, distinguishing features
-- **Personality Traits**: Key character traits and behaviors
-- **Background**: Character history and backstory
-- **Relationships**: Connections to other characters in the script
-- **Character Arc**: Brief description of character journey
-- **Dialogue Lines**: Count or notable quotes
-- **Character Type**: Lead, Supporting, Featured, Background, Extra
+### Completed
 
-#### 1.3 AI-Generated Content
-- **AI Physical Description**: AI-generated detailed physical attributes
-- **AI Personality Profile**: AI-analyzed character psychology
-- **AI Casting Suggestions**: AI-recommended actor types or specific actors
-- **AI Visual Reference**: AI-generated character image/concept art
-- **AI Voice Description**: Suggested voice characteristics
-- **AI Generation Metadata**:
-  - Model used (GPT-4, Claude, Midjourney, etc.)
-  - Generation date
-  - Prompt used
-  - Version/iteration number
-- **AI Analysis**:
-  - Character complexity score
-  - Emotional range requirements
-  - Physical demands of role
-  - Dialogue complexity
+- **CharacterExtractor** — Discovers screenplay files, queries LLM per file, parses JSON character lists, merges via CharacterMerger, returns updated ProjectFrontMatter
+- **Scene-based chunking** — Automatically splits large screenplays (>2000 tokens) by scene headings, processes chunks in parallel, merges character extractions
+- **CharacterMerger** — Deduplicates by name (case-insensitive), preserves existing voice/actor assignments, sorts alphabetically
+- **CharacterInfo** — Codable/Sendable struct for extracted character data
+- **CastMatcher** — Matches cast members to TTS voices using LLM selection with retry logic
+- **CLI (`echada`)** — Three subcommands: `extract`, `match`, `download`
+- **CLI progress output** — Download command has a visual progress bar; extract command shows per-file progress with stdout flushing for non-TTY environments
+- **End-to-end verified** — Full pipeline tested with real Phi-3-mini-4k model on fixture screenplay
+- **Test suite** — 31 tests across 5 suites (all passing)
+- **CI/CD** — GitHub Actions on macOS-26 with coverage reporting; branch protection on main
+- **Dependency resolution** — SwiftHablare `swift-transformers` bumped to 1.1.6 (PR #84)
 
-#### 1.4 Casting Information
-- **Casting Status**: Not Cast, Auditioned, Offered, Cast, Declined
-- **Actor ID**: Reference to cast actor
-- **Audition Date**: When auditions occurred
-- **Callback Status**: Whether actor received callbacks
-- **Screen Test**: Links to screen test recordings/notes
-- **Contract Status**: Pending, Signed, Declined
-- **Casting Director Notes**: Professional notes about the role
-- **Casting Requirements**:
-  - Union requirements (SAG-AFTRA, etc.)
-  - Age range for casting
-  - Special skills required (singing, dancing, stunts, accents)
-  - Physical requirements
-  - Availability dates
+### Architecture
 
-### 2. Actor Model (SwiftData)
+```
+Layer 0: SwiftFijos, SwiftBruja
+Layer 1: SwiftCompartido(→Fijos), SwiftProyecto(→Bruja)
+Layer 2: SwiftHablare(→Fijos,Compartido,Proyecto), SwiftSecuencia(→Compartido,Fijos)
+Layer 3: SwiftEchada(→Proyecto,Hablare,Bruja)
+```
 
-#### 2.1 Basic Information
-- **Actor ID**: Unique identifier
-- **Full Name**: Legal name
-- **Stage Name**: Professional name (if different)
-- **Photo**: Primary headshot/profile photo
-- **Additional Photos**: Portfolio images, character stills
-- **Date of Birth**: For age verification
-- **Gender**: Actor's gender identity
-- **Ethnicity**: Self-identified ethnicity
-- **Height**: Physical measurements
-- **Build**: Body type description
+### Library Target: `SwiftEchada`
 
-#### 2.2 Professional Information
-- **Union Status**: SAG-AFTRA, non-union, etc.
-- **Agent Information**:
-  - Agent name
-  - Agency
-  - Contact information
-- **Manager Information**: If applicable
-- **Resume/CV**: Link or embedded document
-- **Reel**: Link to demo reel
-- **IMDB Link**: Professional profile
-- **Social Media**: Professional accounts
-- **Website**: Personal or professional website
+Depends on SwiftProyecto and SwiftHablare. Uses closure-based dependency injection (`queryFn`) so core logic is testable without MLX hardware.
 
-#### 2.3 Skills & Capabilities
-- **Special Skills**: Dancing, singing, martial arts, stunts, etc.
-- **Languages**: Languages spoken and proficiency level
-- **Accents/Dialects**: Accents actor can perform
-- **Training**: Acting schools, workshops, certifications
-- **Experience Level**: Beginner, Intermediate, Professional, Star
-- **Genre Experience**: Comedy, Drama, Action, Horror, etc.
+| Component | File | Purpose |
+|-----------|------|---------|
+| `CharacterExtractor` | `CharacterExtractor.swift` | Orchestrates file discovery, LLM extraction, merging |
+| `CharacterMerger` | `CharacterMerger.swift` | Deduplicates and merges character lists across files |
+| `CharacterInfo` | `CharacterInfo.swift` | Extracted character data struct |
+| `CastMatcher` | `CastMatcher.swift` | Matches cast members to TTS voices via LLM |
+| `SwiftEchada` | `SwiftEchada.swift` | Module version constant |
 
-#### 2.4 Availability & Logistics
-- **Current Availability**: Dates available
-- **Location**: Current city/region
-- **Willing to Relocate**: Boolean
-- **Willing to Travel**: Boolean
-- **Visa/Work Authorization**: For international productions
-- **Rate**: Typical day rate or project rate
-- **Conflicts**: Other booked projects
+### CLI Target: `echada`
 
-### 3. Character-Actor Relationship (Casting)
+Depends on SwiftEchada, SwiftBruja, and ArgumentParser.
 
-#### 3.1 Casting Link
-- **Character ID**: Reference to character
-- **Actor ID**: Reference to actor
-- **Status**: Auditioned, Callback, Offered, Cast, Declined
-- **Audition Date**: Date of audition
-- **Audition Notes**: Director/casting notes
-- **Audition Recording**: Link to video/audio
-- **Chemistry Tests**: Notes on pairings with other actors
-- **Fit Score**: Numerical or qualitative rating
-- **Director Approval**: Boolean and notes
-- **Producer Approval**: Boolean and notes
+| Command | File | Purpose |
+|---------|------|---------|
+| `extract` | `ExtractCommand.swift` | Extract characters from screenplay files |
+| `match` | `MatchCommand` (in EchadaCLI.swift) | Match cast to TTS voices |
+| `download` | `DownloadCommand.swift` | Download LLM models |
 
-#### 3.2 Comparison & Analysis
-- **AI Similarity Score**: How well actor matches AI generation
-- **Physical Match**: Comparison of physical attributes
-- **Type Match**: How well actor fits character type
-- **Experience Match**: Whether actor has suitable experience
-- **Availability Match**: Whether schedules align
-- **Budget Match**: Whether actor fits budget constraints
+## Key Types
 
-### 4. SwiftGuion Integration
+```swift
+public struct CharacterInfo: Codable, Sendable, Equatable {
+    public let name: String
+    public let description: String?
+}
 
-#### 4.1 Script Parsing
-- **Character Extraction**: Automatically extract character names from script
-- **Scene Tracking**: Track which scenes each character appears in
-- **Dialogue Extraction**: Pull character dialogue for analysis
-- **Stage Directions**: Extract physical descriptions from stage directions
-- **Character Relationships**: Infer relationships from scene pairings
-- **Speaking vs. Non-Speaking**: Categorize character types
+public struct CharacterExtractor: Sendable {
+    public init(projectDirectory: URL, frontMatter: ProjectFrontMatter)
+    public func extractAll(
+        queryFn: @Sendable (String, String) async throws -> String,
+        progressFn: (@Sendable (String, Int, Int) -> Void)? = nil
+    ) async throws -> ProjectFrontMatter
+    public func extractCharacters(
+        from fileURL: URL,
+        queryFn: @Sendable (String, String) async throws -> String
+    ) async throws -> [CharacterInfo]
+}
 
-#### 4.2 Synchronization
-- **Script Updates**: Handle changes when script is revised
-- **Character Merging**: Handle when characters are consolidated
-- **Character Splitting**: Handle when characters are split
-- **Name Changes**: Update character references across database
-- **Scene Changes**: Update appearance tracking when scenes change
+public struct CharacterMerger: Sendable {
+    public func merge(
+        extracted: [[CharacterInfo]],
+        existingCast: [CastMember]?
+    ) -> [CastMember]
+}
 
-### 5. Data Management Features
-
-#### 5.1 Search & Filter
-- Search characters by name, type, status
-- Filter actors by availability, skills, union status
-- Search casting by status, dates
-- Full-text search across notes and descriptions
-
-#### 5.2 Import/Export
-- Import actor data from CSV/JSON
-- Export casting sheets
-- Export to production management tools
-- Import from industry databases (IMDB, Breakdown Services)
-
-#### 5.3 Reporting
-- Casting progress reports
-- Character breakdown reports
-- Budget analysis based on cast
-- Union compliance reports
-- Production reports (who's needed when)
-
-#### 5.4 Binary Data Management
-**IMPERATIVE: No File-Based Storage**
-- All binary data stored within SwiftData models as `Data` type
-- File operations only at import/export boundaries
-- No filesystem references or file paths in database
-- Self-contained, portable database
-- Eliminates orphaned file management
-- See section 7.3 for detailed requirements
-
-#### 5.5 Versioning & History
-- Track changes to character descriptions
-- Track casting decisions over time
-- Maintain audit trail for legal/production purposes
-- Version control for AI-generated content
-
-### 6. User Interface Requirements
-
-#### 6.1 Character Management Views
-- Character list/grid view
-- Character detail view
-- Character comparison view
-- Character-script cross-reference view
-
-#### 6.2 Actor Management Views
-- Actor database/search interface
-- Actor profile view
-- Actor portfolio/gallery view
-- Actor comparison view
-
-#### 6.3 Casting Workflow Views
-- Casting board (drag-and-drop interface)
-- Audition scheduler
-- Side-by-side character/actor comparison
-- Casting status dashboard
-
-#### 6.4 AI Integration Views
-- AI generation interface
-- AI suggestion review interface
-- AI vs. actual comparison views
-
-### 7. Technical Requirements
-
-#### 7.1 SwiftData Schema
-- Character entity with relationships
-- Actor entity with relationships
-- Casting relationship entity
-- Support for complex queries and relationships
-- **Binary data storage**: All media stored as `Data` in models (see 7.3)
-- Use `@Attribute(.externalStorage)` for large binary data
-- No file system references or external file dependencies
-- Support for versioning and history
-
-#### 7.2 AI Integration
-- API integration layer for AI services
-- Prompt management system
-- Response parsing and storage
-- Cost tracking for AI API usage
-- Rate limiting and error handling
-
-#### 7.3 Media Handling
-
-**IMPERATIVE: Binary Data Storage Strategy**
-
-All binary data (images, audio, video, documents) MUST be stored directly within SwiftData objects using `Data` types. File-based storage is ONLY used during import/export operations.
-
-**Requirements:**
-- **Images** (headshots, portfolios, concept art): Store as `Data` in SwiftData models
-- **Audio** (voice samples, audition recordings): Store as `Data` in SwiftData models
-- **Documents** (resumes, contracts): Store as `Data` in SwiftData models
-- **File I/O**: Only occurs at system boundaries (import/export)
-- **No external file references**: No file paths or URLs to external files in filesystem
-- **No file management overhead**: No orphaned files, no cleanup required
-- **Database portability**: Entire database is self-contained and portable
-
-**Rationale:**
-- Eliminates file synchronization issues
-- Prevents orphaned files and dangling references
-- Simplifies backup and restore (single database file)
-- Ensures data integrity (all data moves together)
-- Supports easy data migration and sharing
-- Reduces complexity in file management code
-
-**Implementation Notes:**
-- Use SwiftData `@Attribute(.externalStorage)` for large binary data
-- Implement lazy loading for binary data when needed
-- Provide import methods that read files and store as `Data`
-- Provide export methods that write `Data` to files
-- Compress images before storing to manage database size
-- Consider size limits and show warnings for very large files
-
-**Media Operations:**
-- Photo upload and storage (as `Data`)
-- Image compression and optimization (before storing)
-- Support for multiple image formats (JPG, PNG, HEIC)
-- Video link storage (URLs only, not binary data)
-- Document attachment support (as `Data`)
-
-#### 7.4 Performance
-- Efficient queries for large casts
-- Image caching strategy
-- Background syncing with SwiftGuion
-- Responsive UI for large datasets
-
-### 8. Future Enhancements (Phase 2)
-
-- **Scheduling Integration**: Link to production calendar
-- **Budget Integration**: Track casting costs
-- **Contract Management**: Store and track contracts
-- **Communication Tools**: Email/message actors and agents
-- **Collaboration Features**: Multi-user support for casting teams
-- **Analytics**: ML-based casting recommendations
-- **Mobile App**: iOS app for on-set reference
-- **Cloud Sync**: Sync across devices and teams
-
-## Success Criteria
-
-1. Seamlessly parse characters from SwiftGuion scripts
-2. Comprehensive character and actor data models
-3. Efficient casting workflow management
-4. AI integration for character visualization and analysis
-5. Professional-grade casting tools suitable for production use
-6. Extensible architecture for future enhancements
+public struct CastMatcher: Sendable {
+    public init(providerId: String, languageCode: String?, model: String, force: Bool)
+    public func match(
+        frontMatter: ProjectFrontMatter,
+        queryFn: @Sendable (String, String, String) async throws -> String
+    ) async throws -> MatchResult
+}
+```
 
 ## Dependencies
 
-- **SwiftGuion**: For script parsing (https://github.com/stovak/SwiftGuion)
-- **SwiftData**: For data persistence
-- **SwiftUI**: For user interface
-- **AI Services**: OpenAI, Anthropic Claude, or similar for AI features
-- **Image Processing**: For photo optimization and storage
+| Package | Branch | Purpose |
+|---------|--------|---------|
+| SwiftProyecto | development | `ProjectFrontMatter`, `CastMember`, `ProjectMarkdownParser`, `FilePattern` |
+| SwiftHablare | development | `GenerationService`, `Voice` (for CastMatcher voice fetching) |
+| SwiftBruja | main | Local LLM inference (CLI only, injected via closure in library) |
+| swift-argument-parser | 1.3.0+ | CLI argument parsing |
+| **MLX (Homebrew)** | 0.30.3+ | **Metal shader library for GPU acceleration** |
 
-## Compliance & Legal
+### System Dependencies
 
-- Union agreement compliance (SAG-AFTRA guidelines)
-- Privacy compliance for actor personal information
-- Photo rights and usage agreements
-- Data retention policies
-- GDPR/CCPA compliance if applicable
+**MLX Framework (Required)**
 
----
+```bash
+brew install mlx
+```
 
-*Document Version: 1.1*
-*Last Updated: 2025-10-11*
-*Project: SwiftEchada*
-*Major Change: Added binary data storage imperative (Section 7.3)*
+MLX provides the compiled Metal shader library (`mlx.metallib`) required for GPU-accelerated LLM inference on Apple Silicon.
+
+**CLI Build Note**: After building the CLI binary, copy the metallib to the binary directory:
+
+```bash
+cp /opt/homebrew/Cellar/mlx/*/lib/mlx.metallib .build/release/
+```
+
+This is required because Swift Package Manager doesn't automatically bundle the Metal shaders when building from source.
+
+## Workflow
+
+### Character Extraction
+
+1. Parse PROJECT.md via `ProjectMarkdownParser` → `ProjectFrontMatter`
+2. Discover screenplay files matching `resolvedFilePatterns` in project directory
+3. For each file: read content → build prompt → call `queryFn` → parse JSON `[CharacterInfo]`
+4. Merge all character lists via `CharacterMerger` (dedup, preserve voices, sort)
+5. Return updated `ProjectFrontMatter` with merged cast
+
+### Voice Matching
+
+1. Parse PROJECT.md → `ProjectFrontMatter` with existing cast
+2. Fetch available voices from TTS provider via `GenerationService`
+3. For each unmatched cast member: build prompt with character + voice options → call `queryFn`
+4. Parse voice ID from response, build voice URI, update cast
+5. Return updated `ProjectFrontMatter` with voice assignments
+
+## LLM Prompt Strategy
+
+**Character extraction** — one query per screenplay file:
+
+```
+System: You are a screenplay analyst. Extract all speaking characters...
+        Return ONLY a JSON array: [{"name": "NAME", "description": "..."}]
+
+User: Extract characters from this screenplay:
+      {screenplay_text}
+```
+
+**Voice matching** — one query per cast member:
+
+```
+System: You are a casting director assigning TTS voices...
+        Respond with ONLY the voice ID.
+
+User: Character: {name}, Actor: {actor}, Genre: {genre}
+      Available voices: {voice_list}
+      Which voice ID best fits?
+```
+
+## Character Merging Rules
+
+1. **Deduplicate by name** — case-insensitive, whitespace-trimmed
+2. **Preserve existing data** — voice URIs, actor names, gender from PROJECT.md
+3. **New characters** — added with empty voices array
+4. **Existing-only characters** — preserved even if not in extracted files
+5. **Sort alphabetically** — by character name
+
+## Test Coverage
+
+| Suite | Tests | Coverage |
+|-------|-------|----------|
+| CharacterInfoTests | 4 | JSON encode/decode, nil description |
+| CharacterMergerTests | 6 | Dedup, voice preservation, sort, multi-file merge |
+| CharacterExtractorTests | 8 | Mock queryFn, markdown blocks, empty dir, voice preservation, malformed JSON, chunking (large/small files, deduplication) |
+| CastMatcherTests | 8 | Voice matching, skip/force logic, retry, error handling, language fallback |
+| IntegrationTests | 3 | Fixture file extraction, existing cast preservation, multi-pattern discovery |
+| SwiftEchadaTests | 1 | Version check |
+| **Total** | **31** | All passing |
+
+## Recommended Models
+
+The default model is now `mlx-community/Qwen2.5-7B-Instruct-4bit` (changed from Phi-3-mini-4k which was too small for reliable JSON output).
+
+**Recommended models** (tested and verified):
+
+| Model | Size | Context | Quality | Notes |
+|-------|------|---------|---------|-------|
+| `mlx-community/Qwen2.5-7B-Instruct-4bit` | 4.4GB | 32k | ⭐⭐⭐⭐⭐ | Best overall - reliable JSON output |
+| `mlx-community/Llama-3.2-3B-Instruct-4bit` | 2.1GB | 128k | ⭐⭐⭐⭐ | Good balance of size/quality |
+| `mlx-community/Phi-3.5-mini-instruct-4bit` | 2.9GB | 128k | ⭐⭐⭐ | Acceptable for smaller projects |
+
+**Why size matters**: Models with <7B parameters struggle with:
+- Following JSON schema constraints consistently
+- Stopping generation at the right point
+- Maintaining coherent output over multiple chunks
+
+For production use, **Qwen2.5-7B-Instruct-4bit is strongly recommended**.
+
+## Future Work
+
+- Character relationship extraction
+- Dialogue amount estimation per character
+- Scene-level character tracking
+- Non-LLM fallback parser (direct Fountain syntax parsing)

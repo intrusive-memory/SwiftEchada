@@ -1,33 +1,46 @@
 // swift-tools-version: 6.2
-// The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
 
 let package = Package(
     name: "SwiftEchada",
     platforms: [
-        .macOS(.v26),
-        .iOS(.v26)
+        .iOS(.v26),
+        .macOS(.v26)
     ],
     products: [
-        // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
             name: "SwiftEchada",
             targets: ["SwiftEchada"]
         ),
+        .executable(
+            name: "echada",
+            targets: ["echada"]
+        ),
     ],
     dependencies: [
-        // SwiftGuion for screenplay parsing
-        .package(url: "https://github.com/stovak/SwiftGuion.git", branch: "main"),
-        .package(url: "https://github.com/stovak/SwiftFijos.git", branch: "main")
+        .package(url: "https://github.com/intrusive-memory/SwiftProyecto.git", branch: "development"),
+        .package(url: "https://github.com/intrusive-memory/SwiftHablare.git", branch: "development"),
+        .package(url: "https://github.com/intrusive-memory/SwiftBruja.git", branch: "main"),
+        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.3.0"),
     ],
     targets: [
-        // Targets are the basic building blocks of a package, defining a module or a test suite.
-        // Targets can depend on other targets in this package and products from dependencies.
         .target(
             name: "SwiftEchada",
             dependencies: [
-                .product(name: "SwiftGuion", package: "SwiftGuion")
+                .product(name: "SwiftProyecto", package: "SwiftProyecto"),
+                .product(name: "SwiftHablare", package: "SwiftHablare"),
+            ],
+            swiftSettings: [
+                .enableUpcomingFeature("StrictConcurrency"),
+            ]
+        ),
+        .executableTarget(
+            name: "echada",
+            dependencies: [
+                "SwiftEchada",
+                .product(name: "SwiftBruja", package: "SwiftBruja"),
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency"),
@@ -36,9 +49,13 @@ let package = Package(
         .testTarget(
             name: "SwiftEchadaTests",
             dependencies: ["SwiftEchada"],
-            resources: [
-                .copy("Resources")
-            ],
+            swiftSettings: [
+                .enableUpcomingFeature("StrictConcurrency"),
+            ]
+        ),
+        .testTarget(
+            name: "SwiftEchadaIntegrationTests",
+            dependencies: ["SwiftEchada"],
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency"),
             ]
