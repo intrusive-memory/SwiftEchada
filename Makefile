@@ -24,7 +24,7 @@ build:
 release: resolve
 	xcodebuild -scheme $(SCHEME) -destination '$(DESTINATION)' -configuration Release build
 	@mkdir -p $(BIN_DIR)
-	@PRODUCT_DIR=$$(find $(DERIVED_DATA)/SwiftEchada-*/Build/Products/Release -name $(BINARY) -type f 2>/dev/null | head -1 | xargs dirname); \
+	@PRODUCT_DIR=$$(find $(DERIVED_DATA)/SwiftEchada-*/Build/Products/Release -name $(BINARY) -type f -not -path '*.dSYM*' 2>/dev/null | head -1 | xargs dirname); \
 	if [ -n "$$PRODUCT_DIR" ]; then \
 		cp "$$PRODUCT_DIR/$(BINARY)" $(BIN_DIR)/; \
 		chmod +x $(BIN_DIR)/$(BINARY); \
@@ -45,7 +45,7 @@ release: resolve
 install: resolve
 	xcodebuild -scheme $(SCHEME) -destination '$(DESTINATION)' build
 	@mkdir -p $(BIN_DIR)
-	@PRODUCT_DIR=$$(find $(DERIVED_DATA)/SwiftEchada-*/Build/Products/Debug -name $(BINARY) -type f 2>/dev/null | head -1 | xargs dirname); \
+	@PRODUCT_DIR=$$(find $(DERIVED_DATA)/SwiftEchada-*/Build/Products/Debug -name $(BINARY) -type f -not -path '*.dSYM*' 2>/dev/null | head -1 | xargs dirname); \
 	if [ -n "$$PRODUCT_DIR" ]; then \
 		cp "$$PRODUCT_DIR/$(BINARY)" $(BIN_DIR)/; \
 		if [ -d "$$PRODUCT_DIR/mlx-swift_Cmlx.bundle" ]; then \
