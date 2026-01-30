@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  build:
-    name: Build
+  unit-tests:
+    name: Unit Tests
     runs-on: macos-26
 
     steps:
@@ -20,39 +20,6 @@ jobs:
 
       - name: Show Swift version
         run: swift --version
-
-      - name: Build (including tests)
-        env:
-          GIT_LFS_SKIP_SMUDGE: "1"
-        run: swift build --build-tests
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-directory
-          path: .build
-          retention-days: 1
-
-  unit-tests:
-    name: Unit Tests
-    needs: build
-    runs-on: macos-26
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Select Xcode version
-        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: build-directory
-          path: .build
-
-      - name: Fix permissions
-        run: chmod -R u+x .build
 
       - name: Run unit tests with coverage
         env:
@@ -190,7 +157,6 @@ jobs:
 
   integration-tests:
     name: Integration Tests
-    needs: build
     runs-on: macos-26
 
     steps:
@@ -199,15 +165,6 @@ jobs:
 
       - name: Select Xcode version
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: build-directory
-          path: .build
-
-      - name: Fix permissions
-        run: chmod -R u+x .build
 
       - name: Run integration tests
         env:
