@@ -25,6 +25,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Cache DerivedData and SPM packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Developer/Xcode/DerivedData/SwiftEchada-*
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/org.swift.swiftpm
+          key: release-deriveddata-${{ runner.os }}-${{ hashFiles('Package.resolved') }}
+          restore-keys: |
+            release-deriveddata-${{ runner.os }}-
+
       - name: Determine Version
         id: version
         run: |
