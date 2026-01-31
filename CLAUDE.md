@@ -18,13 +18,13 @@ AI-powered cast management for screenplay projects.
 | `CharacterMerger.swift` | Deduplicates characters by name (case-insensitive), preserves voice/actor data, alphabetical sort |
 | `CharacterInfo.swift` | Codable struct for extracted character data (`name`, `description`) |
 | `CastMatcher.swift` | Matches cast to TTS voices via LLM with retry logic |
-| `SwiftEchada.swift` | Module version constant (`0.4.0`) |
+| `SwiftEchada.swift` | Module version constant (`0.5.0`) |
 
 ## CLI Commands
 
 | Command | File | Key flags |
 |---------|------|-----------|
-| `extract` | `ExtractCommand.swift` | `--project`, `--model`, `--dry-run`, `--quiet` |
+| `extract` | `ExtractCommand.swift` | `--project`, `--model`, `--concurrency`, `--dry-run`, `--quiet` |
 | `match` | `EchadaCLI.swift` | `--project`, `--provider`, `--model`, `--language`, `--force`, `--dry-run` |
 | `download` | `DownloadCommand.swift` | `--model`, `--force`, `--quiet` |
 
