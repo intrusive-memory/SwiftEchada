@@ -14,26 +14,72 @@ public struct CharacterExtractor: Sendable {
 
     /// Extract characters from all discovered screenplay files and return updated front matter.
     ///
-    /// - Parameter queryFn: A function that takes (userPrompt, systemPrompt) and returns the LLM response string.
+    /// - Parameters:
+    ///   - queryFn: A function that takes (userPrompt, systemPrompt) and returns the LLM response string.
+    ///   - progressFn: Optional callback reporting (filename, completedCount, total).
+    ///   - maxConcurrency: Maximum number of files to process in parallel (default 4).
     /// - Returns: Updated `ProjectFrontMatter` with the merged cast list.
     public func extractAll(
-        queryFn: @Sendable (String, String) async throws -> String,
-        progressFn: (@Sendable (String, Int, Int) -> Void)? = nil
+        queryFn: @escaping @Sendable (String, String) async throws -> String,
+        progressFn: (@Sendable (String, Int, Int) -> Void)? = nil,
+        maxConcurrency: Int = 4
     ) async throws -> ProjectFrontMatter {
         let fileURLs = try discoverFiles()
-        var allExtracted: [[CharacterInfo]] = []
         let total = fileURLs.count
+        let counter = ProgressCounter()
 
-        for (index, fileURL) in fileURLs.enumerated() {
-            progressFn?(fileURL.lastPathComponent, index + 1, total)
-            do {
-                let characters = try await extractCharacters(from: fileURL, queryFn: queryFn)
-                allExtracted.append(characters)
-            } catch is CocoaError {
-                // Skip files that can't be read (e.g., binary formats)
-                continue
+        let results: [(Int, [CharacterInfo])] = try await withThrowingTaskGroup(
+            of: (Int, [CharacterInfo])?.self
+        ) { group in
+            var collected: [(Int, [CharacterInfo])] = []
+            var nextIndex = 0
+
+            // Seed initial batch
+            for _ in 0..<min(maxConcurrency, total) {
+                let idx = nextIndex
+                let fileURL = fileURLs[idx]
+                nextIndex += 1
+                group.addTask {
+                    do {
+                        let characters = try await self.extractCharacters(from: fileURL, queryFn: queryFn)
+                        let completed = await counter.increment()
+                        progressFn?(fileURL.lastPathComponent, completed, total)
+                        return (idx, characters)
+                    } catch is CocoaError {
+                        let completed = await counter.increment()
+                        progressFn?(fileURL.lastPathComponent, completed, total)
+                        return nil
+                    }
+                }
             }
+
+            // As each task completes, launch the next
+            for try await result in group {
+                if let result { collected.append(result) }
+                if nextIndex < total {
+                    let idx = nextIndex
+                    let fileURL = fileURLs[idx]
+                    nextIndex += 1
+                    group.addTask {
+                        do {
+                            let characters = try await self.extractCharacters(from: fileURL, queryFn: queryFn)
+                            let completed = await counter.increment()
+                            progressFn?(fileURL.lastPathComponent, completed, total)
+                            return (idx, characters)
+                        } catch is CocoaError {
+                            let completed = await counter.increment()
+                            progressFn?(fileURL.lastPathComponent, completed, total)
+                            return nil
+                        }
+                    }
+                }
+            }
+
+            return collected
         }
+
+        // Sort by original index to maintain deterministic merge order
+        let allExtracted = results.sorted { $0.0 < $1.0 }.map(\.1)
 
         let merger = CharacterMerger()
         let mergedCast = merger.merge(extracted: allExtracted, existingCast: frontMatter.cast)
@@ -252,6 +298,16 @@ public struct CharacterExtractor: Sendable {
         }
 
         return false
+    }
+}
+
+/// Thread-safe progress counter for concurrent file extraction.
+private actor ProgressCounter {
+    private var count = 0
+
+    func increment() -> Int {
+        count += 1
+        return count
     }
 }
 

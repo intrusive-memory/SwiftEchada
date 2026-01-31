@@ -19,6 +19,9 @@ struct ExtractCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Preview extraction without writing to file.")
     var dryRun: Bool = false
 
+    @Option(name: .long, help: "Maximum number of files to process in parallel.")
+    var concurrency: Int = 4
+
     @Flag(name: .long, help: "Suppress progress output.")
     var quiet: Bool = false
 
@@ -47,6 +50,7 @@ struct ExtractCommand: AsyncParsableCommand {
 
         let modelId = model
         let isQuiet = quiet
+        let concurrencyLimit = concurrency
         let updated = try await extractor.extractAll(
             queryFn: { userPrompt, systemPrompt in
                 try await Bruja.query(
@@ -59,10 +63,11 @@ struct ExtractCommand: AsyncParsableCommand {
             },
             progressFn: { filename, current, total in
                 if !isQuiet {
-                    print("[\(current)/\(total)] Extracting: \(filename)")
+                    print("[\(current)/\(total)] Extracted: \(filename)")
                     fflush(stdout)
                 }
-            }
+            },
+            maxConcurrency: concurrencyLimit
         )
 
         if let cast = updated.cast {

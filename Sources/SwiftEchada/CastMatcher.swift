@@ -74,11 +74,7 @@ public struct CastMatcher: Sendable {
 
         for member in membersToMatch {
             let prompt = buildPrompt(character: member, genre: frontMatter.genre, voices: voices)
-            let systemPrompt = """
-                You are a casting director assigning text-to-speech voices to screenplay characters.
-                Given a character and a list of available voices, pick the single best voice match.
-                Respond with ONLY the voice ID, nothing else.
-                """
+            let systemPrompt = buildSystemPrompt()
 
             do {
                 let response = try await queryFn(prompt, systemPrompt, model)
@@ -133,6 +129,19 @@ public struct CastMatcher: Sendable {
         )
     }
 
+    private func buildSystemPrompt() -> String {
+        var prompt = """
+            You are a casting director assigning text-to-speech voices to screenplay characters.
+            Given a character and a list of available voices, pick the single best voice match.
+            Respond with ONLY the voice ID, nothing else.
+            """
+        if providerId == "apple" {
+            prompt += "\nPrefer voices with quality labeled \"premium\" when available. " +
+                "Only fall back to \"enhanced\" or \"default\" quality if no premium voice is a good fit."
+        }
+        return prompt
+    }
+
     private func buildPrompt(character: CastMember, genre: String?, voices: [Voice]) -> String {
         let actorLine = character.actor ?? "unspecified"
         let genreLine = genre ?? "unspecified"
@@ -141,7 +150,8 @@ public struct CastMatcher: Sendable {
         for voice in voices {
             let gender = voice.gender ?? "unknown"
             let lang = voice.language ?? "unknown"
-            voiceList += "- \(voice.id) | \(voice.name) | \(gender) | \(lang)\n"
+            let quality = voice.quality ?? "unknown"
+            voiceList += "- \(voice.id) | \(voice.name) | \(gender) | \(lang) | quality: \(quality)\n"
         }
 
         return """
