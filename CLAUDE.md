@@ -18,7 +18,7 @@ AI-powered cast management for screenplay projects.
 | `CharacterMerger.swift` | Deduplicates characters by name (case-insensitive), preserves voice/actor data, alphabetical sort |
 | `CharacterInfo.swift` | Codable struct for extracted character data (`name`, `description`) |
 | `CastMatcher.swift` | Matches cast to TTS voices via LLM with retry logic |
-| `SwiftEchada.swift` | Module version constant (`0.3.0`) |
+| `SwiftEchada.swift` | Module version constant (`0.4.0`) |
 
 ## CLI Commands
 
