@@ -153,13 +153,32 @@ let result = try await matcher.match(frontMatter: frontMatter) { prompt, system,
 
 ## How It Works
 
-1. Reads PROJECT.md YAML front matter to find screenplay file patterns (e.g., `*.fountain`)
-2. Discovers matching files in the project directory
-3. For large files, splits by scene headings (`INT.`, `EXT.`, `INT./EXT.`, etc.) into chunks
-4. Sends each file/chunk to a local LLM with a character extraction prompt
-5. Parses JSON responses into character lists
-6. Merges across files and chunks (deduplicates by name, preserves existing voice/actor assignments)
-7. Writes the updated cast back to PROJECT.md
+### Cast Resolution Pipeline
+
+The full cast resolution process runs in two phases: **extract** then **match**.
+
+#### Phase 1: Character Extraction (`echada extract`)
+
+1. **Validate project file** -- Checks that PROJECT.md exists; exits with an error if missing.
+2. **Parse front matter** -- Reads PROJECT.md YAML to get `episodesDir` (default `episodes`), `filePattern` (default `*.fountain`), and existing `cast`.
+3. **Discover screenplay files** -- Enumerates `<projectDir>/<episodesDir>/` recursively, filtering by file pattern extensions.
+4. **Read each file** -- Loads file contents as UTF-8. Files that fail to read (e.g., binary formats) are skipped.
+5. **Chunk large files** -- If estimated tokens exceed 2000 (~8000 chars), splits the screenplay at scene headings (`INT.`, `EXT.`, `INT./EXT.`, `INT/EXT.`, `I/E.`, `EST.`). Scenes are grouped into chunks that fit under the token limit.
+6. **LLM extraction** -- Sends each file or chunk to the LLM with a system prompt requesting a JSON array of `{"name", "description"}` objects. Characters are expected in UPPERCASE, dialogue-only.
+7. **Parse and normalize** -- Parses JSON from the LLM response (handles markdown code fences). Strips parentheticals from character names (`ALICE (V.O.)` becomes `ALICE`, `BOB (CONT'D)` becomes `BOB`).
+8. **Merge per-file results** -- For chunked files, deduplicates characters across chunks first. Then merges all files together.
+9. **Merge with existing cast** -- `CharacterMerger` deduplicates by name (case-insensitive). Existing cast members keep their voice/actor assignments. New characters get empty voices. Characters in the existing cast but not found in any file are preserved. Result is sorted alphabetically.
+10. **Write back** -- Unless `--dry-run`, generates updated PROJECT.md with the new cast list.
+
+#### Phase 2: Voice Matching (`echada match`)
+
+1. **Parse front matter** -- Reads PROJECT.md to get the cast list and genre.
+2. **Fetch available voices** -- Queries the TTS provider (e.g., `apple`) for its voice catalog, optionally filtered by language code.
+3. **Filter cast to match** -- Unless `--force`, only cast members without existing voice assignments are matched.
+4. **LLM voice selection** -- For each unmatched character, builds a prompt with character name, actor, genre, and the full voice list (id, name, gender, language). The LLM responds with a single voice ID.
+5. **Validate and retry** -- If the returned voice ID doesn't match any known voice, retries once. If the retry also fails, the character is skipped.
+6. **Assign voice URIs** -- Builds a URI in the format `<provider>://<language>/<voiceId>` and writes it to the cast member's voice list.
+7. **Write back** -- Unless `--dry-run`, generates updated PROJECT.md with voice assignments.
 
 ## Architecture
 
