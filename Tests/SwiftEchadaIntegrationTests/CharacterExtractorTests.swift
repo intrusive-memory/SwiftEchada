@@ -28,7 +28,7 @@ struct CharacterExtractorTests {
             episodes: nil,
             genre: nil,
             tags: nil,
-            episodesDir: nil,
+            episodesDir: ".",
             audioDir: nil,
             filePattern: "*.fountain",
             exportFormat: nil,
@@ -74,7 +74,7 @@ struct CharacterExtractorTests {
         let frontMatter = ProjectFrontMatter(
             type: "screenplay", title: "Test", author: "A",
             created: Date(), description: nil, season: nil,
-            episodes: nil, genre: nil, tags: nil, episodesDir: nil,
+            episodes: nil, genre: nil, tags: nil, episodesDir: ".",
             audioDir: nil, filePattern: "*.fountain", exportFormat: nil,
             cast: nil, preGenerateHook: nil, postGenerateHook: nil, tts: nil
         )
@@ -104,7 +104,7 @@ struct CharacterExtractorTests {
         let frontMatter = ProjectFrontMatter(
             type: "screenplay", title: "Empty", author: "A",
             created: Date(), description: nil, season: nil,
-            episodes: nil, genre: nil, tags: nil, episodesDir: nil,
+            episodes: nil, genre: nil, tags: nil, episodesDir: ".",
             audioDir: nil, filePattern: "*.fountain", exportFormat: nil,
             cast: nil, preGenerateHook: nil, postGenerateHook: nil, tts: nil
         )
@@ -134,7 +134,7 @@ struct CharacterExtractorTests {
         let frontMatter = ProjectFrontMatter(
             type: "screenplay", title: "Test", author: "A",
             created: Date(), description: nil, season: nil,
-            episodes: nil, genre: nil, tags: nil, episodesDir: nil,
+            episodes: nil, genre: nil, tags: nil, episodesDir: ".",
             audioDir: nil, filePattern: "*.fountain", exportFormat: nil,
             cast: existingCast, preGenerateHook: nil, postGenerateHook: nil, tts: nil
         )
@@ -167,7 +167,7 @@ struct CharacterExtractorTests {
         let frontMatter = ProjectFrontMatter(
             type: "screenplay", title: "Test", author: "A",
             created: Date(), description: nil, season: nil,
-            episodes: nil, genre: nil, tags: nil, episodesDir: nil,
+            episodes: nil, genre: nil, tags: nil, episodesDir: ".",
             audioDir: nil, filePattern: "*.fountain", exportFormat: nil,
             cast: nil, preGenerateHook: nil, postGenerateHook: nil, tts: nil
         )
@@ -214,7 +214,7 @@ struct CharacterExtractorTests {
         let frontMatter = ProjectFrontMatter(
             type: "screenplay", title: "Large Test", author: "A",
             created: Date(), description: nil, season: nil,
-            episodes: nil, genre: nil, tags: nil, episodesDir: nil,
+            episodes: nil, genre: nil, tags: nil, episodesDir: ".",
             audioDir: nil, filePattern: "*.fountain", exportFormat: nil,
             cast: nil, preGenerateHook: nil, postGenerateHook: nil, tts: nil
         )
@@ -281,7 +281,7 @@ struct CharacterExtractorTests {
         let frontMatter = ProjectFrontMatter(
             type: "screenplay", title: "Small Test", author: "A",
             created: Date(), description: nil, season: nil,
-            episodes: nil, genre: nil, tags: nil, episodesDir: nil,
+            episodes: nil, genre: nil, tags: nil, episodesDir: ".",
             audioDir: nil, filePattern: "*.fountain", exportFormat: nil,
             cast: nil, preGenerateHook: nil, postGenerateHook: nil, tts: nil
         )
@@ -321,7 +321,7 @@ struct CharacterExtractorTests {
         let frontMatter = ProjectFrontMatter(
             type: "screenplay", title: "Mr & Mr Charles", author: "A",
             created: Date(), description: nil, season: nil,
-            episodes: nil, genre: nil, tags: nil, episodesDir: nil,
+            episodes: nil, genre: nil, tags: nil, episodesDir: ".",
             audioDir: nil, filePattern: "08-the-missing-piece.fountain", exportFormat: nil,
             cast: nil, preGenerateHook: nil, postGenerateHook: nil, tts: nil
         )

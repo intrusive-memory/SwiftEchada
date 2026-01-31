@@ -123,8 +123,9 @@ public struct CharacterExtractor: Sendable {
             }
         }
 
+        let searchRoot = projectDirectory.appending(path: frontMatter.resolvedEpisodesDir)
         guard let enumerator = fm.enumerator(
-            at: projectDirectory,
+            at: searchRoot,
             includingPropertiesForKeys: [.isRegularFileKey],
             options: [.skipsHiddenFiles]
         ) else {
@@ -159,7 +160,14 @@ public struct CharacterExtractor: Sendable {
             return []
         }
 
-        return try JSONDecoder().decode([CharacterInfo].self, from: data)
+        let characters = try JSONDecoder().decode([CharacterInfo].self, from: data)
+        return characters.map { CharacterInfo(name: normalizeCharacterName($0.name), description: $0.description) }
+    }
+
+    /// Strip parentheticals like (V.O.), (O.S.), (CONT'D) from character names.
+    private func normalizeCharacterName(_ name: String) -> String {
+        name.replacingOccurrences(of: #"\s*\(.*?\)"#, with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespaces)
     }
 
     /// Estimate token count (rough approximation: 1 token ≈ 4 characters)

@@ -25,7 +25,7 @@ struct IntegrationTests {
 
         let frontMatter = ProjectFrontMatter(
             title: "Test Project", author: "Test",
-            created: Date(), filePattern: "*.fountain"
+            created: Date(), episodesDir: ".", filePattern: "*.fountain"
         )
 
         let extractor = CharacterExtractor(
@@ -76,7 +76,7 @@ struct IntegrationTests {
 
         let frontMatter = ProjectFrontMatter(
             title: "Test", author: "A", created: Date(),
-            filePattern: "*.fountain", cast: existingCast
+            episodesDir: ".", filePattern: "*.fountain", cast: existingCast
         )
 
         let extractor = CharacterExtractor(
@@ -108,7 +108,7 @@ struct IntegrationTests {
 
         let frontMatter = ProjectFrontMatter(
             title: "Test", author: "A", created: Date(),
-            filePattern: FilePattern(["*.fountain", "*.highland"])
+            episodesDir: ".", filePattern: FilePattern(["*.fountain", "*.highland"])
         )
 
         let extractor = CharacterExtractor(

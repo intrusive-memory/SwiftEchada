@@ -24,6 +24,9 @@ struct ExtractCommand: AsyncParsableCommand {
 
     func run() async throws {
         let fileURL = URL(fileURLWithPath: project)
+        guard FileManager.default.fileExists(atPath: fileURL.path) else {
+            throw ValidationError("Project file not found: \(project)")
+        }
         let projectDir = fileURL.deletingLastPathComponent()
         let parser = ProjectMarkdownParser()
         let (frontMatter, body) = try parser.parse(fileURL: fileURL)
