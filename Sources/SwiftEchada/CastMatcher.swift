@@ -15,17 +15,23 @@ public struct CastMatcher: Sendable {
     private let languageCode: String?
     private let model: String
     private let force: Bool
+    private let elevenLabsAPIKey: String?
+    private let httpClient: (any ElevenLabsHTTPClient)?
 
     public init(
         providerId: String,
         languageCode: String? = nil,
         model: String,
-        force: Bool = false
+        force: Bool = false,
+        elevenLabsAPIKey: String? = nil,
+        httpClient: (any ElevenLabsHTTPClient)? = nil
     ) {
         self.providerId = providerId
         self.languageCode = languageCode
         self.model = model
         self.force = force
+        self.elevenLabsAPIKey = elevenLabsAPIKey
+        self.httpClient = httpClient
     }
 
     /// Match cast members to voices using LLM selection.
@@ -37,6 +43,9 @@ public struct CastMatcher: Sendable {
         frontMatter: ProjectFrontMatter,
         queryFn: @Sendable (String, String, String) async throws -> String
     ) async throws -> MatchResult {
+        if providerId == "elevenlabs", let apiKey = elevenLabsAPIKey {
+            return try await matchViaVoiceDesign(frontMatter: frontMatter, apiKey: apiKey)
+        }
         let service = GenerationService()
         let voices = try await service.fetchVoices(from: providerId, languageCode: languageCode)
         return try await match(frontMatter: frontMatter, voices: voices, queryFn: queryFn)
@@ -129,6 +138,85 @@ public struct CastMatcher: Sendable {
         )
     }
 
+    private func matchViaVoiceDesign(
+        frontMatter: ProjectFrontMatter,
+        apiKey: String
+    ) async throws -> MatchResult {
+        guard let cast = frontMatter.cast, !cast.isEmpty else {
+            throw CastMatcherError.noCastMembers
+        }
+
+        let membersToMatch: [CastMember]
+        if force {
+            membersToMatch = cast
+        } else {
+            membersToMatch = cast.filter { !$0.hasVoices }
+        }
+
+        let client = ElevenLabsClient(apiKey: apiKey, httpClient: httpClient)
+        var updatedCast = cast
+        var matchedCount = 0
+        var skippedCount = 0
+        let lang = languageCode ?? "en"
+
+        for member in membersToMatch {
+            do {
+                let voiceId = try await designAndCreateVoice(
+                    client: client, for: member, languageCode: lang
+                )
+                let uri = "elevenlabs://\(lang)/\(voiceId)"
+                updateCast(&updatedCast, member: member, voiceURI: uri)
+                matchedCount += 1
+            } catch {
+                skippedCount += 1
+            }
+        }
+
+        let updated = ProjectFrontMatter(
+            type: frontMatter.type,
+            title: frontMatter.title,
+            author: frontMatter.author,
+            created: frontMatter.created,
+            description: frontMatter.description,
+            season: frontMatter.season,
+            episodes: frontMatter.episodes,
+            genre: frontMatter.genre,
+            tags: frontMatter.tags,
+            episodesDir: frontMatter.episodesDir,
+            audioDir: frontMatter.audioDir,
+            filePattern: frontMatter.filePattern,
+            exportFormat: frontMatter.exportFormat,
+            cast: updatedCast,
+            preGenerateHook: frontMatter.preGenerateHook,
+            postGenerateHook: frontMatter.postGenerateHook,
+            tts: frontMatter.tts
+        )
+
+        return MatchResult(
+            updatedFrontMatter: updated,
+            matchedCount: matchedCount,
+            skippedCount: skippedCount
+        )
+    }
+
+    private func designAndCreateVoice(
+        client: ElevenLabsClient,
+        for member: CastMember,
+        languageCode: String
+    ) async throws -> String {
+        let description = member.voiceDescription ?? member.character
+        let response = try await client.designVoice(description: description)
+        guard let preview = response.previews.first else {
+            throw CastMatcherError.voiceDesignFailed(member.character)
+        }
+        let voice = try await client.createVoice(
+            from: preview,
+            name: member.character,
+            description: member.voiceDescription ?? ""
+        )
+        return voice.voiceId
+    }
+
     private func buildSystemPrompt() -> String {
         var prompt = """
             You are a casting director assigning text-to-speech voices to screenplay characters.
@@ -145,6 +233,7 @@ public struct CastMatcher: Sendable {
     private func buildPrompt(character: CastMember, genre: String?, voices: [Voice]) -> String {
         let actorLine = character.actor ?? "unspecified"
         let genreLine = genre ?? "unspecified"
+        let voiceDescLine = character.voiceDescription ?? "unspecified"
 
         var voiceList = ""
         for voice in voices {
@@ -156,6 +245,7 @@ public struct CastMatcher: Sendable {
 
         return """
             Character: \(character.character)
+            Voice Description: \(voiceDescLine)
             Actor: \(actorLine)
             Genre: \(genreLine)
 
@@ -180,6 +270,7 @@ public struct CastMatcher: Sendable {
 public enum CastMatcherError: Error, CustomStringConvertible {
     case noVoicesAvailable(String)
     case noCastMembers
+    case voiceDesignFailed(String)
 
     public var description: String {
         switch self {
@@ -187,6 +278,8 @@ public enum CastMatcherError: Error, CustomStringConvertible {
             "No voices available for provider '\(provider)'"
         case .noCastMembers:
             "No cast members found in project"
+        case .voiceDesignFailed(let character):
+            "Voice design returned no previews for '\(character)'"
         }
     }
 }

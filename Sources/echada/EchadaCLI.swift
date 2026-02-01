@@ -36,6 +36,9 @@ struct MatchCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Re-match all cast members, even those with existing voices.")
     var force: Bool = false
 
+    @Option(name: .long, help: "ElevenLabs API key (or set ELEVENLABS_API_KEY env var).")
+    var elevenlabsApiKey: String? = nil
+
     @Flag(name: .long, help: "Preview matches without writing to file.")
     var dryRun: Bool = false
 
@@ -51,11 +54,14 @@ struct MatchCommand: AsyncParsableCommand {
         print("Force: \(force)")
         print("")
 
+        let apiKey = elevenlabsApiKey ?? ProcessInfo.processInfo.environment["ELEVENLABS_API_KEY"]
+
         let matcher = CastMatcher(
             providerId: provider,
             languageCode: language,
             model: model,
-            force: force
+            force: force,
+            elevenLabsAPIKey: apiKey
         )
 
         let result = try await matcher.match(frontMatter: frontMatter) { prompt, system, mdl in

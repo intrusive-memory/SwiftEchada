@@ -64,6 +64,15 @@ struct CharacterMergerTests {
         #expect(result.map(\.character) == ["ALICE", "BOB", "CHARLIE", "DAVE"])
     }
 
+    @Test func voiceDescriptionFlowsThrough() {
+        let extracted: [[CharacterInfo]] = [
+            [CharacterInfo(name: "NARRATOR", description: "Storyteller", voiceDescription: "Deep warm baritone")],
+        ]
+        let result = merger.merge(extracted: extracted, existingCast: nil)
+        #expect(result.count == 1)
+        #expect(result[0].voiceDescription == "Deep warm baritone")
+    }
+
     @Test func existingCastNotInExtractedPreserved() {
         let existing = [
             CastMember(character: "OLD_CHAR", actor: nil, voices: ["voice://x"]),

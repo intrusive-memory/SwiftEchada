@@ -45,8 +45,8 @@ struct CharacterExtractorTests {
 
         let mockResponse = """
             [
-              {"name": "BOB", "description": "Office worker"},
-              {"name": "ALICE", "description": "Bob's colleague"}
+              {"name": "BOB", "description": "Office worker", "voiceDescription": "Friendly mid-range tenor"},
+              {"name": "ALICE", "description": "Bob's colleague", "voiceDescription": "Bright, energetic soprano"}
             ]
             """
 

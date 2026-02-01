@@ -113,16 +113,29 @@ public struct CharacterExtractor: Sendable {
     ) async throws -> [CharacterInfo] {
         let content = try String(contentsOf: fileURL, encoding: .utf8)
 
+        let title = frontMatter.title
+        let genre = frontMatter.genre ?? "unspecified"
+        let tags = frontMatter.tags?.joined(separator: ", ") ?? "none"
+
         let systemPrompt = """
-            You are a screenplay analyst. Extract all speaking characters from the provided screenplay.
+            You are a screenplay analyst extracting speaking characters from a \(genre) project titled "\(title)" (tags: \(tags)).
+
             Return ONLY a JSON array with this exact format:
             [
-              {"name": "CHARACTER_NAME", "description": "brief description"},
-              ...
+              {"name": "CHARACTER NAME", "description": "brief role description", "voiceDescription": "voice qualities for TTS casting"}
             ]
 
-            Character names should be in UPPERCASE as they appear in the screenplay.
-            Only include characters with dialogue (exclude action-only characters).
+            Rules:
+            - Character names must be UPPERCASE with NO parentheticals (remove V.O., O.S., CONT'D, etc.)
+            - Only include characters with dialogue (exclude action-only characters)
+            - "description" should be a brief role summary (1 sentence)
+            - "voiceDescription" should describe ideal voice qualities for text-to-speech casting, including: pitch (high/low), pace (fast/slow), tone (warm/gravelly/nasal/breathy), accent if relevant, age range, energy level, and emotional quality
+
+            Example output:
+            [
+              {"name": "NARRATOR", "description": "Omniscient storyteller guiding the audience", "voiceDescription": "Deep, warm baritone with measured pacing and gravitas, middle-aged, calm authority"},
+              {"name": "SARAH", "description": "Young detective solving her first case", "voiceDescription": "Clear alto, quick-paced and energetic, late 20s, confident with occasional nervous edge"}
+            ]
             """
 
         // Check if content needs chunking (conservative limit: 2000 tokens ≈ 8000 chars)
@@ -140,10 +153,20 @@ public struct CharacterExtractor: Sendable {
                 allCharacters.append(characters)
             }
 
-            // Merge characters from all chunks (deduplicate by name)
-            let merger = CharacterMerger()
-            let merged = merger.merge(extracted: allCharacters, existingCast: nil)
-            return merged.map { CharacterInfo(name: $0.character, description: nil) }
+            // Deduplicate characters across chunks, keeping first-seen description/voiceDescription
+            var seen: [String: CharacterInfo] = [:]
+            var order: [String] = []
+            for chunk in allCharacters {
+                for character in chunk {
+                    let key = character.name.lowercased().trimmingCharacters(in: .whitespaces)
+                    guard !key.isEmpty else { continue }
+                    if seen[key] == nil {
+                        seen[key] = character
+                        order.append(key)
+                    }
+                }
+            }
+            return order.compactMap { seen[$0] }
         } else {
             // Small file - process as single unit
             let userPrompt = "Extract characters from this screenplay:\n\n\(content)"
@@ -207,7 +230,7 @@ public struct CharacterExtractor: Sendable {
         }
 
         let characters = try JSONDecoder().decode([CharacterInfo].self, from: data)
-        return characters.map { CharacterInfo(name: normalizeCharacterName($0.name), description: $0.description) }
+        return characters.map { CharacterInfo(name: normalizeCharacterName($0.name), description: $0.description, voiceDescription: $0.voiceDescription) }
     }
 
     /// Strip parentheticals like (V.O.), (O.S.), (CONT'D) from character names.

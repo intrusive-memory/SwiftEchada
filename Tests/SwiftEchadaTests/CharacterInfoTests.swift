@@ -38,5 +38,32 @@ struct CharacterInfoTests {
         let info = try JSONDecoder().decode(CharacterInfo.self, from: data)
         #expect(info.name == "ALICE")
         #expect(info.description == nil)
+        #expect(info.voiceDescription == nil)
+    }
+
+    @Test func jsonRoundTripWithVoiceDescription() throws {
+        let info = CharacterInfo(name: "NARRATOR", description: "The storyteller", voiceDescription: "Deep warm baritone")
+        let data = try JSONEncoder().encode(info)
+        let decoded = try JSONDecoder().decode(CharacterInfo.self, from: data)
+        #expect(decoded == info)
+        #expect(decoded.voiceDescription == "Deep warm baritone")
+    }
+
+    @Test func decodesWithVoiceDescription() throws {
+        let json = """
+            {"name": "BOB", "description": "A friend", "voiceDescription": "Gruff tenor"}
+            """
+        let data = Data(json.utf8)
+        let info = try JSONDecoder().decode(CharacterInfo.self, from: data)
+        #expect(info.voiceDescription == "Gruff tenor")
+    }
+
+    @Test func decodesWithoutVoiceDescription() throws {
+        let json = """
+            {"name": "BOB", "description": "A friend"}
+            """
+        let data = Data(json.utf8)
+        let info = try JSONDecoder().decode(CharacterInfo.self, from: data)
+        #expect(info.voiceDescription == nil)
     }
 }
