@@ -204,7 +204,10 @@ public struct CastMatcher: Sendable {
         for member: CastMember,
         languageCode: String
     ) async throws -> String {
-        let description = member.voiceDescription ?? member.character
+        var description = member.voiceDescription ?? member.character
+        if member.character.uppercased().contains("NARRATOR") {
+            description = "Deep voice with gravitas and an English accent. " + description
+        }
         let response = try await client.designVoice(description: description)
         guard let preview = response.previews.first else {
             throw CastMatcherError.voiceDesignFailed(member.character)

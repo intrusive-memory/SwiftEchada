@@ -21,53 +21,27 @@ jobs:
       - name: Show Swift version
         run: swift --version
 
-      - name: Run unit tests with coverage
+      - name: Run unit tests
         env:
           GIT_LFS_SKIP_SMUDGE: "1"
         run: |
           set +e
-          swift test --skip SwiftEchadaIntegrationTests --enable-code-coverage 2>&1 | tee test-output.log
+          xcodebuild test \
+            -scheme SwiftEchada \
+            -destination 'platform=macOS' \
+            -skip-testing:SwiftEchadaIntegrationTests \
+            2>&1 | tee test-output.log
           TEST_EXIT_CODE=${PIPESTATUS[0]}
           set -e
 
-          if grep -q "with [1-9][0-9]* failure" test-output.log; then
-            echo "Tests failed"
-            exit 1
-          elif grep -q "Test run with .* tests .* passed" test-output.log; then
+          if grep -q "TEST SUCCEEDED" test-output.log; then
             echo "All tests passed"
             exit 0
+          elif grep -q "with [1-9][0-9]* failure" test-output.log; then
+            echo "Tests failed"
+            exit 1
           else
             exit $TEST_EXIT_CODE
-          fi
-
-      - name: Generate coverage report
-        env:
-          GIT_LFS_SKIP_SMUDGE: "1"
-        run: |
-          BUILD_PATH=$(swift build --show-bin-path)
-          XCTEST_PATH=$(find $BUILD_PATH -name "*.xctest" | head -n 1)
-          PROFDATA_PATH=$(find .build -name "*.profdata" | head -n 1)
-
-          if [ -f "$PROFDATA_PATH" ]; then
-            echo "Found profdata at: $PROFDATA_PATH"
-
-            xcrun llvm-cov report \
-              "$XCTEST_PATH/Contents/MacOS/"* \
-              -instr-profile="$PROFDATA_PATH" \
-              -ignore-filename-regex=".build|Tests" \
-              > coverage-report.txt
-
-            xcrun llvm-cov export \
-              "$XCTEST_PATH/Contents/MacOS/"* \
-              -instr-profile="$PROFDATA_PATH" \
-              -ignore-filename-regex=".build|Tests" \
-              -format=lcov \
-              > coverage.lcov
-
-            echo "Coverage report generated"
-            cat coverage-report.txt
-          else
-            echo "No profdata file found"
           fi
 
       - name: Extract test summary
@@ -102,58 +76,14 @@ jobs:
             echo "No test output found" >> $GITHUB_STEP_SUMMARY
           fi
 
-          if [ -f coverage-report.txt ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "## Coverage Summary" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
 
-            COVERAGE=$(grep -oE '[0-9]+\.[0-9]+%' coverage-report.txt | head -n 1)
-            if [ -n "$COVERAGE" ]; then
-              echo "**Overall Coverage:** $COVERAGE" >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-            fi
-
-            echo "<details><summary>Detailed Coverage Report</summary>" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            cat coverage-report.txt >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            echo "</details>" >> $GITHUB_STEP_SUMMARY
-          fi
-
-      - name: Generate coverage badge
-        if: always()
-        run: |
-          if [ -f coverage-report.txt ]; then
-            .github/scripts/generate-coverage-badge.sh coverage-report.txt .github/coverage-badge.json
-          fi
-
-      - name: Upload test results and coverage
+      - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: unit-test-results
-          path: |
-            test-output.log
-            coverage-report.txt
-            coverage.lcov
-            .github/coverage-badge.json
+          path: test-output.log
           retention-days: 30
-
-      - name: Check coverage threshold
-        run: |
-          if [ -f coverage-report.txt ]; then
-            COVERAGE=$(grep -oE '[0-9]+\.[0-9]+%' coverage-report.txt | head -n 1 | sed 's/%//')
-            echo "Overall coverage: $COVERAGE%"
-
-            THRESHOLD=80
-            if (( $(echo "$COVERAGE >= $THRESHOLD" | bc -l) )); then
-              echo "✅ Coverage threshold met: $COVERAGE% >= $THRESHOLD%"
-            else
-              echo "⚠️  Coverage below threshold: $COVERAGE% < $THRESHOLD%"
-              echo "::warning::Code coverage ($COVERAGE%) is below the threshold ($THRESHOLD%)"
-            fi
-          fi
 
   integration-tests:
     name: Integration Tests
@@ -171,16 +101,20 @@ jobs:
           GIT_LFS_SKIP_SMUDGE: "1"
         run: |
           set +e
-          swift test --filter SwiftEchadaIntegrationTests 2>&1 | tee test-output.log
+          xcodebuild test \
+            -scheme SwiftEchada \
+            -destination 'platform=macOS' \
+            -only-testing:SwiftEchadaIntegrationTests \
+            2>&1 | tee test-output.log
           TEST_EXIT_CODE=${PIPESTATUS[0]}
           set -e
 
-          if grep -q "with [1-9][0-9]* failure" test-output.log; then
-            echo "Tests failed"
-            exit 1
-          elif grep -q "Test run with .* tests .* passed" test-output.log; then
+          if grep -q "TEST SUCCEEDED" test-output.log; then
             echo "All tests passed"
             exit 0
+          elif grep -q "with [1-9][0-9]* failure" test-output.log; then
+            echo "Tests failed"
+            exit 1
           else
             exit $TEST_EXIT_CODE
           fi

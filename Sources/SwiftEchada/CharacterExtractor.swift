@@ -130,10 +130,11 @@ public struct CharacterExtractor: Sendable {
             - Only include characters with dialogue (exclude action-only characters)
             - "description" should be a brief role summary (1 sentence)
             - "voiceDescription" should describe ideal voice qualities for text-to-speech casting, including: pitch (high/low), pace (fast/slow), tone (warm/gravelly/nasal/breathy), accent if relevant, age range, energy level, and emotional quality
+            - For NARRATOR roles, prefer voice qualities with gravitas, authority, and an English accent
 
             Example output:
             [
-              {"name": "NARRATOR", "description": "Omniscient storyteller guiding the audience", "voiceDescription": "Deep, warm baritone with measured pacing and gravitas, middle-aged, calm authority"},
+              {"name": "NARRATOR", "description": "Omniscient storyteller guiding the audience", "voiceDescription": "Deep, authoritative baritone with gravitas and an English accent, measured pacing, calm wisdom"},
               {"name": "SARAH", "description": "Young detective solving her first case", "voiceDescription": "Clear alto, quick-paced and energetic, late 20s, confident with occasional nervous edge"}
             ]
             """
