@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="SwiftEchada.jpg" alt="SwiftEchada" width="400">
+</p>
+
 # SwiftEchada
 
 AI-powered cast management for screenplay projects. Extracts characters from screenplay files using local LLM inference (via [SwiftBruja](https://github.com/intrusive-memory/SwiftBruja)) and matches them to TTS voices.
