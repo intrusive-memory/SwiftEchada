@@ -222,7 +222,7 @@ struct CastMatcherTests {
         #expect(result.matchedCount == 1)
         // Verify the design request used character name (checked via mock)
         let requestCount = await mock.requestCount
-        #expect(requestCount == 2) // design + create
+        #expect(requestCount == 3) // voices lookup + design + create
     }
 
     @Test func elevenLabsSkipsOnError() async throws {
@@ -331,6 +331,15 @@ private actor MockElevenLabsHTTPClient: ElevenLabsHTTPClient {
                 "labels": {},
                 "collection_ids": [],
                 "high_quality_base_model_ids": []
+            }
+            """
+        } else if path.contains("/voices") {
+            // voices listing response — return empty list so no existing voice is found
+            json = """
+            {
+                "voices": [],
+                "has_more": false,
+                "total_count": 0
             }
             """
         } else {
