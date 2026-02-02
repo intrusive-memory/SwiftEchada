@@ -193,6 +193,23 @@ public struct CastMatcher: Sendable {
 
         for member in membersToMatch {
             do {
+                // Check if a voice already exists for this character name
+                let existing = try await client.voices(search: member.character)
+                if let match = existing.voices.first(where: {
+                    $0.name.caseInsensitiveCompare(member.character) == .orderedSame
+                }) {
+                    let uri = "elevenlabs://\(lang)/\(match.voiceId)"
+                    if verbose {
+                        print("[verbose] Found existing voice for \(member.character): \(match.voiceId)")
+                    }
+                    updateCast(&updatedCast, member: member, voiceURI: uri)
+                    matchedCount += 1
+                    continue
+                }
+
+                if verbose {
+                    print("[verbose] No existing voice found for \(member.character), designing new one")
+                }
                 let voiceId = try await designAndCreateVoice(
                     client: client, for: member, languageCode: lang
                 )
