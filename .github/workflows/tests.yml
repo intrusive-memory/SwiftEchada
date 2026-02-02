@@ -27,7 +27,7 @@ jobs:
         run: |
           set +e
           xcodebuild test \
-            -scheme SwiftEchada \
+            -scheme SwiftEchada-Package \
             -destination 'platform=macOS' \
             -skip-testing:SwiftEchadaIntegrationTests \
             2>&1 | tee test-output.log
@@ -102,7 +102,7 @@ jobs:
         run: |
           set +e
           xcodebuild test \
-            -scheme SwiftEchada \
+            -scheme SwiftEchada-Package \
             -destination 'platform=macOS' \
             -only-testing:SwiftEchadaIntegrationTests \
             2>&1 | tee test-output.log
