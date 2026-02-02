@@ -17,6 +17,7 @@ public struct CastMatcher: Sendable {
     private let force: Bool
     private let elevenLabsAPIKey: String?
     private let httpClient: (any ElevenLabsHTTPClient)?
+    private let verbose: Bool
 
     public init(
         providerId: String,
@@ -24,7 +25,8 @@ public struct CastMatcher: Sendable {
         model: String,
         force: Bool = false,
         elevenLabsAPIKey: String? = nil,
-        httpClient: (any ElevenLabsHTTPClient)? = nil
+        httpClient: (any ElevenLabsHTTPClient)? = nil,
+        verbose: Bool = false
     ) {
         self.providerId = providerId
         self.languageCode = languageCode
@@ -32,6 +34,7 @@ public struct CastMatcher: Sendable {
         self.force = force
         self.elevenLabsAPIKey = elevenLabsAPIKey
         self.httpClient = httpClient
+        self.verbose = verbose
     }
 
     /// Match cast members to voices using LLM selection.
@@ -81,19 +84,42 @@ public struct CastMatcher: Sendable {
         var matchedCount = 0
         var skippedCount = 0
 
+        if verbose {
+            print("[verbose] Fetched \(voices.count) voices from provider '\(providerId)'")
+        }
+
         for member in membersToMatch {
             let prompt = buildPrompt(character: member, genre: frontMatter.genre, voices: voices)
             let systemPrompt = buildSystemPrompt()
+
+            if verbose {
+                print("[verbose] --- Matching: \(member.character) ---")
+                print("[verbose] System prompt:\n\(systemPrompt)")
+                print("[verbose] User prompt:\n\(prompt)")
+            }
 
             do {
                 let response = try await queryFn(prompt, systemPrompt, model)
                 let voiceId = response.trimmingCharacters(in: .whitespacesAndNewlines)
 
+                if verbose {
+                    print("[verbose] LLM response: \(voiceId)")
+                }
+
                 guard let matchedVoice = voices.first(where: { $0.id == voiceId }) else {
+                    if verbose {
+                        print("[verbose] Voice ID '\(voiceId)' not found in catalog, retrying...")
+                    }
                     // Retry once
                     let retryResponse = try await queryFn(prompt, systemPrompt, model)
                     let retryId = retryResponse.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if verbose {
+                        print("[verbose] Retry response: \(retryId)")
+                    }
                     guard let retryVoice = voices.first(where: { $0.id == retryId }) else {
+                        if verbose {
+                            print("[verbose] Retry also failed, skipping \(member.character)")
+                        }
                         skippedCount += 1
                         continue
                     }
@@ -104,9 +130,15 @@ public struct CastMatcher: Sendable {
                 }
 
                 let uri = buildVoiceURI(voice: matchedVoice)
+                if verbose {
+                    print("[verbose] Matched \(member.character) -> \(matchedVoice.name) (\(uri))")
+                }
                 updateCast(&updatedCast, member: member, voiceURI: uri)
                 matchedCount += 1
             } catch {
+                if verbose {
+                    print("[verbose] Error matching \(member.character): \(error)")
+                }
                 skippedCount += 1
             }
         }
@@ -165,9 +197,15 @@ public struct CastMatcher: Sendable {
                     client: client, for: member, languageCode: lang
                 )
                 let uri = "elevenlabs://\(lang)/\(voiceId)"
+                if verbose {
+                    print("[verbose] Created voice for \(member.character) -> \(uri)")
+                }
                 updateCast(&updatedCast, member: member, voiceURI: uri)
                 matchedCount += 1
             } catch {
+                if verbose {
+                    print("[verbose] Failed to design voice for \(member.character): \(error)")
+                }
                 skippedCount += 1
             }
         }
@@ -208,15 +246,30 @@ public struct CastMatcher: Sendable {
         if member.character.uppercased().contains("NARRATOR") {
             description = "Deep voice with gravitas and an English accent. " + description
         }
-        let response = try await client.designVoice(description: description)
+        // ElevenLabs requires at least 20 characters for voice_description
+        if description.count < 20 {
+            description = "A distinctive voice for the character \(description)"
+        }
+        if verbose {
+            print("[verbose] --- Voice Design: \(member.character) ---")
+            print("[verbose] Description: \(description)")
+        }
+        let previewText = "Hello, my name is \(member.character). I am a character in this story, and this is a preview of how my voice will sound when reading the script aloud."
+        let response = try await client.designVoice(description: description, previewText: previewText)
+        if verbose {
+            print("[verbose] Got \(response.previews.count) preview(s)")
+        }
         guard let preview = response.previews.first else {
             throw CastMatcherError.voiceDesignFailed(member.character)
         }
         let voice = try await client.createVoice(
             from: preview,
             name: member.character,
-            description: member.voiceDescription ?? ""
+            description: description
         )
+        if verbose {
+            print("[verbose] Created voice: id=\(voice.voiceId) name=\(member.character)")
+        }
         return voice.voiceId
     }
 

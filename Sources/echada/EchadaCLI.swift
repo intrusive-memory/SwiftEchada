@@ -39,6 +39,9 @@ struct MatchCommand: AsyncParsableCommand {
     @Option(name: .long, help: "ElevenLabs API key (or set ELEVENLABS_API_KEY env var).")
     var elevenlabsApiKey: String? = nil
 
+    @Flag(name: .long, help: "Show verbose output including LLM queries.")
+    var verbose: Bool = false
+
     @Flag(name: .long, help: "Preview matches without writing to file.")
     var dryRun: Bool = false
 
@@ -61,7 +64,8 @@ struct MatchCommand: AsyncParsableCommand {
             languageCode: language,
             model: model,
             force: force,
-            elevenLabsAPIKey: apiKey
+            elevenLabsAPIKey: apiKey,
+            verbose: verbose
         )
 
         let result = try await matcher.match(frontMatter: frontMatter) { prompt, system, mdl in
