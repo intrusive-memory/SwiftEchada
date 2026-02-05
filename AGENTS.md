@@ -25,7 +25,8 @@ SwiftEchada is an AI-powered cast management library for screenplay projects.
 | `CharacterExtractor.swift` | Discovers screenplay files in `episodesDir`, extracts characters via LLM, scene-based chunking for large files, normalizes parentheticals from names |
 | `CharacterMerger.swift` | Deduplicates characters by name (case-insensitive), preserves voice/actor data, alphabetical sort |
 | `CharacterInfo.swift` | Codable struct for extracted character data (`name`, `description`) |
-| `CastMatcher.swift` | Matches cast to TTS voices via LLM with retry logic |
+| `CastMatcher.swift` | Matches cast to TTS voices via LLM with retry logic; provider-aware accumulation |
+| `CastMember+Provider.swift` | Extension for provider extraction from voice URIs and provider-scoped voice replacement |
 | `SwiftEchada.swift` | Module version constant (`0.6.0`) |
 
 ## CLI Commands
@@ -81,8 +82,27 @@ Use `GIT_LFS_SKIP_SMUDGE=1` with build commands to avoid pulling large model fil
 3. Each file is read; large files are chunked by scene headings
 4. LLM extracts characters as JSON; response is parsed and names are normalized (parentheticals stripped)
 5. `CharacterMerger.merge()` deduplicates across files/chunks (case-insensitive), preserves existing voice/actor data
-6. `CastMatcher.match()` sends each unmatched character + voice catalog to LLM, assigns voice URIs
+6. `CastMatcher.match()` sends each unmatched character + voice catalog to LLM, assigns voice URIs (provider-aware: only matches characters missing a voice for the current provider, preserves voices from other providers)
 7. Updated front matter is written back to PROJECT.md
+
+## Provider-Aware Voice Accumulation
+
+Voice matching is scoped by provider. Running `match --provider apple` followed by `match --provider elevenlabs` accumulates voices rather than overwriting.
+
+**Key behaviors:**
+
+- **Filtering**: Characters are only matched if they lack a voice for the *current* provider. A character with an `apple://` voice is still eligible for `elevenlabs` matching.
+- **Assignment**: `updateCast()` calls `CastMember.voicesReplacingProvider()` which replaces only the current provider's voice in the array, preserving all others.
+- **Force mode**: `--force` re-matches all characters but only replaces the current provider's voice. Other providers' voices are preserved.
+- **Malformed URIs**: Voice URIs without `://` have no detectable provider. They are always preserved and never block matching.
+
+**Implementation** (`CastMember+Provider.swift`):
+
+| Method | Purpose |
+|--------|---------|
+| `CastMember.provider(from:)` | Extracts lowercased scheme before `://`; returns `nil` for malformed URIs |
+| `hasVoice(for:)` | Returns `true` if any voice matches the given provider |
+| `voicesReplacingProvider(_:with:)` | Replaces this provider's voice(s) in-place, or appends if none; collapses multiple same-provider voices to one |
 
 ## Homebrew
 

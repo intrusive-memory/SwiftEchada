@@ -77,7 +77,7 @@ public struct CastMatcher: Sendable {
         if force {
             membersToMatch = cast
         } else {
-            membersToMatch = cast.filter { !$0.hasVoices }
+            membersToMatch = cast.filter { !$0.hasVoice(for: providerId) }
         }
 
         var updatedCast = cast
@@ -182,7 +182,7 @@ public struct CastMatcher: Sendable {
         if force {
             membersToMatch = cast
         } else {
-            membersToMatch = cast.filter { !$0.hasVoices }
+            membersToMatch = cast.filter { !$0.hasVoice(for: providerId) }
         }
 
         let client = ElevenLabsClient(apiKey: apiKey, httpClient: httpClient)
@@ -335,7 +335,7 @@ public struct CastMatcher: Sendable {
 
     private func updateCast(_ cast: inout [CastMember], member: CastMember, voiceURI: String) {
         if let index = cast.firstIndex(where: { $0.character == member.character }) {
-            cast[index].voices = [voiceURI]
+            cast[index].voices = cast[index].voicesReplacingProvider(providerId, with: voiceURI)
         }
     }
 }
