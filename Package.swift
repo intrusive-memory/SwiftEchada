@@ -22,6 +22,7 @@ let package = Package(
         .package(url: "https://github.com/intrusive-memory/SwiftProyecto.git", branch: "development"),
         .package(url: "https://github.com/intrusive-memory/SwiftHablare.git", branch: "development"),
         .package(url: "https://github.com/intrusive-memory/SwiftBruja.git", branch: "main"),
+        .package(url: "https://github.com/intrusive-memory/SwiftOnce.git", branch: "development"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.3.0"),
     ],
     targets: [
@@ -30,6 +31,7 @@ let package = Package(
             dependencies: [
                 .product(name: "SwiftProyecto", package: "SwiftProyecto"),
                 .product(name: "SwiftHablare", package: "SwiftHablare"),
+                .product(name: "SwiftOnce", package: "SwiftOnce"),
             ],
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency"),

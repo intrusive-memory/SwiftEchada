@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="SwiftEchada.jpg" alt="SwiftEchada" width="400">
+</p>
+
 # SwiftEchada
 
 AI-powered cast management for screenplay projects. Extracts characters from screenplay files using local LLM inference (via [SwiftBruja](https://github.com/intrusive-memory/SwiftBruja)) and matches them to TTS voices.
@@ -70,6 +74,23 @@ Match cast members to TTS voices from a provider catalog using LLM selection.
 ```bash
 echada match --project PROJECT.md --provider apple [--model <model-id>] [--language en] [--force] [--dry-run]
 ```
+
+#### Multi-Provider Voice Accumulation
+
+Voices accumulate across providers. Running match for one provider does not overwrite voices assigned by another:
+
+```bash
+# First pass: assign Apple TTS voices
+echada match --project PROJECT.md --provider apple --language en
+
+# Second pass: assign ElevenLabs voices alongside existing Apple voices
+echada match --project PROJECT.md --provider elevenlabs
+
+# Force re-match Apple voices without affecting ElevenLabs assignments
+echada match --project PROJECT.md --provider apple --force
+```
+
+After both passes, each cast member's `voices` array contains entries from both providers (e.g. `["apple://en/Aaron", "elevenlabs://en/vid-abc"]`). The `--force` flag only replaces voices for the specified provider.
 
 ### Download Model
 
@@ -151,6 +172,23 @@ let result = try await matcher.match(frontMatter: frontMatter) { prompt, system,
 // result.updatedFrontMatter contains cast with voice assignments
 ```
 
+Voices accumulate across providers. Matching with a second provider preserves existing assignments:
+
+```swift
+// After matching with Apple, match with ElevenLabs
+let elMatcher = CastMatcher(
+    providerId: "elevenlabs",
+    model: "my-model",
+    elevenLabsAPIKey: apiKey
+)
+
+let elResult = try await elMatcher.match(frontMatter: result.updatedFrontMatter) { prompt, system, model in
+    try await myLLM.query(prompt, model: model, system: system)
+}
+// Each cast member now has voices from both providers:
+// ["apple://en/Aaron", "elevenlabs://en/vid-abc"]
+```
+
 ## How It Works
 
 ### Cast Resolution Pipeline
@@ -174,10 +212,10 @@ The full cast resolution process runs in two phases: **extract** then **match**.
 
 1. **Parse front matter** -- Reads PROJECT.md to get the cast list and genre.
 2. **Fetch available voices** -- Queries the TTS provider (e.g., `apple`) for its voice catalog, optionally filtered by language code.
-3. **Filter cast to match** -- Unless `--force`, only cast members without existing voice assignments are matched.
+3. **Filter cast to match** -- Unless `--force`, only cast members without a voice for the *current provider* are matched. Characters with voices from other providers are still eligible.
 4. **LLM voice selection** -- For each unmatched character, builds a prompt with character name, actor, genre, and the full voice list (id, name, gender, language). The LLM responds with a single voice ID.
 5. **Validate and retry** -- If the returned voice ID doesn't match any known voice, retries once. If the retry also fails, the character is skipped.
-6. **Assign voice URIs** -- Builds a URI in the format `<provider>://<language>/<voiceId>` and writes it to the cast member's voice list.
+6. **Assign voice URIs** -- Builds a URI in the format `<provider>://<language>/<voiceId>`. The new voice replaces any existing voice for the same provider while preserving voices from other providers.
 7. **Write back** -- Unless `--dry-run`, generates updated PROJECT.md with voice assignments.
 
 ## Architecture
