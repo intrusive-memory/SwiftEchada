@@ -2,7 +2,7 @@
 
 This file provides comprehensive documentation for AI agents working with the SwiftEchada codebase.
 
-**Current Version**: 0.6.0 (February 2026)
+**Current Version**: 0.7.0 (February 2026)
 
 ---
 
