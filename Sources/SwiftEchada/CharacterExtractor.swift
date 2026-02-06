@@ -6,10 +6,12 @@ public struct CharacterExtractor: Sendable {
 
     private let projectDirectory: URL
     private let frontMatter: ProjectFrontMatter
+    private let maxTokens: Int
 
-    public init(projectDirectory: URL, frontMatter: ProjectFrontMatter) {
+    public init(projectDirectory: URL, frontMatter: ProjectFrontMatter, maxTokens: Int = 8192) {
         self.projectDirectory = projectDirectory
         self.frontMatter = frontMatter
+        self.maxTokens = maxTokens
     }
 
     /// Extract characters from all discovered screenplay files and return updated front matter.
@@ -106,7 +108,7 @@ public struct CharacterExtractor: Sendable {
     }
 
     /// Extract characters from a single screenplay file.
-    /// For large files, automatically chunks by scenes to fit within token limits.
+    /// For large files, automatically chunks by scenes to fit within the configured token limit.
     public func extractCharacters(
         from fileURL: URL,
         queryFn: @Sendable (String, String) async throws -> String
@@ -139,12 +141,12 @@ public struct CharacterExtractor: Sendable {
             ]
             """
 
-        // Check if content needs chunking (conservative limit: 2000 tokens ≈ 8000 chars)
-        let needsChunking = estimateTokens(content) > 2000
+        // Check if content needs chunking based on configured token limit
+        let needsChunking = estimateTokens(content) > maxTokens
 
         if needsChunking {
             // Split into scene-based chunks and extract from each
-            let chunks = chunkScreenplay(content, maxTokens: 2000)
+            let chunks = chunkScreenplay(content, maxTokens: maxTokens)
             var allCharacters: [[CharacterInfo]] = []
 
             for chunk in chunks {
