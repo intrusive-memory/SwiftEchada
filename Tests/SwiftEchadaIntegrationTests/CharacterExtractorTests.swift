@@ -190,26 +190,24 @@ struct CharacterExtractorTests {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        // Create a large screenplay (>8000 characters = >2000 tokens)
-        var largeContent = ""
-        for i in 1...50 {
-            largeContent += """
+        // Create a screenplay with multiple scenes
+        var content = ""
+        for i in 1...10 {
+            content += """
             INT. SCENE \(i) - DAY
 
             ALICE
-            This is scene \(i) with lots of dialogue to make the file very large.
-            We need to exceed the token limit so chunking is triggered.
+            This is scene \(i) with dialogue.
 
             BOB
-            I agree completely. This needs to be a substantial screenplay.
-            Let's add more lines to ensure we hit the chunking threshold.
+            Responding in scene \(i).
 
 
             """
         }
 
         let fountainURL = tempDir.appendingPathComponent("large.fountain")
-        try largeContent.write(to: fountainURL, atomically: true, encoding: .utf8)
+        try content.write(to: fountainURL, atomically: true, encoding: .utf8)
 
         let frontMatter = ProjectFrontMatter(
             type: "screenplay", title: "Large Test", author: "A",
@@ -219,9 +217,11 @@ struct CharacterExtractorTests {
             cast: nil, preGenerateHook: nil, postGenerateHook: nil, tts: nil
         )
 
+        // Use a low maxTokens to reliably trigger chunking with small content
         let extractor = CharacterExtractor(
             projectDirectory: tempDir,
-            frontMatter: frontMatter
+            frontMatter: frontMatter,
+            maxTokens: 100
         )
 
         // Use actor for thread-safe counter
