@@ -2,7 +2,7 @@
 
 This file provides comprehensive documentation for AI agents working with the SwiftEchada codebase.
 
-**Current Version**: 0.7.0 (February 2026)
+**Current Version**: 0.8.0 (February 2026)
 
 ---
 
@@ -29,13 +29,13 @@ SwiftEchada is an AI-powered cast management library for screenplay projects.
 | `CastMember+Provider.swift` | Extension for provider extraction from voice URIs and provider-scoped voice replacement |
 | `ElevenLabsTypes.swift` | Type aliases for SwiftOnce types (`ElevenLabsClient`, `ElevenLabsHTTPClient`, `ElevenLabsVoice`) |
 | `ElevenLabsDefaultsExport.swift` | Re-exports `ElevenLabsDefaults` enum from SwiftOnce via `@_exported import` |
-| `SwiftEchada.swift` | Module version constant (`0.6.0`) |
+| `SwiftEchada.swift` | Module version constant (`0.8.0`) |
 
 ## CLI Commands
 
 | Command | File | Key flags |
 |---------|------|-----------|
-| `extract` | `ExtractCommand.swift` | `--project`, `--model`, `--concurrency`, `--dry-run`, `--quiet` |
+| `extract` | `ExtractCommand.swift` | `--project`, `--model`, `--concurrency`, `--dry-run`, `--quiet`, `--max-tokens` |
 | `match` | `EchadaCLI.swift` | `--project`, `--provider`, `--model`, `--language`, `--force`, `--dry-run` |
 | `download` | `DownloadCommand.swift` | `--model`, `--force`, `--quiet` |
 
@@ -47,6 +47,7 @@ SwiftEchada is an AI-powered cast management library for screenplay projects.
 |---------|--------|---------|
 | SwiftProyecto | development | `ProjectFrontMatter`, `CastMember`, `ProjectMarkdownParser` |
 | SwiftHablare | development | `Voice` type and `GenerationService` for CastMatcher |
+| SwiftOnce | development | `ElevenLabsDefaults`, shared constants |
 | SwiftBruja | main | Local LLM inference (CLI only) |
 | swift-argument-parser | 1.3.0+ | CLI argument parsing |
 
