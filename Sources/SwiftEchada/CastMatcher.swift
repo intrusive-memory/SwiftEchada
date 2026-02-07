@@ -46,7 +46,7 @@ public struct CastMatcher: Sendable {
         frontMatter: ProjectFrontMatter,
         queryFn: @Sendable (String, String, String) async throws -> String
     ) async throws -> MatchResult {
-        if providerId == "elevenlabs", let apiKey = elevenLabsAPIKey {
+        if providerId == ElevenLabsDefaults.providerScheme, let apiKey = elevenLabsAPIKey {
             return try await matchViaVoiceDesign(frontMatter: frontMatter, apiKey: apiKey)
         }
         let service = GenerationService()
@@ -198,7 +198,7 @@ public struct CastMatcher: Sendable {
                 if let match = existing.voices.first(where: {
                     $0.name.caseInsensitiveCompare(member.character) == .orderedSame
                 }) {
-                    let uri = "elevenlabs://\(lang)/\(match.voiceId)"
+                    let uri = "\(ElevenLabsDefaults.providerScheme)://\(lang)/\(match.voiceId)"
                     if verbose {
                         print("[verbose] Found existing voice for \(member.character): \(match.voiceId)")
                     }
@@ -213,7 +213,7 @@ public struct CastMatcher: Sendable {
                 let voiceId = try await designAndCreateVoice(
                     client: client, for: member, languageCode: lang
                 )
-                let uri = "elevenlabs://\(lang)/\(voiceId)"
+                let uri = "\(ElevenLabsDefaults.providerScheme)://\(lang)/\(voiceId)"
                 if verbose {
                     print("[verbose] Created voice for \(member.character) -> \(uri)")
                 }
