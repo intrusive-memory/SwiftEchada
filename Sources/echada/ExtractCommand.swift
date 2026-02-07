@@ -25,6 +25,9 @@ struct ExtractCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Suppress progress output.")
     var quiet: Bool = false
 
+    @Option(name: .long, help: "Maximum tokens for LLM response.")
+    var maxTokens: Int = 8192
+
     func run() async throws {
         let fileURL = URL(fileURLWithPath: project)
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
@@ -45,19 +48,21 @@ struct ExtractCommand: AsyncParsableCommand {
 
         let extractor = CharacterExtractor(
             projectDirectory: projectDir,
-            frontMatter: frontMatter
+            frontMatter: frontMatter,
+            maxTokens: maxTokens
         )
 
         let modelId = model
         let isQuiet = quiet
         let concurrencyLimit = concurrency
+        let tokens = maxTokens
         let updated = try await extractor.extractAll(
             queryFn: { userPrompt, systemPrompt in
                 try await Bruja.query(
                     userPrompt,
                     model: modelId,
                     temperature: 0.3,
-                    maxTokens: 1024,
+                    maxTokens: tokens,
                     system: systemPrompt
                 )
             },
