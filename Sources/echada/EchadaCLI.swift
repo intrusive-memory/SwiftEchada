@@ -78,8 +78,12 @@ struct MatchCommand: AsyncParsableCommand {
         if let cast = result.updatedFrontMatter.cast {
             print("")
             for member in cast {
-                let voice = member.primaryVoice ?? "(none)"
-                print("  \(member.character): \(voice)")
+                if member.voices.isEmpty {
+                    print("  \(member.character): (none)")
+                } else {
+                    let voiceList = member.voices.map { "\($0.key):\($0.value)" }.joined(separator: ", ")
+                    print("  \(member.character): \(voiceList)")
+                }
             }
         }
 

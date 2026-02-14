@@ -128,7 +128,7 @@ struct CharacterExtractorTests {
         try "NARRATOR\nHello.\n".write(to: fountainURL, atomically: true, encoding: .utf8)
 
         let existingCast = [
-            CastMember(character: "NARRATOR", actor: "Jane", voices: ["apple://com.apple.voice.premium.en-US.Ava"]),
+            CastMember(character: "NARRATOR", actor: "Jane", voices: ["apple": "com.apple.voice.premium.en-US.Ava"]),
         ]
 
         let frontMatter = ProjectFrontMatter(

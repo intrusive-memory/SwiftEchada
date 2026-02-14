@@ -71,7 +71,7 @@ struct IntegrationTests {
         }
 
         let existingCast = [
-            CastMember(character: "BERNARD", actor: "Tom", voices: ["apple://com.apple.voice.premium.en-US.Ava"]),
+            CastMember(character: "BERNARD", actor: "Tom", voices: ["apple": "com.apple.voice.premium.en-US.Ava"]),
         ]
 
         let frontMatter = ProjectFrontMatter(

@@ -32,8 +32,8 @@ struct CastMatcherTests {
 
     @Test func matchesVoicesToCast() async throws {
         let cast = [
-            CastMember(character: "NARRATOR", actor: nil, voices: []),
-            CastMember(character: "HERO", actor: nil, voices: []),
+            CastMember(character: "NARRATOR", actor: nil, voices: [:]),
+            CastMember(character: "HERO", actor: nil, voices: [:]),
         ]
         let matcher = CastMatcher(providerId: "test", languageCode: "en", model: "m", force: false)
 
@@ -54,8 +54,8 @@ struct CastMatcherTests {
 
     @Test func skipsExistingVoicesWhenNotForced() async throws {
         let cast = [
-            CastMember(character: "NARRATOR", actor: nil, voices: ["test://en/old-voice"]),
-            CastMember(character: "HERO", actor: nil, voices: []),
+            CastMember(character: "NARRATOR", actor: nil, voices: ["test": "en/old-voice"]),
+            CastMember(character: "HERO", actor: nil, voices: [:]),
         ]
         let matcher = CastMatcher(providerId: "test", model: "m", force: false)
 
@@ -76,7 +76,7 @@ struct CastMatcherTests {
 
     @Test func forceRematchesAll() async throws {
         let cast = [
-            CastMember(character: "NARRATOR", actor: nil, voices: ["test://en/old-voice"]),
+            CastMember(character: "NARRATOR", actor: nil, voices: ["test": "en/old-voice"]),
         ]
         let matcher = CastMatcher(providerId: "test", model: "m", force: true)
 
@@ -98,7 +98,7 @@ struct CastMatcherTests {
         await #expect(throws: CastMatcherError.self) {
             _ = try await matcher.match(
                 frontMatter: makeFrontMatter(cast: cast),
-                voices: []
+                voices: [:]
             ) { _, _, _ in "voice-1" }
         }
     }
@@ -188,8 +188,8 @@ struct CastMatcherTests {
 
     @Test func accumulatesVoicesAcrossProviders() async throws {
         let cast = [
-            CastMember(character: "NARRATOR", actor: nil, voices: ["apple://com.apple.voice.premium.en-US.Aaron"]),
-            CastMember(character: "HERO", actor: nil, voices: []),
+            CastMember(character: "NARRATOR", actor: nil, voices: ["apple": "com.apple.voice.premium.en-US.Aaron"]),
+            CastMember(character: "HERO", actor: nil, voices: [:]),
         ]
         let matcher = CastMatcher(providerId: "test", model: "m", force: false)
 
@@ -208,7 +208,7 @@ struct CastMatcherTests {
 
     @Test func skipsCharacterWithExistingVoiceForSameProvider() async throws {
         let cast = [
-            CastMember(character: "NARRATOR", actor: nil, voices: ["test://en/old-voice"]),
+            CastMember(character: "NARRATOR", actor: nil, voices: ["test": "en/old-voice"]),
         ]
         let matcher = CastMatcher(providerId: "test", model: "m", force: false)
 
@@ -261,7 +261,7 @@ struct CastMatcherTests {
 
     @Test func elevenLabsAccumulatesWithExistingAppleVoice() async throws {
         let cast = [
-            CastMember(character: "NARRATOR", actor: nil, voices: ["apple://com.apple.voice.premium.en-US.Aaron"]),
+            CastMember(character: "NARRATOR", actor: nil, voices: ["apple": "com.apple.voice.premium.en-US.Aaron"]),
         ]
         let mock = MockElevenLabsHTTPClient(voiceIds: ["vid-1"])
         let matcher = CastMatcher(
@@ -289,30 +289,20 @@ struct CastMatcherTests {
     }
 
     @Test func voicesReplacingProvider() {
-        let member = CastMember(character: "TEST", voices: ["apple://com.apple.voice.premium.en-US.Aaron", "test://en/old"])
+        let member = CastMember(character: "TEST", voices: ["apple": "com.apple.voice.premium.en-US.Aaron", "test": "old"])
 
         // Replace existing provider
-        let replaced = member.voicesReplacingProvider("test", with: "test://en/new")
-        #expect(replaced == ["apple://com.apple.voice.premium.en-US.Aaron", "test://en/new"])
+        let replaced = member.voicesReplacingProvider("test", with: "new")
+        #expect(replaced == ["apple": "com.apple.voice.premium.en-US.Aaron", "test": "new"])
 
         // Append new provider
-        let appended = member.voicesReplacingProvider("elevenlabs", with: "elevenlabs://en/vid-1")
-        #expect(appended == ["apple://com.apple.voice.premium.en-US.Aaron", "test://en/old", "elevenlabs://en/vid-1"])
+        let appended = member.voicesReplacingProvider("elevenlabs", with: "vid-1")
+        #expect(appended == ["apple": "com.apple.voice.premium.en-US.Aaron", "test": "old", "elevenlabs": "vid-1"])
 
-        // Collapse multiple voices for same provider
-        let multi = CastMember(character: "TEST", voices: ["test://en/a", "test://en/b", "apple://com.apple.voice.premium.en-US.Aaron"])
-        let collapsed = multi.voicesReplacingProvider("test", with: "test://en/new")
-        #expect(collapsed == ["test://en/new", "apple://com.apple.voice.premium.en-US.Aaron"])
-
-        // Malformed URIs preserved
-        let malformed = CastMember(character: "TEST", voices: ["no-scheme", "apple://com.apple.voice.premium.en-US.Aaron"])
-        let preserved = malformed.voicesReplacingProvider("test", with: "test://en/voice-1")
-        #expect(preserved == ["no-scheme", "apple://com.apple.voice.premium.en-US.Aaron", "test://en/voice-1"])
-
-        // Case insensitive
-        let cased = CastMember(character: "TEST", voices: ["APPLE://en/Aaron"])
-        let casedResult = cased.voicesReplacingProvider("apple", with: "apple://com.apple.voice.premium.en-US.Samantha")
-        #expect(casedResult == ["apple://com.apple.voice.premium.en-US.Samantha"])
+        // Dictionary allows only one voice per provider
+        let single = CastMember(character: "TEST", voices: ["test": "first"])
+        let updated = single.voicesReplacingProvider("test", with: "second")
+        #expect(updated == ["test": "second"])
     }
 
     // MARK: - ElevenLabs voice design tests
@@ -374,7 +364,7 @@ struct CastMatcherTests {
 
     @Test func elevenLabsSkipsExistingVoices() async throws {
         let cast = [
-            CastMember(character: "NARRATOR", actor: nil, voices: ["elevenlabs://en/existing"]),
+            CastMember(character: "NARRATOR", actor: nil, voices: ["elevenlabs": "en/existing"]),
             CastMember(character: "HERO"),
         ]
         let mock = MockElevenLabsHTTPClient(voiceIds: ["vid-new"])
