@@ -27,7 +27,7 @@ struct CharacterMergerTests {
         ]
         let result = merger.merge(extracted: extracted, existingCast: existing)
         #expect(result.count == 1)
-        #expect(result[0].voices == ["apple://com.apple.voice.premium.en-US.Ava"])
+        #expect(result[0].voices == ["apple": "com.apple.voice.premium.en-US.Ava"])
         #expect(result[0].actor == "John")
     }
 

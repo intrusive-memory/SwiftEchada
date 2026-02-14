@@ -151,7 +151,7 @@ struct CharacterExtractorTests {
         }
 
         #expect(updated.cast?.count == 1)
-        #expect(updated.cast?.first?.voices == ["apple://com.apple.voice.premium.en-US.Ava"])
+        #expect(updated.cast?.first?.voices == ["apple": "com.apple.voice.premium.en-US.Ava"])
         #expect(updated.cast?.first?.actor == "Jane")
     }
 

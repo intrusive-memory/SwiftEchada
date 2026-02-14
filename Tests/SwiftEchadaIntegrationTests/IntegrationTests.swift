@@ -92,7 +92,7 @@ struct IntegrationTests {
 
         let cast = try #require(updated.cast)
         let bernard = try #require(cast.first(where: { $0.character == "BERNARD" }))
-        #expect(bernard.voices == ["apple://com.apple.voice.premium.en-US.Ava"])
+        #expect(bernard.voices == ["apple": "com.apple.voice.premium.en-US.Ava"])
         #expect(bernard.actor == "Tom")
 
         let killian = try #require(cast.first(where: { $0.character == "KILLIAN" }))
