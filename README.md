@@ -90,7 +90,7 @@ echada match --project PROJECT.md --provider elevenlabs
 echada match --project PROJECT.md --provider apple --force
 ```
 
-After both passes, each cast member's `voices` array contains entries from both providers (e.g. `["apple://com.apple.voice.premium.en-US.Aaron", "elevenlabs://en/vid-abc"]`). The `--force` flag only replaces voices for the specified provider.
+After both passes, each cast member's `voices` dictionary contains entries from both providers (e.g. `["apple": "com.apple.voice.premium.en-US.Aaron", "elevenlabs": "vid-abc"]`). The `--force` flag only replaces voices for the specified provider.
 
 ### Download Model
 
@@ -186,7 +186,7 @@ let elResult = try await elMatcher.match(frontMatter: result.updatedFrontMatter)
     try await myLLM.query(prompt, model: model, system: system)
 }
 // Each cast member now has voices from both providers:
-// ["apple://com.apple.voice.premium.en-US.Aaron", "elevenlabs://en/vid-abc"]
+// ["apple": "com.apple.voice.premium.en-US.Aaron", "elevenlabs": "vid-abc"]
 ```
 
 ## How It Works
@@ -215,7 +215,7 @@ The full cast resolution process runs in two phases: **extract** then **match**.
 3. **Filter cast to match** -- Unless `--force`, only cast members without a voice for the *current provider* are matched. Characters with voices from other providers are still eligible.
 4. **LLM voice selection** -- For each unmatched character, builds a prompt with character name, actor, genre, and the full voice list (id, name, gender, language). The LLM responds with a single voice ID.
 5. **Validate and retry** -- If the returned voice ID doesn't match any known voice, retries once. If the retry also fails, the character is skipped.
-6. **Assign voice URIs** -- Builds a URI in the format `<provider>://<language>/<voiceId>`. The new voice replaces any existing voice for the same provider while preserving voices from other providers.
+6. **Assign voice IDs** -- Stores the voice ID in the `voices` dictionary under the provider key (e.g. `["apple": "voice-id"]`). The new voice replaces any existing voice for the same provider while preserving voices from other providers.
 7. **Write back** -- Unless `--dry-run`, generates updated PROJECT.md with voice assignments.
 
 ## Architecture
