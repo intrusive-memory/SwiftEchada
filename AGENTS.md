@@ -2,7 +2,7 @@
 
 This file provides comprehensive documentation for AI agents working with the SwiftEchada codebase.
 
-**Current Version**: 0.8.0 (February 2026)
+**Current Version**: 0.9.0 (February 2026)
 
 ---
 
@@ -26,10 +26,10 @@ SwiftEchada is an AI-powered cast management library for screenplay projects.
 | `CharacterMerger.swift` | Deduplicates characters by name (case-insensitive), preserves voice/actor data, alphabetical sort |
 | `CharacterInfo.swift` | Codable struct for extracted character data (`name`, `description`) |
 | `CastMatcher.swift` | Matches cast to TTS voices via LLM with retry logic; provider-aware accumulation |
-| `CastMember+Provider.swift` | Extension for provider extraction from voice URIs and provider-scoped voice replacement |
+| `CastMember+Provider.swift` | Extension for provider-aware voice management using dictionary keys |
 | `ElevenLabsTypes.swift` | Type aliases for SwiftOnce types (`ElevenLabsClient`, `ElevenLabsHTTPClient`, `ElevenLabsVoice`) |
 | `ElevenLabsDefaultsExport.swift` | Re-exports `ElevenLabsDefaults` enum from SwiftOnce via `@_exported import` |
-| `SwiftEchada.swift` | Module version constant (`0.8.0`) |
+| `SwiftEchada.swift` | Module version constant (`0.9.0`) |
 
 ## CLI Commands
 
@@ -92,20 +92,29 @@ Use `GIT_LFS_SKIP_SMUDGE=1` with build commands to avoid pulling large model fil
 
 Voice matching is scoped by provider. Running `match --provider apple` followed by `match --provider elevenlabs` accumulates voices rather than overwriting.
 
+**Voice Dictionary Format** (as of v0.9.0):
+
+Voices are stored as a `[String: String]` dictionary mapping provider IDs to voice IDs:
+
+```swift
+voices: [
+  "apple": "com.apple.voice.premium.en-US.Aaron",
+  "elevenlabs": "vid-abc123"
+]
+```
+
 **Key behaviors:**
 
-- **Filtering**: Characters are only matched if they lack a voice for the *current* provider. A character with an `apple://` voice is still eligible for `elevenlabs` matching.
-- **Assignment**: `updateCast()` calls `CastMember.voicesReplacingProvider()` which replaces only the current provider's voice in the array, preserving all others.
+- **Filtering**: Characters are only matched if they lack a voice for the *current* provider. A character with an `apple` voice is still eligible for `elevenlabs` matching.
+- **Assignment**: `updateCast()` calls `CastMember.voicesReplacingProvider()` which sets/updates only the current provider's voice ID, preserving all others.
 - **Force mode**: `--force` re-matches all characters but only replaces the current provider's voice. Other providers' voices are preserved.
-- **Malformed URIs**: Voice URIs without `://` have no detectable provider. They are always preserved and never block matching.
 
 **Implementation** (`CastMember+Provider.swift`):
 
 | Method | Purpose |
 |--------|---------|
-| `CastMember.provider(from:)` | Extracts lowercased scheme before `://`; returns `nil` for malformed URIs |
-| `hasVoice(for:)` | Returns `true` if any voice matches the given provider |
-| `voicesReplacingProvider(_:with:)` | Replaces this provider's voice(s) in-place, or appends if none; collapses multiple same-provider voices to one |
+| `hasVoice(for:)` | Returns `true` if a voice exists for the given provider (case-insensitive key match) |
+| `voicesReplacingProvider(_:with:)` | Returns updated dictionary with the provider's voice set to the given voice ID, preserving other providers |
 
 ## Default Voice Handling
 

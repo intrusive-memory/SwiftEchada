@@ -79,8 +79,12 @@ struct ExtractCommand: AsyncParsableCommand {
             if !quiet {
                 print("Extracted \(cast.count) character(s):")
                 for member in cast {
-                    let voice = member.primaryVoice ?? "(none)"
-                    print("  \(member.character): \(voice)")
+                    if member.voices.isEmpty {
+                        print("  \(member.character): (none)")
+                    } else {
+                        let voiceList = member.voices.map { "\($0.key):\($0.value)" }.joined(separator: ", ")
+                        print("  \(member.character): \(voiceList)")
+                    }
                 }
             }
         }

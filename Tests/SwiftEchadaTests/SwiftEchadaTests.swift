@@ -9,5 +9,5 @@ import Testing
     // ElevenLabsDefaults is re-exported by SwiftEchada, sourced from SwiftOnce
     #expect(ElevenLabsDefaults.defaultVoiceId == "Gsndh0O5AnuI2Hj3YUlA")
     #expect(ElevenLabsDefaults.providerScheme == "elevenlabs")
-    #expect(ElevenLabsDefaults.defaultVoiceURI() == "elevenlabs://en/Gsndh0O5AnuI2Hj3YUlA")
+    #expect(ElevenLabsDefaults.defaultVoiceURI() == "elevenlabs://Gsndh0O5AnuI2Hj3YUlA?lang=en")
 }

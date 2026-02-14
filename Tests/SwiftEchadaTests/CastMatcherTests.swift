@@ -32,8 +32,8 @@ struct CastMatcherTests {
 
     @Test func matchesVoicesToCast() async throws {
         let cast = [
-            CastMember(character: "NARRATOR", actor: nil, voices: []),
-            CastMember(character: "HERO", actor: nil, voices: []),
+            CastMember(character: "NARRATOR", actor: nil, voices: [:]),
+            CastMember(character: "HERO", actor: nil, voices: [:]),
         ]
         let matcher = CastMatcher(providerId: "test", languageCode: "en", model: "m", force: false)
 
@@ -48,14 +48,14 @@ struct CastMatcherTests {
 
         #expect(result.matchedCount == 2)
         #expect(result.skippedCount == 0)
-        #expect(result.updatedFrontMatter.cast?[0].voices == ["test://en/voice-1"])
-        #expect(result.updatedFrontMatter.cast?[1].voices == ["test://en/voice-2"])
+        #expect(result.updatedFrontMatter.cast?[0].voices == ["test": "voice-1"])
+        #expect(result.updatedFrontMatter.cast?[1].voices == ["test": "voice-2"])
     }
 
     @Test func skipsExistingVoicesWhenNotForced() async throws {
         let cast = [
-            CastMember(character: "NARRATOR", actor: nil, voices: ["test://en/old-voice"]),
-            CastMember(character: "HERO", actor: nil, voices: []),
+            CastMember(character: "NARRATOR", actor: nil, voices: ["test": "old-voice"]),
+            CastMember(character: "HERO", actor: nil, voices: [:]),
         ]
         let matcher = CastMatcher(providerId: "test", model: "m", force: false)
 
@@ -69,14 +69,14 @@ struct CastMatcherTests {
         #expect(result.matchedCount == 1)
         #expect(result.skippedCount == 0)
         // NARRATOR should keep existing voice (same provider, skipped)
-        #expect(result.updatedFrontMatter.cast?[0].voices == ["test://en/old-voice"])
+        #expect(result.updatedFrontMatter.cast?[0].voices == ["test": "old-voice"])
         // HERO should get matched
-        #expect(result.updatedFrontMatter.cast?[1].voices.first?.contains("voice-2") == true)
+        #expect(result.updatedFrontMatter.cast?[1].voices == ["test": "voice-2"])
     }
 
     @Test func forceRematchesAll() async throws {
         let cast = [
-            CastMember(character: "NARRATOR", actor: nil, voices: ["test://en/old-voice"]),
+            CastMember(character: "NARRATOR", actor: nil, voices: ["test": "old-voice"]),
         ]
         let matcher = CastMatcher(providerId: "test", model: "m", force: true)
 
@@ -88,7 +88,7 @@ struct CastMatcherTests {
         }
 
         #expect(result.matchedCount == 1)
-        #expect(result.updatedFrontMatter.cast?[0].voices == ["test://en/voice-1"])
+        #expect(result.updatedFrontMatter.cast?[0].voices == ["test": "voice-1"])
     }
 
     @Test func throwsOnEmptyVoices() async throws {
@@ -181,15 +181,15 @@ struct CastMatcherTests {
             voices: voicesNoLang
         ) { _, _, _ in "v1" }
 
-        #expect(result.updatedFrontMatter.cast?[0].voices == ["test://fr/v1"])
+        #expect(result.updatedFrontMatter.cast?[0].voices == ["test": "v1"])
     }
 
     // MARK: - Provider-aware accumulation tests
 
     @Test func accumulatesVoicesAcrossProviders() async throws {
         let cast = [
-            CastMember(character: "NARRATOR", actor: nil, voices: ["apple://en/Aaron"]),
-            CastMember(character: "HERO", actor: nil, voices: []),
+            CastMember(character: "NARRATOR", actor: nil, voices: ["apple": "com.apple.voice.premium.en-US.Aaron"]),
+            CastMember(character: "HERO", actor: nil, voices: [:]),
         ]
         let matcher = CastMatcher(providerId: "test", model: "m", force: false)
 
@@ -202,13 +202,13 @@ struct CastMatcherTests {
 
         // NARRATOR had apple voice, test provider adds alongside it
         #expect(result.matchedCount == 2)
-        #expect(result.updatedFrontMatter.cast?[0].voices == ["apple://en/Aaron", "test://en/voice-1"])
-        #expect(result.updatedFrontMatter.cast?[1].voices == ["test://en/voice-1"])
+        #expect(result.updatedFrontMatter.cast?[0].voices == ["apple": "com.apple.voice.premium.en-US.Aaron", "test": "voice-1"])
+        #expect(result.updatedFrontMatter.cast?[1].voices == ["test": "voice-1"])
     }
 
     @Test func skipsCharacterWithExistingVoiceForSameProvider() async throws {
         let cast = [
-            CastMember(character: "NARRATOR", actor: nil, voices: ["test://en/old-voice"]),
+            CastMember(character: "NARRATOR", actor: nil, voices: ["test": "old-voice"]),
         ]
         let matcher = CastMatcher(providerId: "test", model: "m", force: false)
 
@@ -220,12 +220,12 @@ struct CastMatcherTests {
         }
 
         #expect(result.matchedCount == 0)
-        #expect(result.updatedFrontMatter.cast?[0].voices == ["test://en/old-voice"])
+        #expect(result.updatedFrontMatter.cast?[0].voices == ["test": "old-voice"])
     }
 
     @Test func forceReplacesOnlyCurrentProviderVoice() async throws {
         let cast = [
-            CastMember(character: "NARRATOR", actor: nil, voices: ["apple://en/Aaron", "test://en/old-voice"]),
+            CastMember(character: "NARRATOR", actor: nil, voices: ["apple": "com.apple.voice.premium.en-US.Aaron", "test": "old-voice"]),
         ]
         let matcher = CastMatcher(providerId: "test", model: "m", force: true)
 
@@ -238,30 +238,12 @@ struct CastMatcherTests {
 
         #expect(result.matchedCount == 1)
         // apple voice preserved, test voice replaced
-        #expect(result.updatedFrontMatter.cast?[0].voices == ["apple://en/Aaron", "test://en/voice-1"])
-    }
-
-    @Test func malformedVoiceURIsPreserved() async throws {
-        let cast = [
-            CastMember(character: "NARRATOR", actor: nil, voices: ["no-scheme-here"]),
-        ]
-        let matcher = CastMatcher(providerId: "test", model: "m", force: false)
-
-        let result = try await matcher.match(
-            frontMatter: makeFrontMatter(cast: cast),
-            voices: makeVoices()
-        ) { _, _, _ in
-            "voice-1"
-        }
-
-        // Malformed URI preserved, new voice appended (character had no "test" voice)
-        #expect(result.matchedCount == 1)
-        #expect(result.updatedFrontMatter.cast?[0].voices == ["no-scheme-here", "test://en/voice-1"])
+        #expect(result.updatedFrontMatter.cast?[0].voices == ["apple": "com.apple.voice.premium.en-US.Aaron", "test": "voice-1"])
     }
 
     @Test func elevenLabsAccumulatesWithExistingAppleVoice() async throws {
         let cast = [
-            CastMember(character: "NARRATOR", actor: nil, voices: ["apple://en/Aaron"]),
+            CastMember(character: "NARRATOR", actor: nil, voices: ["apple": "com.apple.voice.premium.en-US.Aaron"]),
         ]
         let mock = MockElevenLabsHTTPClient(voiceIds: ["vid-1"])
         let matcher = CastMatcher(
@@ -275,44 +257,24 @@ struct CastMatcherTests {
 
         #expect(result.matchedCount == 1)
         // Apple voice preserved, elevenlabs voice added
-        #expect(result.updatedFrontMatter.cast?[0].voices == ["apple://en/Aaron", "elevenlabs://en/vid-1"])
-    }
-
-    @Test func providerExtractionFromVoiceURI() {
-        #expect(CastMember.provider(from: "apple://en/Aaron") == "apple")
-        #expect(CastMember.provider(from: "elevenlabs://en/vid-1") == "elevenlabs")
-        #expect(CastMember.provider(from: "test://en/voice-1") == "test")
-        #expect(CastMember.provider(from: "APPLE://en/Aaron") == "apple")
-        #expect(CastMember.provider(from: "no-scheme-here") == nil)
-        #expect(CastMember.provider(from: "") == nil)
-        #expect(CastMember.provider(from: "://missing-scheme") == nil)
+        #expect(result.updatedFrontMatter.cast?[0].voices == ["apple": "com.apple.voice.premium.en-US.Aaron", "elevenlabs": "vid-1"])
     }
 
     @Test func voicesReplacingProvider() {
-        let member = CastMember(character: "TEST", voices: ["apple://en/Aaron", "test://en/old"])
+        let member = CastMember(character: "TEST", voices: ["apple": "com.apple.voice.premium.en-US.Aaron", "test": "old"])
 
         // Replace existing provider
-        let replaced = member.voicesReplacingProvider("test", with: "test://en/new")
-        #expect(replaced == ["apple://en/Aaron", "test://en/new"])
+        let replaced = member.voicesReplacingProvider("test", with: "new")
+        #expect(replaced == ["apple": "com.apple.voice.premium.en-US.Aaron", "test": "new"])
 
         // Append new provider
-        let appended = member.voicesReplacingProvider("elevenlabs", with: "elevenlabs://en/vid-1")
-        #expect(appended == ["apple://en/Aaron", "test://en/old", "elevenlabs://en/vid-1"])
+        let appended = member.voicesReplacingProvider("elevenlabs", with: "vid-1")
+        #expect(appended == ["apple": "com.apple.voice.premium.en-US.Aaron", "test": "old", "elevenlabs": "vid-1"])
 
-        // Collapse multiple voices for same provider
-        let multi = CastMember(character: "TEST", voices: ["test://en/a", "test://en/b", "apple://en/Aaron"])
-        let collapsed = multi.voicesReplacingProvider("test", with: "test://en/new")
-        #expect(collapsed == ["test://en/new", "apple://en/Aaron"])
-
-        // Malformed URIs preserved
-        let malformed = CastMember(character: "TEST", voices: ["no-scheme", "apple://en/Aaron"])
-        let preserved = malformed.voicesReplacingProvider("test", with: "test://en/voice-1")
-        #expect(preserved == ["no-scheme", "apple://en/Aaron", "test://en/voice-1"])
-
-        // Case insensitive
-        let cased = CastMember(character: "TEST", voices: ["APPLE://en/Aaron"])
-        let casedResult = cased.voicesReplacingProvider("apple", with: "apple://en/new")
-        #expect(casedResult == ["apple://en/new"])
+        // Dictionary allows only one voice per provider
+        let single = CastMember(character: "TEST", voices: ["test": "first"])
+        let updated = single.voicesReplacingProvider("test", with: "second")
+        #expect(updated == ["test": "second"])
     }
 
     // MARK: - ElevenLabs voice design tests
@@ -334,8 +296,8 @@ struct CastMatcherTests {
 
         #expect(result.matchedCount == 2)
         #expect(result.skippedCount == 0)
-        #expect(result.updatedFrontMatter.cast?[0].voices == ["elevenlabs://en/vid-1"])
-        #expect(result.updatedFrontMatter.cast?[1].voices == ["elevenlabs://en/vid-2"])
+        #expect(result.updatedFrontMatter.cast?[0].voices == ["elevenlabs": "vid-1"])
+        #expect(result.updatedFrontMatter.cast?[1].voices == ["elevenlabs": "vid-2"])
     }
 
     @Test func elevenLabsFallsBackToCharacterName() async throws {
@@ -374,7 +336,7 @@ struct CastMatcherTests {
 
     @Test func elevenLabsSkipsExistingVoices() async throws {
         let cast = [
-            CastMember(character: "NARRATOR", actor: nil, voices: ["elevenlabs://en/existing"]),
+            CastMember(character: "NARRATOR", actor: nil, voices: ["elevenlabs": "existing"]),
             CastMember(character: "HERO"),
         ]
         let mock = MockElevenLabsHTTPClient(voiceIds: ["vid-new"])
@@ -388,8 +350,8 @@ struct CastMatcherTests {
         ) { _, _, _ in fatalError("LLM should not be called") }
 
         #expect(result.matchedCount == 1)
-        #expect(result.updatedFrontMatter.cast?[0].voices == ["elevenlabs://en/existing"])
-        #expect(result.updatedFrontMatter.cast?[1].voices == ["elevenlabs://en/vid-new"])
+        #expect(result.updatedFrontMatter.cast?[0].voices == ["elevenlabs": "existing"])
+        #expect(result.updatedFrontMatter.cast?[1].voices == ["elevenlabs": "vid-new"])
     }
 
     @Test func elevenLabsNotUsedWithoutAPIKey() async throws {
