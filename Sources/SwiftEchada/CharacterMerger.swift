@@ -50,7 +50,7 @@ public struct CharacterMerger: Sendable {
                     actor: nil,
                     gender: nil,
                     voiceDescription: info.voiceDescription,
-                    voices: []
+                    voices: [:]
                 ))
             }
         }

@@ -123,17 +123,15 @@ public struct CastMatcher: Sendable {
                         skippedCount += 1
                         continue
                     }
-                    let uri = buildVoiceURI(voice: retryVoice)
-                    updateCast(&updatedCast, member: member, voiceURI: uri)
+                    updateCast(&updatedCast, member: member, voiceId: retryVoice.id)
                     matchedCount += 1
                     continue
                 }
 
-                let uri = buildVoiceURI(voice: matchedVoice)
                 if verbose {
-                    print("[verbose] Matched \(member.character) -> \(matchedVoice.name) (\(uri))")
+                    print("[verbose] Matched \(member.character) -> \(matchedVoice.name) (\(matchedVoice.id))")
                 }
-                updateCast(&updatedCast, member: member, voiceURI: uri)
+                updateCast(&updatedCast, member: member, voiceId: matchedVoice.id)
                 matchedCount += 1
             } catch {
                 if verbose {
@@ -198,11 +196,10 @@ public struct CastMatcher: Sendable {
                 if let match = existing.voices.first(where: {
                     $0.name.caseInsensitiveCompare(member.character) == .orderedSame
                 }) {
-                    let uri = "\(ElevenLabsDefaults.providerScheme)://\(lang)/\(match.voiceId)"
                     if verbose {
                         print("[verbose] Found existing voice for \(member.character): \(match.voiceId)")
                     }
-                    updateCast(&updatedCast, member: member, voiceURI: uri)
+                    updateCast(&updatedCast, member: member, voiceId: match.voiceId)
                     matchedCount += 1
                     continue
                 }
@@ -213,11 +210,10 @@ public struct CastMatcher: Sendable {
                 let voiceId = try await designAndCreateVoice(
                     client: client, for: member, languageCode: lang
                 )
-                let uri = "\(ElevenLabsDefaults.providerScheme)://\(lang)/\(voiceId)"
                 if verbose {
-                    print("[verbose] Created voice for \(member.character) -> \(uri)")
+                    print("[verbose] Created voice for \(member.character) -> \(voiceId)")
                 }
-                updateCast(&updatedCast, member: member, voiceURI: uri)
+                updateCast(&updatedCast, member: member, voiceId: voiceId)
                 matchedCount += 1
             } catch {
                 if verbose {
@@ -328,19 +324,9 @@ public struct CastMatcher: Sendable {
             """
     }
 
-    private func buildVoiceURI(voice: Voice) -> String {
-        if voice.providerId == "apple" {
-            // Apple voice IDs are already fully qualified (e.g. com.apple.voice.premium.en-US.Ava)
-            // No language prefix needed — the locale is embedded in the identifier
-            return "apple://\(voice.id)"
-        }
-        let lang = voice.language ?? languageCode ?? "en"
-        return "\(voice.providerId)://\(lang)/\(voice.id)"
-    }
-
-    private func updateCast(_ cast: inout [CastMember], member: CastMember, voiceURI: String) {
+    private func updateCast(_ cast: inout [CastMember], member: CastMember, voiceId: String) {
         if let index = cast.firstIndex(where: { $0.character == member.character }) {
-            cast[index].voices = cast[index].voicesReplacingProvider(providerId, with: voiceURI)
+            cast[index].voices = cast[index].voicesReplacingProvider(providerId, with: voiceId)
         }
     }
 }
