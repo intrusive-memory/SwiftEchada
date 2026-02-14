@@ -48,6 +48,7 @@ public struct CharacterMerger: Sendable {
                 result.append(CastMember(
                     character: info.name,
                     actor: nil,
+                    gender: nil,
                     voiceDescription: info.voiceDescription,
                     voices: []
                 ))

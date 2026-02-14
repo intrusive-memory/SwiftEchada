@@ -128,7 +128,7 @@ struct CharacterExtractorTests {
         try "NARRATOR\nHello.\n".write(to: fountainURL, atomically: true, encoding: .utf8)
 
         let existingCast = [
-            CastMember(character: "NARRATOR", actor: "Jane", voices: ["apple://en/ava"]),
+            CastMember(character: "NARRATOR", actor: "Jane", voices: ["apple://com.apple.voice.premium.en-US.Ava"]),
         ]
 
         let frontMatter = ProjectFrontMatter(
@@ -151,7 +151,7 @@ struct CharacterExtractorTests {
         }
 
         #expect(updated.cast?.count == 1)
-        #expect(updated.cast?.first?.voices == ["apple://en/ava"])
+        #expect(updated.cast?.first?.voices == ["apple://com.apple.voice.premium.en-US.Ava"])
         #expect(updated.cast?.first?.actor == "Jane")
     }
 

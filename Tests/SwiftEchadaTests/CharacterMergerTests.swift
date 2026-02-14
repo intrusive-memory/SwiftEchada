@@ -20,14 +20,14 @@ struct CharacterMergerTests {
 
     @Test func preservesExistingVoiceAssignments() {
         let existing = [
-            CastMember(character: "NARRATOR", actor: "John", voices: ["apple://en/voice1"]),
+            CastMember(character: "NARRATOR", actor: "John", voices: ["apple://com.apple.voice.premium.en-US.Ava"]),
         ]
         let extracted: [[CharacterInfo]] = [
             [CharacterInfo(name: "NARRATOR", description: "desc")],
         ]
         let result = merger.merge(extracted: extracted, existingCast: existing)
         #expect(result.count == 1)
-        #expect(result[0].voices == ["apple://en/voice1"])
+        #expect(result[0].voices == ["apple://com.apple.voice.premium.en-US.Ava"])
         #expect(result[0].actor == "John")
     }
 

@@ -2,7 +2,7 @@ import SwiftProyecto
 
 extension CastMember {
 
-    /// Extracts the provider scheme from a voice URI (e.g. "apple" from "apple://en/voice-1").
+    /// Extracts the provider scheme from a voice URI (e.g. "apple" from "apple://com.apple.voice.premium.en-US.Ava").
     /// Returns `nil` for malformed URIs without `://`.
     static func provider(from voiceURI: String) -> String? {
         guard let range = voiceURI.range(of: "://") else { return nil }

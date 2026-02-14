@@ -90,7 +90,7 @@ echada match --project PROJECT.md --provider elevenlabs
 echada match --project PROJECT.md --provider apple --force
 ```
 
-After both passes, each cast member's `voices` array contains entries from both providers (e.g. `["apple://en/Aaron", "elevenlabs://en/vid-abc"]`). The `--force` flag only replaces voices for the specified provider.
+After both passes, each cast member's `voices` array contains entries from both providers (e.g. `["apple://com.apple.voice.premium.en-US.Aaron", "elevenlabs://en/vid-abc"]`). The `--force` flag only replaces voices for the specified provider.
 
 ### Download Model
 
@@ -186,7 +186,7 @@ let elResult = try await elMatcher.match(frontMatter: result.updatedFrontMatter)
     try await myLLM.query(prompt, model: model, system: system)
 }
 // Each cast member now has voices from both providers:
-// ["apple://en/Aaron", "elevenlabs://en/vid-abc"]
+// ["apple://com.apple.voice.premium.en-US.Aaron", "elevenlabs://en/vid-abc"]
 ```
 
 ## How It Works

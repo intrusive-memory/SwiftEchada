@@ -329,6 +329,11 @@ public struct CastMatcher: Sendable {
     }
 
     private func buildVoiceURI(voice: Voice) -> String {
+        if voice.providerId == "apple" {
+            // Apple voice IDs are already fully qualified (e.g. com.apple.voice.premium.en-US.Ava)
+            // No language prefix needed — the locale is embedded in the identifier
+            return "apple://\(voice.id)"
+        }
         let lang = voice.language ?? languageCode ?? "en"
         return "\(voice.providerId)://\(lang)/\(voice.id)"
     }

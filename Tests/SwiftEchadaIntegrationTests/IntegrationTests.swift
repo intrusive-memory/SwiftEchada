@@ -71,7 +71,7 @@ struct IntegrationTests {
         }
 
         let existingCast = [
-            CastMember(character: "BERNARD", actor: "Tom", voices: ["apple://en/ava"]),
+            CastMember(character: "BERNARD", actor: "Tom", voices: ["apple://com.apple.voice.premium.en-US.Ava"]),
         ]
 
         let frontMatter = ProjectFrontMatter(
@@ -92,7 +92,7 @@ struct IntegrationTests {
 
         let cast = try #require(updated.cast)
         let bernard = try #require(cast.first(where: { $0.character == "BERNARD" }))
-        #expect(bernard.voices == ["apple://en/ava"])
+        #expect(bernard.voices == ["apple://com.apple.voice.premium.en-US.Ava"])
         #expect(bernard.actor == "Tom")
 
         let killian = try #require(cast.first(where: { $0.character == "KILLIAN" }))
