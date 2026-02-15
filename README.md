@@ -86,11 +86,14 @@ echada match --project PROJECT.md --provider apple --language en
 # Second pass: assign ElevenLabs voices alongside existing Apple voices
 echada match --project PROJECT.md --provider elevenlabs
 
-# Force re-match Apple voices without affecting ElevenLabs assignments
+# Third pass: assign VoxAlta on-device neural voices
+echada match --project PROJECT.md --provider voxalta
+
+# Force re-match Apple voices without affecting other providers
 echada match --project PROJECT.md --provider apple --force
 ```
 
-After both passes, each cast member's `voices` dictionary contains entries from both providers (e.g. `["apple": "com.apple.voice.premium.en-US.Aaron", "elevenlabs": "vid-abc"]`). The `--force` flag only replaces voices for the specified provider.
+After all passes, each cast member's `voices` dictionary contains entries from multiple providers (e.g. `["apple": "com.apple.voice.premium.en-US.Aaron", "elevenlabs": "vid-abc", "voxalta": "ryan"]`). The `--force` flag only replaces voices for the specified provider.
 
 ### Download Model
 
@@ -232,5 +235,6 @@ The library uses closure-based dependency injection (`queryFn`) so core logic is
 ## Related Projects
 
 - [SwiftProyecto](https://github.com/intrusive-memory/SwiftProyecto) -- Project metadata and file discovery
-- [SwiftHablare](https://github.com/intrusive-memory/SwiftHablare) -- TTS voice providers
+- [SwiftHablare](https://github.com/intrusive-memory/SwiftHablare) -- TTS voice provider abstraction
+- [SwiftVoxAlta](https://github.com/intrusive-memory/SwiftVoxAlta) -- On-device neural TTS voice provider
 - [SwiftBruja](https://github.com/intrusive-memory/SwiftBruja) -- Local LLM inference on Apple Silicon

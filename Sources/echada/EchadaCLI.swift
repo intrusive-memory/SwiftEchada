@@ -2,7 +2,9 @@ import ArgumentParser
 import Foundation
 import SwiftBruja
 import SwiftEchada
+import SwiftHablare
 import SwiftProyecto
+import SwiftVoxAlta
 
 @main
 struct EchadaCLI: AsyncParsableCommand {
@@ -24,7 +26,7 @@ struct MatchCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Path to PROJECT.md file.")
     var project: String = "PROJECT.md"
 
-    @Option(name: .long, help: "TTS provider ID (e.g., apple, elevenlabs, qwen).")
+    @Option(name: .long, help: "TTS provider ID (e.g., apple, elevenlabs, voxalta).")
     var provider: String
 
     @Option(name: .long, help: "LLM model identifier for Bruja.")
@@ -46,6 +48,11 @@ struct MatchCommand: AsyncParsableCommand {
     var dryRun: Bool = false
 
     func run() async throws {
+        // Register and enable VoxAlta provider
+        let registry = VoiceProviderRegistry.shared
+        await registry.register(VoxAltaProviderDescriptor.descriptor())
+        await registry.setEnabled(true, for: "voxalta")
+
         let fileURL = URL(fileURLWithPath: project)
         let parser = ProjectMarkdownParser()
         let (frontMatter, body) = try parser.parse(fileURL: fileURL)

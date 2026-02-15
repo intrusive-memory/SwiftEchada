@@ -23,6 +23,7 @@ let package = Package(
         .package(url: "https://github.com/intrusive-memory/SwiftHablare.git", branch: "development"),
         .package(url: "https://github.com/intrusive-memory/SwiftBruja.git", branch: "main"),
         .package(url: "https://github.com/intrusive-memory/SwiftOnce.git", branch: "development"),
+        .package(url: "https://github.com/intrusive-memory/SwiftVoxAlta.git", branch: "development"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.3.0"),
     ],
     targets: [
@@ -42,6 +43,7 @@ let package = Package(
             dependencies: [
                 "SwiftEchada",
                 .product(name: "SwiftBruja", package: "SwiftBruja"),
+                .product(name: "SwiftVoxAlta", package: "SwiftVoxAlta"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
             swiftSettings: [
