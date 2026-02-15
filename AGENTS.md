@@ -2,7 +2,7 @@
 
 This file provides comprehensive documentation for AI agents working with the SwiftEchada codebase.
 
-**Current Version**: 0.9.0 (February 2026)
+**Current Version**: 0.9.1 (February 2026)
 
 ---
 
@@ -29,7 +29,7 @@ SwiftEchada is an AI-powered cast management library for screenplay projects.
 | `CastMember+Provider.swift` | Extension for provider-aware voice management using dictionary keys |
 | `ElevenLabsTypes.swift` | Type aliases for SwiftOnce types (`ElevenLabsClient`, `ElevenLabsHTTPClient`, `ElevenLabsVoice`) |
 | `ElevenLabsDefaultsExport.swift` | Re-exports `ElevenLabsDefaults` enum from SwiftOnce via `@_exported import` |
-| `SwiftEchada.swift` | Module version constant (`0.9.0`) |
+| `SwiftEchada.swift` | Module version constant (`0.9.1`) |
 
 ## CLI Commands
 
