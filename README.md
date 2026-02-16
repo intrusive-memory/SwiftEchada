@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="SwiftEchada.jpg" alt="SwiftEchada" width="400">
+    <img src="icon.jpg" alt="SwiftEchada" width="200" />
 </p>
 
 # SwiftEchada
