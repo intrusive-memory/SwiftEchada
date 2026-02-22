@@ -2,7 +2,7 @@
 
 This file provides comprehensive documentation for AI agents working with the SwiftEchada codebase.
 
-**Current Version**: 0.9.3 (February 2026)
+**Current Version**: 0.9.4 (February 2026)
 
 ---
 
@@ -55,7 +55,7 @@ SwiftEchada is an AI-powered cast management library for screenplay projects, fo
 | Command | File | Key flags |
 |---------|------|-----------|
 | `extract` (default) | `ExtractCommand.swift` | `--project`, `--model`, `--concurrency`, `--dry-run`, `--quiet`, `--max-tokens` |
-| `cast` | `CastCommand.swift` | `--project`, `--model`, `--force-regenerate`, `--dry-run`, `--verbose`, `--max-tokens` |
+| `cast` | `CastCommand.swift` | `--project`, `--model`, `--force-regenerate`, `--dry-run`, `--verbose`, `--max-tokens`, `--tts-model`, `--character` |
 | `download` | `DownloadCommand.swift` | `--model`, `--force`, `--quiet` |
 
 `extract` is the default subcommand.
