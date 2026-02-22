@@ -23,11 +23,23 @@ struct CastVoiceGenerator {
     private let projectDirectory: URL
     private let forceRegenerate: Bool
     private let verbose: Bool
+    private let ttsModelVariant: String
 
-    init(projectDirectory: URL, forceRegenerate: Bool = false, verbose: Bool = false) {
+    init(projectDirectory: URL, forceRegenerate: Bool = false, verbose: Bool = false, ttsModelVariant: String = "1.7b") {
         self.projectDirectory = projectDirectory
         self.forceRegenerate = forceRegenerate
         self.verbose = verbose
+        self.ttsModelVariant = ttsModelVariant
+    }
+
+    /// Resolves the TTS model variant string to a `Qwen3TTSModelRepo`.
+    private var resolvedModelRepo: Qwen3TTSModelRepo {
+        switch ttsModelVariant.lowercased() {
+        case "0.6b":
+            return .base0_6B
+        default:
+            return .base1_7B
+        }
     }
 
     /// Generate .vox files for each cast member.
@@ -113,28 +125,40 @@ struct CastVoiceGenerator {
                     print("[verbose] Generated candidate WAV (\(candidateWAV.count) bytes)")
                 }
 
-                // Create voice lock (speaker embedding)
+                // Create voice lock (speaker embedding) using the selected model
+                let modelRepo = resolvedModelRepo
                 let voiceLock = try await VoiceLockManager.createLock(
                     characterName: member.character,
                     candidateAudio: candidateWAV,
                     designInstruction: designInstruction,
-                    modelManager: modelManager
+                    modelManager: modelManager,
+                    modelRepo: modelRepo
                 )
 
                 if verbose {
-                    print("[verbose] Created voice lock for \(member.character)")
+                    print("[verbose] Created voice lock for \(member.character) (model: \(ttsModelVariant))")
                 }
 
-                // Build and export .vox bundle
-                let vox = VoxFile(name: member.character, description: designInstruction)
-                try vox.add(voiceLock.clonePromptData, at: "embeddings/qwen3-tts/1.7b/clone-prompt.bin", metadata: [
-                    "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base-bf16",
+                // Build .vox bundle — open existing if present to preserve other model embeddings
+                let vox: VoxFile
+                if FileManager.default.fileExists(atPath: voxURL.path) {
+                    vox = try VoxFile(contentsOf: voxURL)
+                    if verbose {
+                        print("[verbose] Opened existing \(voxPath) to add \(ttsModelVariant) embedding")
+                    }
+                } else {
+                    vox = VoxFile(name: member.character, description: designInstruction)
+                }
+
+                let slug = VoxExporter.modelSizeSlug(for: modelRepo)
+                try vox.add(voiceLock.clonePromptData, at: VoxExporter.clonePromptPath(for: modelRepo), metadata: [
+                    "model": modelRepo.rawValue,
                     "engine": "qwen3-tts",
                     "format": "bin",
-                    "description": "Clone prompt for voice cloning (1.7b)",
+                    "description": "Clone prompt for voice cloning (\(slug))",
                 ])
-                try vox.add(candidateWAV, at: "embeddings/qwen3-tts/sample-audio.wav", metadata: [
-                    "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base-bf16",
+                try vox.add(candidateWAV, at: VoxExporter.sampleAudioPath, metadata: [
+                    "model": modelRepo.rawValue,
                     "engine": "qwen3-tts",
                     "format": "wav",
                     "description": "Engine-generated voice sample",

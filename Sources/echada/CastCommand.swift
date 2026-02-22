@@ -28,6 +28,12 @@ struct CastCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Maximum tokens for LLM response.")
     var maxTokens: Int = 2048
 
+    @Option(name: .long, help: "TTS model variant for voice generation (0.6b, 1.7b).")
+    var ttsModel: String = "1.7b"
+
+    @Option(name: .long, help: "Generate voice for a single character (by name).")
+    var character: String?
+
     func run() async throws {
         let fileURL = URL(fileURLWithPath: project)
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
@@ -41,9 +47,21 @@ struct CastCommand: AsyncParsableCommand {
             throw ValidationError("No cast members found in \(project). Run 'echada extract' first.")
         }
 
+        // Filter cast to a single character if requested
+        let targetCast: [CastMember]
+        if let characterName = character {
+            targetCast = cast.filter { $0.character.localizedCaseInsensitiveCompare(characterName) == .orderedSame }
+            guard !targetCast.isEmpty else {
+                throw ValidationError("Character '\(characterName)' not found in cast. Available: \(cast.map(\.character).joined(separator: ", "))")
+            }
+        } else {
+            targetCast = cast
+        }
+
         print("Project: \(frontMatter.title)")
         print("Model: \(model)")
-        print("Cast members: \(cast.count)")
+        print("TTS model: \(ttsModel)")
+        print("Cast members: \(targetCast.count)\(character != nil ? " (filtered: \(character!))" : "")")
         if forceRegenerate { print("Force regenerate: yes") }
         print("")
         fflush(stdout)
@@ -59,7 +77,7 @@ struct CastCommand: AsyncParsableCommand {
 
         let enricher = VoiceDescriptionEnricher()
         let enrichResult = await enricher.enrich(
-            cast: cast,
+            cast: targetCast,
             genre: frontMatter.genre,
             queryFn: { userPrompt, systemPrompt in
                 try await Bruja.query(
@@ -96,7 +114,8 @@ struct CastCommand: AsyncParsableCommand {
         let generator = CastVoiceGenerator(
             projectDirectory: projectDir,
             forceRegenerate: forceRegenerate,
-            verbose: isVerbose
+            verbose: isVerbose,
+            ttsModelVariant: ttsModel
         )
 
         let genResult = try await generator.generate(
@@ -127,6 +146,19 @@ struct CastCommand: AsyncParsableCommand {
             }
         }
 
+        // Merge filtered results back into the full cast list
+        let finalCast: [CastMember]
+        if character != nil {
+            // Build a lookup of updated members by character name
+            let updatedByName = Dictionary(
+                genResult.updatedCast.map { ($0.character, $0) },
+                uniquingKeysWith: { _, last in last }
+            )
+            finalCast = cast.map { updatedByName[$0.character] ?? $0 }
+        } else {
+            finalCast = genResult.updatedCast
+        }
+
         // Write updated PROJECT.md
         let updatedFrontMatter = ProjectFrontMatter(
             type: frontMatter.type,
@@ -142,7 +174,7 @@ struct CastCommand: AsyncParsableCommand {
             audioDir: frontMatter.audioDir,
             filePattern: frontMatter.filePattern,
             exportFormat: frontMatter.exportFormat,
-            cast: genResult.updatedCast,
+            cast: finalCast,
             preGenerateHook: frontMatter.preGenerateHook,
             postGenerateHook: frontMatter.postGenerateHook,
             tts: frontMatter.tts
