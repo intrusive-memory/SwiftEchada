@@ -2,10 +2,13 @@
 # Build and install the echada CLI with full Metal shader support
 
 SCHEME = echada
+TEST_SCHEME = SwiftEchada-Package
 BINARY = echada
 BIN_DIR = ./bin
 DESTINATION = platform=macOS,arch=arm64
 DERIVED_DATA = $(HOME)/Library/Developer/Xcode/DerivedData
+
+export GIT_LFS_SKIP_SMUDGE = 1
 
 .PHONY: all build release install clean test resolve help
 
@@ -16,9 +19,9 @@ resolve:
 	xcodebuild -resolvePackageDependencies -scheme $(SCHEME) -destination '$(DESTINATION)'
 	@echo "Package dependencies resolved."
 
-# Development build (swift build - fast but no Metal shaders)
-build:
-	swift build --product $(SCHEME)
+# Development build with xcodebuild (Debug)
+build: resolve
+	xcodebuild -scheme $(SCHEME) -destination '$(DESTINATION)' build
 
 # Release build with xcodebuild + copy to bin
 release: resolve
@@ -61,13 +64,13 @@ install: resolve
 		exit 1; \
 	fi
 
-# Run tests
-test:
-	swift test
+# Run tests via xcodebuild
+test: resolve
+	xcodebuild test -scheme $(TEST_SCHEME) -destination '$(DESTINATION)' -only-testing:SwiftEchadaTests
 
 # Clean build artifacts
 clean:
-	swift package clean
+	xcodebuild clean -scheme $(SCHEME) -destination '$(DESTINATION)' 2>/dev/null || true
 	rm -rf $(BIN_DIR)
 	rm -rf $(DERIVED_DATA)/SwiftEchada-*
 
@@ -78,10 +81,10 @@ help:
 	@echo ""
 	@echo "Targets:"
 	@echo "  resolve  - Resolve all SPM package dependencies"
-	@echo "  build    - Development build (swift build, no Metal shaders)"
+	@echo "  build    - Debug build with xcodebuild"
 	@echo "  install  - Debug build with xcodebuild + copy to ./bin (default)"
 	@echo "  release  - Release build with xcodebuild + copy to ./bin"
-	@echo "  test     - Run tests"
+	@echo "  test     - Run unit tests with xcodebuild"
 	@echo "  clean    - Clean build artifacts"
 	@echo "  help     - Show this help"
 	@echo ""
