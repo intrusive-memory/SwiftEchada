@@ -20,19 +20,19 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/intrusive-memory/SwiftProyecto.git", branch: "development"),
-        .package(url: "https://github.com/intrusive-memory/SwiftHablare.git", branch: "development"),
         .package(url: "https://github.com/intrusive-memory/SwiftBruja.git", branch: "main"),
-        .package(url: "https://github.com/intrusive-memory/SwiftOnce.git", branch: "development"),
         .package(url: "https://github.com/intrusive-memory/SwiftVoxAlta.git", branch: "development"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.3.0"),
+        .package(url: "https://github.com/ml-explore/mlx-swift", from: "0.21.0"),
+        .package(url: "https://github.com/ml-explore/mlx-swift-lm", branch: "main"),
+        .package(url: "https://github.com/intrusive-memory/mlx-audio-swift.git", branch: "development"),
+        .package(url: "https://github.com/intrusive-memory/vox-format.git", branch: "development"),
     ],
     targets: [
         .target(
             name: "SwiftEchada",
             dependencies: [
                 .product(name: "SwiftProyecto", package: "SwiftProyecto"),
-                .product(name: "SwiftHablare", package: "SwiftHablare"),
-                .product(name: "SwiftOnce", package: "SwiftOnce"),
             ],
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency"),
@@ -45,6 +45,10 @@ let package = Package(
                 .product(name: "SwiftBruja", package: "SwiftBruja"),
                 .product(name: "SwiftVoxAlta", package: "SwiftVoxAlta"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
+                .product(name: "MLX", package: "mlx-swift"),
+                .product(name: "MLXAudioTTS", package: "mlx-audio-swift"),
+                .product(name: "MLXLMCommon", package: "mlx-swift-lm"),
+                .product(name: "VoxFormat", package: "vox-format"),
             ],
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency"),

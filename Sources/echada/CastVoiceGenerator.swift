@@ -1,7 +1,8 @@
 import Foundation
-import SwiftEchada
-import enum SwiftProyecto.Gender
-import struct SwiftProyecto.CastMember
+import struct SwiftEchada.CharacterAnalyzer
+import struct SwiftEchada.CharacterProfile
+import struct SwiftEchada.SampleSentenceGenerator
+import SwiftProyecto
 import SwiftVoxAlta
 
 /// Generates custom on-device voices for cast members using SwiftVoxAlta.
@@ -32,8 +33,8 @@ struct CastVoiceGenerator {
     ///
     /// - Parameters:
     ///   - cast: The cast list (should already have voice descriptions from Pass 1).
-    ///   - queryFn: LLM query function for parsing voice descriptions into CharacterProfiles.
-    ///   - model: The LLM model identifier.
+    ///   - queryFn: LLM query function for building CharacterProfiles.
+    ///   - model: The LLM model identifier (unused here, reserved for future use).
     /// - Returns: A `GenerateResult` with updated cast and counts.
     func generate(
         cast: [CastMember],
@@ -44,6 +45,8 @@ struct CastVoiceGenerator {
         try FileManager.default.createDirectory(at: voicesDir, withIntermediateDirectories: true)
 
         let modelManager = VoxAltaModelManager()
+        let analyzer = CharacterAnalyzer()
+        let sentenceGen = SampleSentenceGenerator()
         var updatedCast = cast
         var generatedCount = 0
         var skippedCount = 0
@@ -58,9 +61,10 @@ struct CastVoiceGenerator {
                 if verbose {
                     print("[verbose] Skipping \(member.character) — \(voxPath) already exists")
                 }
-                // Ensure the cast member has the voxalta voice path
                 if member.voices["voxalta"] == nil {
-                    updatedCast[index].voices = { var v = member.voices; v["voxalta"] = voxPath; return v }()
+                    updatedCast[index].voices = {
+                        var v = member.voices; v["voxalta"] = voxPath; return v
+                    }()
                 }
                 continue
             }
@@ -71,19 +75,37 @@ struct CastVoiceGenerator {
 
             do {
                 // Build CharacterProfile from voice description
-                let profile = try await buildProfile(
-                    for: member, queryFn: queryFn, model: model
+                let profile = try await analyzer.analyze(
+                    member: member,
+                    queryFn: queryFn,
+                    verbose: verbose
                 )
 
+                let designInstruction = VoiceDesigner.composeVoiceDescription(from: profile)
                 if verbose {
-                    let desc = VoiceDesigner.composeVoiceDescription(from: profile)
-                    print("[verbose] Voice description: \(desc)")
+                    print("[verbose] Voice description: \(designInstruction)")
                 }
 
-                // Generate candidate WAV
+                // Generate sample sentence for this character
+                let sampleSentence: String
+                do {
+                    sampleSentence = try await sentenceGen.generate(
+                        from: profile,
+                        queryFn: queryFn
+                    )
+                } catch {
+                    sampleSentence = SampleSentenceGenerator.defaultSentence(for: profile.name)
+                }
+
+                if verbose {
+                    print("[verbose] Sample sentence: \(sampleSentence)")
+                }
+
+                // Generate candidate WAV via VoiceDesigner
                 let candidateWAV = try await VoiceDesigner.generateCandidate(
                     profile: profile,
-                    modelManager: modelManager
+                    modelManager: modelManager,
+                    sampleSentence: sampleSentence
                 )
 
                 if verbose {
@@ -91,7 +113,6 @@ struct CastVoiceGenerator {
                 }
 
                 // Create voice lock (speaker embedding)
-                let designInstruction = VoiceDesigner.composeVoiceDescription(from: profile)
                 let voiceLock = try await VoiceLockManager.createLock(
                     characterName: member.character,
                     candidateAudio: candidateWAV,
@@ -123,7 +144,9 @@ struct CastVoiceGenerator {
                 }
 
                 // Update cast member with voxalta voice path
-                updatedCast[index].voices = { var v = member.voices; v["voxalta"] = voxPath; return v }()
+                updatedCast[index].voices = {
+                    var v = member.voices; v["voxalta"] = voxPath; return v
+                }()
                 generatedCount += 1
 
             } catch {
@@ -139,116 +162,5 @@ struct CastVoiceGenerator {
             generatedCount: generatedCount,
             skippedCount: skippedCount
         )
-    }
-
-    // MARK: - Private
-
-    /// Build a CharacterProfile from a CastMember's voice description using LLM structured output,
-    /// with heuristic fallback on parse failure.
-    private func buildProfile(
-        for member: CastMember,
-        queryFn: @escaping @Sendable (String, String) async throws -> String,
-        model: String
-    ) async throws -> CharacterProfile {
-        let description = member.voiceDescription ?? member.character
-
-        let systemPrompt = """
-            You are a voice profile analyzer. Given a character and voice description, \
-            return a JSON object with these exact fields:
-            {
-              "name": "CHARACTER NAME (uppercase)",
-              "gender": "male" or "female" or "nonBinary" or "unknown",
-              "ageRange": "e.g. 30s, elderly, young adult",
-              "description": "the full voice description",
-              "voiceTraits": ["trait1", "trait2"],
-              "summary": "concise 1-sentence summary for voice synthesis"
-            }
-            Return ONLY the JSON object, nothing else.
-            """
-
-        let userPrompt = """
-            Character: \(member.character)
-            Gender: \(member.gender?.displayName ?? "not specified")
-            Voice description: \(description)
-            """
-
-        do {
-            let response = try await queryFn(userPrompt, systemPrompt)
-            if let profile = parseProfile(from: response) {
-                return profile
-            }
-        } catch {
-            if verbose {
-                print("[verbose] LLM profile parse failed for \(member.character), using heuristic fallback")
-            }
-        }
-
-        // Heuristic fallback
-        return CharacterProfile(
-            name: member.character.uppercased(),
-            gender: mapGender(member.gender),
-            ageRange: "adult",
-            description: description,
-            voiceTraits: description.components(separatedBy: ",").map {
-                $0.trimmingCharacters(in: .whitespaces)
-            }.filter { !$0.isEmpty },
-            summary: description
-        )
-    }
-
-    /// Parse a CharacterProfile from LLM JSON response.
-    private func parseProfile(from response: String) -> CharacterProfile? {
-        let trimmed = response.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        // Extract JSON object from response (handle markdown code blocks)
-        let jsonString: String
-        if let start = trimmed.range(of: "{"),
-           let end = trimmed.range(of: "}", options: .backwards) {
-            jsonString = String(trimmed[start.lowerBound...end.lowerBound])
-        } else {
-            jsonString = trimmed
-        }
-
-        guard let data = jsonString.data(using: .utf8) else { return nil }
-
-        struct ProfileJSON: Decodable {
-            let name: String
-            let gender: String
-            let ageRange: String
-            let description: String
-            let voiceTraits: [String]
-            let summary: String
-        }
-
-        guard let parsed = try? JSONDecoder().decode(ProfileJSON.self, from: data) else {
-            return nil
-        }
-
-        let gender: SwiftVoxAlta.Gender
-        switch parsed.gender.lowercased() {
-        case "male": gender = .male
-        case "female": gender = .female
-        case "nonbinary": gender = .nonBinary
-        default: gender = .unknown
-        }
-
-        return CharacterProfile(
-            name: parsed.name,
-            gender: gender,
-            ageRange: parsed.ageRange,
-            description: parsed.description,
-            voiceTraits: parsed.voiceTraits,
-            summary: parsed.summary
-        )
-    }
-
-    /// Map SwiftProyecto Gender to SwiftVoxAlta Gender.
-    private func mapGender(_ gender: Gender?) -> SwiftVoxAlta.Gender {
-        switch gender {
-        case .male: return .male
-        case .female: return .female
-        case .nonBinary: return .nonBinary
-        case .notSpecified, .none: return .unknown
-        }
     }
 }
