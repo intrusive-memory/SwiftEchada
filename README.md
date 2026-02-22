@@ -153,10 +153,10 @@ let sentence = try await SampleSentenceGenerator.generate(for: profile) { prompt
 1. **Pass 1**: `VoiceDescriptionEnricher` generates voice descriptions for characters missing them
 2. **Pass 2**: For each character:
    - `CharacterAnalyzer` builds a `CharacterProfile` from the voice description
-   - `SampleSentenceGenerator` creates an audition sentence
+   - `SampleSentenceGenerator` selects a random quote for audition
    - `VoiceDesigner` generates candidate WAV via Qwen3-TTS VoiceDesign model
    - `VoiceLockManager.createLock()` extracts speaker embedding
-   - `VoxExporter` writes `.vox` bundle with clone prompt and sample audio
+   - `VoxWriter` writes `.vox` bundle with clone prompt and sample audio
 3. Updates PROJECT.md with `voxalta` voice paths
 
 ## Architecture

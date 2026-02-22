@@ -2,7 +2,7 @@
 
 This file provides comprehensive documentation for AI agents working with the SwiftEchada codebase.
 
-**Current Version**: 0.9.2 (February 2026)
+**Current Version**: 0.9.3 (February 2026)
 
 ---
 
@@ -33,7 +33,7 @@ SwiftEchada is an AI-powered cast management library for screenplay projects, fo
 | `CharacterInfo.swift` | Codable struct for extracted character data (`name`, `description`, `voiceDescription`) |
 | `CharacterProfile.swift` | Detailed voice profile for a character (`name`, `gender`, `ageRange`, `voiceTraits`, `summary`) |
 | `CharacterAnalyzer.swift` | Builds `CharacterProfile` from `CastMember` via LLM with heuristic fallback |
-| `SampleSentenceGenerator.swift` | Generates sample sentences in a character's voice for TTS auditions |
+| `SampleSentenceGenerator.swift` | Returns random Dorothy Parker / Fran Lebowitz quotes for TTS auditions |
 | `ParentheticalMapper.swift` | Maps screenplay parentheticals to TTS instruct strings (static lookup + LLM fallback) |
 | `VoiceDescriptionEnricher.swift` | Enriches cast members missing voice descriptions via LLM |
 | `SwiftEchada.swift` | Module version constant |
@@ -70,7 +70,7 @@ SwiftEchada is an AI-powered cast management library for screenplay projects, fo
 | mlx-swift | 0.21.0+ | MLX framework for ML inference (CLI only) |
 | mlx-swift-lm | main | MLXLMCommon for GenerateParameters (CLI only) |
 | mlx-audio-swift | development | Qwen3TTSModel for voice synthesis (CLI only) |
-| vox-format | development | VoxFile, VoxManifest for .vox archives (CLI only) |
+| vox-format | 0.2.0+ | VoxFile, VoxManifest, VoxWriter for .vox archives (CLI only) |
 | swift-argument-parser | 1.3.0+ | CLI argument parsing |
 
 **Library target depends only on SwiftProyecto** -- all ML/voice deps are CLI-only.
@@ -110,10 +110,10 @@ Use `GIT_LFS_SKIP_SMUDGE=1` with build commands to avoid pulling large model fil
 1. **Pass 1**: `VoiceDescriptionEnricher` generates voice descriptions for characters missing them
 2. **Pass 2**: For each character:
    - `CharacterAnalyzer` builds a `CharacterProfile` from the voice description
-   - `SampleSentenceGenerator` creates an audition sentence
+   - `SampleSentenceGenerator` selects a random quote for audition
    - `VoiceDesigner` generates candidate WAV via Qwen3-TTS VoiceDesign model
    - `VoiceLockManager.createLock()` extracts speaker embedding from candidate
-   - `VoxFile` writes `.vox` bundle with clone prompt and sample audio
+   - `VoxWriter` writes `.vox` bundle with clone prompt and sample audio
 3. Updates PROJECT.md with `voxalta` voice paths
 
 ## Homebrew
