@@ -70,7 +70,7 @@ SwiftEchada is an AI-powered cast management library for screenplay projects, fo
 | mlx-swift | 0.21.0+ | MLX framework for ML inference (CLI only) |
 | mlx-swift-lm | main | MLXLMCommon for GenerateParameters (CLI only) |
 | mlx-audio-swift | development | Qwen3TTSModel for voice synthesis (CLI only) |
-| vox-format | 0.2.0+ | VoxFile, VoxManifest, VoxWriter for .vox archives (CLI only) |
+| vox-format | 0.2.0+ | VoxFile, VoxManifest for .vox archives (CLI only) |
 | swift-argument-parser | 1.3.0+ | CLI argument parsing |
 
 **Library target depends only on SwiftProyecto** -- all ML/voice deps are CLI-only.
@@ -113,7 +113,7 @@ Use `GIT_LFS_SKIP_SMUDGE=1` with build commands to avoid pulling large model fil
    - `SampleSentenceGenerator` selects a random quote for audition
    - `VoiceDesigner` generates candidate WAV via Qwen3-TTS VoiceDesign model
    - `VoiceLockManager.createLock()` extracts speaker embedding from candidate
-   - `VoxWriter` writes `.vox` bundle with clone prompt and sample audio
+   - `VoxFile` writes `.vox` bundle with clone prompt and sample audio
 3. Updates PROJECT.md with `voxalta` voice paths
 
 ## Homebrew

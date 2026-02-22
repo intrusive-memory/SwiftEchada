@@ -156,7 +156,7 @@ let sentence = try await SampleSentenceGenerator.generate(for: profile) { prompt
    - `SampleSentenceGenerator` selects a random quote for audition
    - `VoiceDesigner` generates candidate WAV via Qwen3-TTS VoiceDesign model
    - `VoiceLockManager.createLock()` extracts speaker embedding
-   - `VoxWriter` writes `.vox` bundle with clone prompt and sample audio
+   - `VoxFile` writes `.vox` bundle with clone prompt and sample audio
 3. Updates PROJECT.md with `voxalta` voice paths
 
 ## Architecture
