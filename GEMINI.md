@@ -14,7 +14,7 @@ This file contains instructions specific to Google Gemini agents working on Swif
 
 **Key Components**:
 - Character extraction from screenplay files via LLM
-- Cast-to-voice matching via LLM
+- On-device voice generation via VoxAlta (Qwen3-TTS)
 - Character deduplication and merging
 - `echada` CLI for cast management
 
@@ -106,4 +106,4 @@ See [AGENTS.md](AGENTS.md) for complete build requirements.
 
 ---
 
-**Last Updated**: February 14, 2026 (v0.9.1)
+**Last Updated**: February 21, 2026 (v0.9.2)
