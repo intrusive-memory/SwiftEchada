@@ -106,4 +106,4 @@ See [AGENTS.md](AGENTS.md) for complete build requirements.
 
 ---
 
-**Last Updated**: February 21, 2026 (v0.9.2)
+**Last Updated**: February 22, 2026 (v0.9.2)
