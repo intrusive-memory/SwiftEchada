@@ -1,7 +1,7 @@
 import ArgumentParser
 import Foundation
 import SwiftBruja
-import SwiftEchada
+import struct SwiftEchada.CharacterExtractor
 import SwiftProyecto
 
 struct ExtractCommand: AsyncParsableCommand {
