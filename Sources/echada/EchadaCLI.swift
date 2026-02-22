@@ -10,7 +10,7 @@ struct EchadaCLI: AsyncParsableCommand {
         commandName: "echada",
         abstract: "AI-powered cast management for screenplay projects.",
         version: SwiftEchada.version,
-        subcommands: [ExtractCommand.self, CastCommand.self, DownloadCommand.self],
+        subcommands: [ExtractCommand.self, CastCommand.self, DownloadCommand.self, TestVoiceCommand.self],
         defaultSubcommand: ExtractCommand.self
     )
 }

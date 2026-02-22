@@ -10,7 +10,7 @@ DERIVED_DATA = $(HOME)/Library/Developer/Xcode/DerivedData
 
 export GIT_LFS_SKIP_SMUDGE = 1
 
-.PHONY: all build release install clean test resolve help
+.PHONY: all build release install clean test resolve help integration-test
 
 all: install
 
@@ -74,18 +74,35 @@ clean:
 	rm -rf $(BIN_DIR)
 	rm -rf $(DERIVED_DATA)/SwiftEchada-*
 
+VOX_CLI = ../vox-format/bin/vox
+
+# Integration test: voice creation pipeline → .vox validation
+integration-test: install
+	@echo "=== Integration Test: Voice Creation ==="
+	@mkdir -p /tmp/echada-integration-test
+	@# Build vox validator if needed
+	@test -x $(VOX_CLI) || make -C ../vox-format install
+	@# Run voice creation
+	$(BIN_DIR)/echada test-voice --output /tmp/echada-integration-test/narrator.vox
+	@# Validate with vox
+	$(VOX_CLI) validate --strict /tmp/echada-integration-test/narrator.vox
+	@# Clean up
+	@rm -rf /tmp/echada-integration-test
+	@echo "=== Integration Test PASSED ==="
+
 help:
 	@echo "SwiftEchada Makefile"
 	@echo ""
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Targets:"
-	@echo "  resolve  - Resolve all SPM package dependencies"
-	@echo "  build    - Debug build with xcodebuild"
-	@echo "  install  - Debug build with xcodebuild + copy to ./bin (default)"
-	@echo "  release  - Release build with xcodebuild + copy to ./bin"
-	@echo "  test     - Run unit tests with xcodebuild"
-	@echo "  clean    - Clean build artifacts"
-	@echo "  help     - Show this help"
+	@echo "  resolve          - Resolve all SPM package dependencies"
+	@echo "  build            - Debug build with xcodebuild"
+	@echo "  install          - Debug build + copy to ./bin (default)"
+	@echo "  release          - Release build + copy to ./bin"
+	@echo "  test             - Run unit tests with xcodebuild"
+	@echo "  integration-test - Voice creation pipeline integration test"
+	@echo "  clean            - Clean build artifacts"
+	@echo "  help             - Show this help"
 	@echo ""
 	@echo "All builds use: -destination '$(DESTINATION)'"
