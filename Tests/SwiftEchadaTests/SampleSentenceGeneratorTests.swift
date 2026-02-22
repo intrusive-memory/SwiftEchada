@@ -13,10 +13,10 @@ struct SampleSentenceGeneratorTests {
             characterName: "NARRATOR",
             description: "Deep, authoritative baritone"
         ) { _, _ in
-            "The shadows grew long as evening settled over the ancient city."
+            "This closure is ignored."
         }
 
-        #expect(sentence == "The shadows grew long as evening settled over the ancient city.")
+        #expect(SampleSentenceGenerator.quotes.contains(sentence))
     }
 
     @Test func generatesFromProfile() async throws {
@@ -30,38 +30,21 @@ struct SampleSentenceGeneratorTests {
         )
 
         let sentence = try await generator.generate(from: profile) { _, _ in
-            "I will not let fear dictate my choices any longer."
+            "This closure is ignored."
         }
 
-        #expect(sentence.contains("fear"))
+        #expect(SampleSentenceGenerator.quotes.contains(sentence))
     }
 
-    @Test func stripsQuotesFromResponse() async throws {
-        let sentence = try await generator.generate(
-            characterName: "TEST",
-            description: "test"
-        ) { _, _ in
-            "\"Hello there, how are you doing today?\""
-        }
-
-        #expect(!sentence.hasPrefix("\""))
-        #expect(!sentence.hasSuffix("\""))
-    }
-
-    @Test func fallsBackOnEmptyResponse() async throws {
-        let sentence = try await generator.generate(
-            characterName: "NARRATOR",
-            description: "test"
-        ) { _, _ in
-            "   "
-        }
-
-        #expect(sentence.contains("NARRATOR"))
-        #expect(sentence.contains("preview"))
-    }
-
-    @Test func defaultSentenceIncludesName() {
+    @Test func defaultSentenceFromQuotes() {
         let sentence = SampleSentenceGenerator.defaultSentence(for: "VILLAIN")
-        #expect(sentence.contains("VILLAIN"))
+        #expect(SampleSentenceGenerator.quotes.contains(sentence))
+    }
+
+    @Test func randomQuoteReturnsFromPool() {
+        for _ in 0..<10 {
+            let quote = SampleSentenceGenerator.randomQuote()
+            #expect(SampleSentenceGenerator.quotes.contains(quote))
+        }
     }
 }

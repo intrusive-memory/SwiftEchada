@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import struct SwiftEchada.CharacterProfile
+import struct SwiftEchada.SampleSentenceGenerator
 import SwiftProyecto
 import SwiftVoxAlta
 @preconcurrency import VoxFormat
@@ -26,7 +27,7 @@ struct TestVoiceCommand: AsyncParsableCommand {
         )
 
         let modelManager = VoxAltaModelManager()
-        let sampleSentence = "The world stretched out before them, vast and unforgiving, as the last light of evening painted the hills in shades of amber."
+        let sampleSentence = SampleSentenceGenerator.randomQuote()
 
         // Generate candidate WAV
         print("Generating candidate voice...")
@@ -55,20 +56,26 @@ struct TestVoiceCommand: AsyncParsableCommand {
 
         // Export .vox bundle
         let outputURL = URL(fileURLWithPath: output)
-        let vox = VoxFile(name: voiceLock.characterName, description: designInstruction)
-        try vox.add(voiceLock.clonePromptData, at: "embeddings/qwen3-tts/1.7b/clone-prompt.bin", metadata: [
-            "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base-bf16",
-            "engine": "qwen3-tts",
-            "format": "bin",
-            "description": "Clone prompt for voice cloning (1.7b)",
-        ])
-        try vox.add(candidateWAV, at: "embeddings/qwen3-tts/sample-audio.wav", metadata: [
-            "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base-bf16",
-            "engine": "qwen3-tts",
-            "format": "wav",
-            "description": "Engine-generated voice sample",
-        ])
-        try vox.write(to: outputURL)
+        let manifest = VoxManifest(
+            voxVersion: "0.2.0",
+            id: UUID().uuidString.lowercased(),
+            created: Date(),
+            voice: VoxManifest.Voice(
+                name: voiceLock.characterName,
+                description: designInstruction
+            ),
+            provenance: VoxManifest.Provenance(
+                method: "designed",
+                engine: "qwen3-tts-voicedesign-1.7b"
+            )
+        )
+        let vox = VoxFile(
+            manifest: manifest,
+            referenceAudio: ["sample-audio.wav": candidateWAV],
+            embeddings: ["qwen3-tts/1.7b/clone-prompt.bin": voiceLock.clonePromptData]
+        )
+        let writer = VoxWriter()
+        try writer.write(vox, to: outputURL)
 
         print("Wrote \(outputURL.path)")
     }

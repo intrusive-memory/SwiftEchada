@@ -126,23 +126,26 @@ struct CastVoiceGenerator {
                 }
 
                 // Build and export .vox bundle
-                let vox = VoxFile(
-                    name: member.character,
-                    description: designInstruction
+                let manifest = VoxManifest(
+                    voxVersion: "0.2.0",
+                    id: UUID().uuidString.lowercased(),
+                    created: Date(),
+                    voice: VoxManifest.Voice(
+                        name: member.character,
+                        description: designInstruction
+                    ),
+                    provenance: VoxManifest.Provenance(
+                        method: "designed",
+                        engine: "qwen3-tts-voicedesign-1.7b"
+                    )
                 )
-                try vox.add(voiceLock.clonePromptData, at: "embeddings/qwen3-tts/1.7b/clone-prompt.bin", metadata: [
-                    "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base-bf16",
-                    "engine": "qwen3-tts",
-                    "format": "bin",
-                    "description": "Clone prompt for voice cloning (1.7b)",
-                ])
-                try vox.add(candidateWAV, at: "embeddings/qwen3-tts/sample-audio.wav", metadata: [
-                    "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base-bf16",
-                    "engine": "qwen3-tts",
-                    "format": "wav",
-                    "description": "Engine-generated voice sample",
-                ])
-                try vox.write(to: voxURL)
+                let vox = VoxFile(
+                    manifest: manifest,
+                    referenceAudio: ["sample-audio.wav": candidateWAV],
+                    embeddings: ["qwen3-tts/1.7b/clone-prompt.bin": voiceLock.clonePromptData]
+                )
+                let writer = VoxWriter()
+                try writer.write(vox, to: voxURL)
 
                 if verbose {
                     print("[verbose] Exported \(voxPath)")
