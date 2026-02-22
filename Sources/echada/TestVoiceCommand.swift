@@ -3,6 +3,7 @@ import Foundation
 import struct SwiftEchada.CharacterProfile
 import SwiftProyecto
 import SwiftVoxAlta
+@preconcurrency import VoxFormat
 
 struct TestVoiceCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -54,9 +55,20 @@ struct TestVoiceCommand: AsyncParsableCommand {
 
         // Export .vox bundle
         let outputURL = URL(fileURLWithPath: output)
-        let manifest = VoxExporter.buildManifest(from: voiceLock, voiceType: "designed")
-        try VoxExporter.export(manifest: manifest, clonePromptData: voiceLock.clonePromptData, to: outputURL)
-        try VoxExporter.updateSampleAudio(in: outputURL, sampleAudioData: candidateWAV)
+        let vox = VoxFile(name: voiceLock.characterName, description: designInstruction)
+        try vox.add(voiceLock.clonePromptData, at: "embeddings/qwen3-tts/1.7b/clone-prompt.bin", metadata: [
+            "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base-bf16",
+            "engine": "qwen3-tts",
+            "format": "bin",
+            "description": "Clone prompt for voice cloning (1.7b)",
+        ])
+        try vox.add(candidateWAV, at: "embeddings/qwen3-tts/sample-audio.wav", metadata: [
+            "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base-bf16",
+            "engine": "qwen3-tts",
+            "format": "wav",
+            "description": "Engine-generated voice sample",
+        ])
+        try vox.write(to: outputURL)
 
         print("Wrote \(outputURL.path)")
     }

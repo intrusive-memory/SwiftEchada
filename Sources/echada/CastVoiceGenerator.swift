@@ -4,6 +4,7 @@ import struct SwiftEchada.CharacterProfile
 import struct SwiftEchada.SampleSentenceGenerator
 import SwiftProyecto
 import SwiftVoxAlta
+@preconcurrency import VoxFormat
 
 /// Generates custom on-device voices for cast members using SwiftVoxAlta.
 ///
@@ -124,20 +125,24 @@ struct CastVoiceGenerator {
                     print("[verbose] Created voice lock for \(member.character)")
                 }
 
-                // Build manifest and export .vox bundle
-                let manifest = VoxExporter.buildManifest(
-                    from: voiceLock,
-                    voiceType: "designed"
+                // Build and export .vox bundle
+                let vox = VoxFile(
+                    name: member.character,
+                    description: designInstruction
                 )
-
-                try VoxExporter.export(
-                    manifest: manifest,
-                    clonePromptData: voiceLock.clonePromptData,
-                    to: voxURL
-                )
-
-                // Embed candidate WAV as preview sample
-                try VoxExporter.updateSampleAudio(in: voxURL, sampleAudioData: candidateWAV)
+                try vox.add(voiceLock.clonePromptData, at: "embeddings/qwen3-tts/1.7b/clone-prompt.bin", metadata: [
+                    "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base-bf16",
+                    "engine": "qwen3-tts",
+                    "format": "bin",
+                    "description": "Clone prompt for voice cloning (1.7b)",
+                ])
+                try vox.add(candidateWAV, at: "embeddings/qwen3-tts/sample-audio.wav", metadata: [
+                    "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base-bf16",
+                    "engine": "qwen3-tts",
+                    "format": "wav",
+                    "description": "Engine-generated voice sample",
+                ])
+                try vox.write(to: voxURL)
 
                 if verbose {
                     print("[verbose] Exported \(voxPath)")
