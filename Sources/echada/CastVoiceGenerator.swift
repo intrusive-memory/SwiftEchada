@@ -200,14 +200,15 @@ struct CastVoiceGenerator {
                 }
 
                 // Build .vox bundle
+                let voxDescription = candidate.member.voiceDescription ?? candidate.designInstruction
                 let vox: VoxFile
-                if FileManager.default.fileExists(atPath: candidate.voxURL.path) {
+                if !forceRegenerate, FileManager.default.fileExists(atPath: candidate.voxURL.path) {
                     vox = try VoxFile(contentsOf: candidate.voxURL)
                     if verbose {
                         print("[verbose] Opened existing \(candidate.voxPath) to add \(ttsModelVariant) embedding")
                     }
                 } else {
-                    vox = VoxFile(name: candidate.member.character, description: candidate.designInstruction)
+                    vox = VoxFile(name: candidate.member.character, description: voxDescription)
                 }
 
                 let slug = VoxExporter.modelSizeSlug(for: modelRepo)
