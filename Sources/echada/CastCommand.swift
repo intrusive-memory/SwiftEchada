@@ -28,8 +28,8 @@ struct CastCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Maximum tokens for LLM response.")
     var maxTokens: Int = 2048
 
-    @Option(name: .long, help: "TTS model variant for voice generation (0.6b, 1.7b).")
-    var ttsModel: String = "1.7b"
+    @Option(name: .long, help: "TTS model variant for voice generation (0.6b, 1.7b). Defaults to tts.model from PROJECT.md, then 1.7b.")
+    var ttsModel: String?
 
     @Option(name: .long, help: "Generate voice for a single character (by name).")
     var character: String?
@@ -42,6 +42,17 @@ struct CastCommand: AsyncParsableCommand {
         let projectDir = fileURL.deletingLastPathComponent()
         let parser = ProjectMarkdownParser()
         let (frontMatter, body) = try parser.parse(fileURL: fileURL)
+
+        // Resolve TTS model: CLI flag > PROJECT.md tts.model > "1.7b"
+        let effectiveTTSModel = ttsModel ?? frontMatter.tts?.model ?? "1.7b"
+
+        // Validate TTS model variant before any expensive work
+        guard CastVoiceGenerator.supportedVariants.contains(effectiveTTSModel.lowercased()) else {
+            throw ValidationError(
+                "Unsupported TTS model variant '\(effectiveTTSModel)'. " +
+                "Supported values: \(CastVoiceGenerator.supportedVariants.sorted().joined(separator: ", "))"
+            )
+        }
 
         guard let cast = frontMatter.cast, !cast.isEmpty else {
             throw ValidationError("No cast members found in \(project). Run 'echada extract' first.")
@@ -60,7 +71,7 @@ struct CastCommand: AsyncParsableCommand {
 
         print("Project: \(frontMatter.title)")
         print("Model: \(model)")
-        print("TTS model: \(ttsModel)")
+        print("TTS model: \(effectiveTTSModel)\(ttsModel != nil ? "" : " (from \(frontMatter.tts?.model != nil ? "PROJECT.md" : "default"))")")
         print("Cast members: \(targetCast.count)\(character != nil ? " (filtered: \(character!))" : "")")
         if forceRegenerate { print("Force regenerate: yes") }
         print("")
@@ -115,7 +126,7 @@ struct CastCommand: AsyncParsableCommand {
             projectDirectory: projectDir,
             forceRegenerate: forceRegenerate,
             verbose: isVerbose,
-            ttsModelVariant: ttsModel
+            ttsModelVariant: effectiveTTSModel
         )
 
         let genResult = try await generator.generate(

@@ -6,6 +6,18 @@ import SwiftProyecto
 import SwiftVoxAlta
 @preconcurrency import VoxFormat
 
+/// Errors thrown by CastVoiceGenerator.
+enum CastVoiceGeneratorError: LocalizedError {
+    case unsupportedTTSModel(String, supported: [String])
+
+    var errorDescription: String? {
+        switch self {
+        case .unsupportedTTSModel(let value, let supported):
+            return "Unsupported TTS model variant '\(value)'. Supported values: \(supported.joined(separator: ", "))"
+        }
+    }
+}
+
 /// Generates custom on-device voices for cast members using SwiftVoxAlta.
 ///
 /// Pass 2 of the `echada cast` pipeline: for each character, generates a `.vox` bundle
@@ -47,13 +59,22 @@ struct CastVoiceGenerator {
         self.ttsModelVariant = ttsModelVariant
     }
 
+    /// Known TTS model variant strings.
+    static let supportedVariants: Set<String> = ["0.6b", "1.7b"]
+
     /// Resolves the TTS model variant string to a `Qwen3TTSModelRepo`.
-    private var resolvedModelRepo: Qwen3TTSModelRepo {
+    /// - Throws: If the variant is not recognized.
+    private func resolvedModelRepo() throws -> Qwen3TTSModelRepo {
         switch ttsModelVariant.lowercased() {
         case "0.6b":
             return .base0_6B
-        default:
+        case "1.7b":
             return .base1_7B
+        default:
+            throw CastVoiceGeneratorError.unsupportedTTSModel(
+                ttsModelVariant,
+                supported: Self.supportedVariants.sorted()
+            )
         }
     }
 
@@ -177,7 +198,7 @@ struct CastVoiceGenerator {
         await modelManager.unloadModel()
 
         // --- Phase B: Create voice locks and export .vox bundles (Base model loaded once) ---
-        let modelRepo = resolvedModelRepo
+        let modelRepo = try resolvedModelRepo()
         print("Phase B: Creating voice locks (\(candidates.count) characters, Base \(ttsModelVariant))...")
         fflush(stdout)
 
@@ -209,6 +230,12 @@ struct CastVoiceGenerator {
                     }
                 } else {
                     vox = VoxFile(name: candidate.member.character, description: voxDescription)
+                    vox.manifest.provenance = VoxManifest.Provenance(
+                        method: "synthesized",
+                        engine: "qwen3-tts",
+                        license: "CC0-1.0",
+                        notes: "Voice designed and synthesized by VoiceDesign + VoiceLock pipeline."
+                    )
                 }
 
                 let slug = VoxExporter.modelSizeSlug(for: modelRepo)
