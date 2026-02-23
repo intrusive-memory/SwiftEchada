@@ -65,8 +65,10 @@ Generate on-device custom voices for cast members using Qwen3-TTS. Runs in two p
 2. **Generate** — creates `.vox` voice files with speaker embeddings for each character
 
 ```bash
-echada cast --project PROJECT.md [--model <model-id>] [--force-regenerate] [--dry-run] [--verbose]
+echada cast --project PROJECT.md [--model <model-id>] [--tts-model <0.6b|1.7b>] [--character <name>] [--force-regenerate] [--dry-run] [--verbose]
 ```
+
+Use `--tts-model` to select the TTS model variant (default: `1.7b`). Use `--character` to regenerate a single character's voice without affecting others.
 
 Voice files are written as `.vox` bundles containing clone prompts and sample audio.
 

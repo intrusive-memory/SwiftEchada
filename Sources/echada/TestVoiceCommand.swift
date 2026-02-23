@@ -57,6 +57,12 @@ struct TestVoiceCommand: AsyncParsableCommand {
         // Export .vox bundle
         let outputURL = URL(fileURLWithPath: output)
         let vox = VoxFile(name: voiceLock.characterName, description: designInstruction)
+        vox.manifest.provenance = VoxManifest.Provenance(
+            method: "synthesized",
+            engine: "qwen3-tts",
+            license: "CC0-1.0",
+            notes: "Test voice generated via echada test-voice command."
+        )
         try vox.add(voiceLock.clonePromptData, at: "embeddings/qwen3-tts/1.7b/clone-prompt.bin", metadata: [
             "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base-bf16",
             "engine": "qwen3-tts",

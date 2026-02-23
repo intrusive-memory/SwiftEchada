@@ -26,7 +26,7 @@ let package = Package(
         .package(url: "https://github.com/ml-explore/mlx-swift", from: "0.21.0"),
         .package(url: "https://github.com/ml-explore/mlx-swift-lm", branch: "main"),
         .package(url: "https://github.com/intrusive-memory/mlx-audio-swift.git", branch: "development"),
-        .package(url: "https://github.com/intrusive-memory/vox-format.git", branch: "development"),
+        .package(url: "https://github.com/intrusive-memory/vox-format.git", from: "0.3.0"),
     ],
     targets: [
         .target(
