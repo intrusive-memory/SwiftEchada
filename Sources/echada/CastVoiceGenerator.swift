@@ -11,6 +11,10 @@ import SwiftVoxAlta
 /// Pass 2 of the `echada cast` pipeline: for each character, generates a `.vox` bundle
 /// containing a voice lock (speaker embedding) using the VoiceDesigner → VoiceLockManager
 /// → VoxExporter pipeline.
+///
+/// Generation is split into two phases to avoid model thrashing:
+///   Phase A: Load VoiceDesign model once, generate all candidate WAVs
+///   Phase B: Load Base model once, create all voice locks and export .vox bundles
 struct CastVoiceGenerator {
 
     /// Result of a voice generation operation.
@@ -18,6 +22,17 @@ struct CastVoiceGenerator {
         let updatedCast: [CastMember]
         let generatedCount: Int
         let skippedCount: Int
+    }
+
+    /// Intermediate data from Phase A (candidate generation) needed by Phase B (locking).
+    private struct CandidateResult {
+        let index: Int
+        let member: CastMember
+        let profile: CharacterProfile
+        let designInstruction: String
+        let candidateWAV: Data
+        let voxPath: String
+        let voxURL: URL
     }
 
     private let projectDirectory: URL
@@ -44,6 +59,10 @@ struct CastVoiceGenerator {
 
     /// Generate .vox files for each cast member.
     ///
+    /// Uses a two-phase approach to avoid model thrashing:
+    ///   Phase A loads VoiceDesign 1.7B once for all candidate audio generation.
+    ///   Phase B loads the Base model once for all voice lock creation and .vox export.
+    ///
     /// - Parameters:
     ///   - cast: The cast list (should already have voice descriptions from Pass 1).
     ///   - queryFn: LLM query function for building CharacterProfiles.
@@ -64,12 +83,14 @@ struct CastVoiceGenerator {
         var generatedCount = 0
         var skippedCount = 0
 
+        // Determine which members need generation
+        var membersToGenerate: [(index: Int, member: CastMember, voxPath: String, voxURL: URL)] = []
+
         for (index, member) in cast.enumerated() {
             let sanitizedName = member.character.replacingOccurrences(of: " ", with: "_")
             let voxPath = "voices/\(sanitizedName).vox"
             let voxURL = projectDirectory.appending(path: voxPath)
 
-            // Skip if .vox already exists (unless force-regenerate)
             if FileManager.default.fileExists(atPath: voxURL.path) && !forceRegenerate {
                 if verbose {
                     print("[verbose] Skipping \(member.character) — \(voxPath) already exists")
@@ -82,14 +103,27 @@ struct CastVoiceGenerator {
                 continue
             }
 
+            membersToGenerate.append((index, member, voxPath, voxURL))
+        }
+
+        guard !membersToGenerate.isEmpty else {
+            return GenerateResult(updatedCast: updatedCast, generatedCount: 0, skippedCount: 0)
+        }
+
+        // --- Phase A: Generate all candidate WAVs (VoiceDesign model loaded once) ---
+        print("Phase A: Generating candidate audio (\(membersToGenerate.count) characters, VoiceDesign 1.7B)...")
+        fflush(stdout)
+
+        var candidates: [CandidateResult] = []
+
+        for item in membersToGenerate {
             if verbose {
-                print("[verbose] --- Generating voice: \(member.character) ---")
+                print("[verbose] --- Designing voice: \(item.member.character) ---")
             }
 
             do {
-                // Build CharacterProfile from voice description
                 let profile = try await analyzer.analyze(
-                    member: member,
+                    member: item.member,
                     queryFn: queryFn,
                     verbose: verbose
                 )
@@ -99,7 +133,6 @@ struct CastVoiceGenerator {
                     print("[verbose] Voice description: \(designInstruction)")
                 }
 
-                // Generate sample sentence for this character
                 let sampleSentence: String
                 do {
                     sampleSentence = try await sentenceGen.generate(
@@ -114,7 +147,6 @@ struct CastVoiceGenerator {
                     print("[verbose] Sample sentence: \(sampleSentence)")
                 }
 
-                // Generate candidate WAV via VoiceDesigner
                 let candidateWAV = try await VoiceDesigner.generateCandidate(
                     profile: profile,
                     modelManager: modelManager,
@@ -125,29 +157,57 @@ struct CastVoiceGenerator {
                     print("[verbose] Generated candidate WAV (\(candidateWAV.count) bytes)")
                 }
 
-                // Create voice lock (speaker embedding) using the selected model
-                let modelRepo = resolvedModelRepo
-                let voiceLock = try await VoiceLockManager.createLock(
-                    characterName: member.character,
-                    candidateAudio: candidateWAV,
+                candidates.append(CandidateResult(
+                    index: item.index,
+                    member: item.member,
+                    profile: profile,
                     designInstruction: designInstruction,
+                    candidateWAV: candidateWAV,
+                    voxPath: item.voxPath,
+                    voxURL: item.voxURL
+                ))
+
+            } catch {
+                print("  Error designing voice for \(item.member.character): \(error)")
+                skippedCount += 1
+            }
+        }
+
+        // Unload VoiceDesign model before loading Base model
+        await modelManager.unloadModel()
+
+        // --- Phase B: Create voice locks and export .vox bundles (Base model loaded once) ---
+        let modelRepo = resolvedModelRepo
+        print("Phase B: Creating voice locks (\(candidates.count) characters, Base \(ttsModelVariant))...")
+        fflush(stdout)
+
+        for candidate in candidates {
+            if verbose {
+                print("[verbose] --- Locking voice: \(candidate.member.character) ---")
+            }
+
+            do {
+                let voiceLock = try await VoiceLockManager.createLock(
+                    characterName: candidate.member.character,
+                    candidateAudio: candidate.candidateWAV,
+                    designInstruction: candidate.designInstruction,
                     modelManager: modelManager,
                     modelRepo: modelRepo
                 )
 
                 if verbose {
-                    print("[verbose] Created voice lock for \(member.character) (model: \(ttsModelVariant))")
+                    print("[verbose] Created voice lock for \(candidate.member.character) (model: \(ttsModelVariant))")
                 }
 
-                // Build .vox bundle — open existing if present to preserve other model embeddings
+                // Build .vox bundle
                 let vox: VoxFile
-                if FileManager.default.fileExists(atPath: voxURL.path) {
-                    vox = try VoxFile(contentsOf: voxURL)
+                if FileManager.default.fileExists(atPath: candidate.voxURL.path) {
+                    vox = try VoxFile(contentsOf: candidate.voxURL)
                     if verbose {
-                        print("[verbose] Opened existing \(voxPath) to add \(ttsModelVariant) embedding")
+                        print("[verbose] Opened existing \(candidate.voxPath) to add \(ttsModelVariant) embedding")
                     }
                 } else {
-                    vox = VoxFile(name: member.character, description: designInstruction)
+                    vox = VoxFile(name: candidate.member.character, description: candidate.designInstruction)
                 }
 
                 let slug = VoxExporter.modelSizeSlug(for: modelRepo)
@@ -157,28 +217,25 @@ struct CastVoiceGenerator {
                     "format": "bin",
                     "description": "Clone prompt for voice cloning (\(slug))",
                 ])
-                try vox.add(candidateWAV, at: VoxExporter.sampleAudioPath, metadata: [
+                try vox.add(candidate.candidateWAV, at: VoxExporter.sampleAudioPath, metadata: [
                     "model": modelRepo.rawValue,
                     "engine": "qwen3-tts",
                     "format": "wav",
                     "description": "Engine-generated voice sample",
                 ])
-                try vox.write(to: voxURL)
+                try vox.write(to: candidate.voxURL)
 
                 if verbose {
-                    print("[verbose] Exported \(voxPath)")
+                    print("[verbose] Exported \(candidate.voxPath)")
                 }
 
-                // Update cast member with voxalta voice path
-                updatedCast[index].voices = {
-                    var v = member.voices; v["voxalta"] = voxPath; return v
+                updatedCast[candidate.index].voices = {
+                    var v = candidate.member.voices; v["voxalta"] = candidate.voxPath; return v
                 }()
                 generatedCount += 1
 
             } catch {
-                if verbose {
-                    print("[verbose] Error generating voice for \(member.character): \(error)")
-                }
+                print("  Error locking voice for \(candidate.member.character): \(error)")
                 skippedCount += 1
             }
         }
