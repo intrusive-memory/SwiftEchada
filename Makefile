@@ -75,17 +75,24 @@ clean:
 	rm -rf $(DERIVED_DATA)/SwiftEchada-*
 
 VOX_CLI = ../vox-format/bin/vox
+DIGA_CLI = ../SwiftVoxAlta/bin/diga
 
-# Integration test: voice creation pipeline → .vox validation
+# Integration test: multi-model voice creation → .vox validation → diga synthesis
 integration-test: install
-	@echo "=== Integration Test: Voice Creation ==="
+	@echo "=== Integration Test: Multi-Model Voice + Synthesis ==="
 	@mkdir -p /tmp/echada-integration-test
 	@# Build vox validator if needed
 	@test -x $(VOX_CLI) || make -C ../vox-format install
-	@# Run voice creation
-	$(BIN_DIR)/echada test-voice --output /tmp/echada-integration-test/narrator.vox
-	@# Validate with vox
+	@# Step 1: Generate .vox with 0.6b embeddings
+	$(BIN_DIR)/echada test-voice --output /tmp/echada-integration-test/narrator.vox --tts-model 0.6b
+	@# Step 2: Append 1.7b embeddings to the same .vox
+	$(BIN_DIR)/echada test-voice --output /tmp/echada-integration-test/narrator.vox --tts-model 1.7b
+	@# Step 3: Validate .vox structure
 	$(VOX_CLI) validate --strict /tmp/echada-integration-test/narrator.vox
+	@# Step 4: Synthesize audio with diga
+	@test -x $(DIGA_CLI) || make -C ../SwiftVoxAlta install
+	$(DIGA_CLI) -v /tmp/echada-integration-test/narrator.vox -o /tmp/echada-integration-test/output.wav "The voice of the narrator rings through the empty hall."
+	@echo "Generated audio: $$(wc -c < /tmp/echada-integration-test/output.wav) bytes"
 	@# Clean up
 	@rm -rf /tmp/echada-integration-test
 	@echo "=== Integration Test PASSED ==="
