@@ -70,7 +70,11 @@ enum VoiceDesigner {
             text: text,
             voice: voiceDescription,
             language: "en",
-            generationParameters: GenerateParameters()
+            generationParameters: GenerateParameters(
+                maxTokens: 4096,
+                temperature: 0.6,
+                repetitionPenalty: 1.5
+            )
         )
 
         // Flush GPU state after generation
