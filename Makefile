@@ -89,10 +89,12 @@ integration-test: install
 	$(BIN_DIR)/echada test-voice --output /tmp/echada-integration-test/narrator.vox --tts-model 1.7b
 	@# Step 3: Validate .vox structure
 	$(VOX_CLI) validate --strict /tmp/echada-integration-test/narrator.vox
-	@# Step 4: Synthesize audio with diga
+	@# Step 4: Synthesize and play with both models
 	@test -x $(DIGA_CLI) || make -C ../SwiftVoxAlta install
-	$(DIGA_CLI) -v /tmp/echada-integration-test/narrator.vox -o /tmp/echada-integration-test/output.wav "The voice of the narrator rings through the empty hall."
-	@echo "Generated audio: $$(wc -c < /tmp/echada-integration-test/output.wav) bytes"
+	@echo "--- Synthesizing with 0.6b model ---"
+	$(DIGA_CLI) -v /tmp/echada-integration-test/narrator.vox --model 0.6b "The voice of the narrator rings through the empty hall."
+	@echo "--- Synthesizing with 1.7b model ---"
+	$(DIGA_CLI) -v /tmp/echada-integration-test/narrator.vox --model 1.7b "The voice of the narrator rings through the empty hall."
 	@# Clean up
 	@rm -rf /tmp/echada-integration-test
 	@echo "=== Integration Test PASSED ==="
