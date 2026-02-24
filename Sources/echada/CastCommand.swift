@@ -43,8 +43,8 @@ struct CastCommand: AsyncParsableCommand {
         let parser = ProjectMarkdownParser()
         let (frontMatter, body) = try parser.parse(fileURL: fileURL)
 
-        // Resolve TTS model: CLI flag > PROJECT.md tts.model > "1.7b"
-        let effectiveTTSModel = ttsModel ?? frontMatter.tts?.model ?? "1.7b"
+        // Resolve TTS model: CLI flag > PROJECT.md tts.model > default slug
+        let effectiveTTSModel = ttsModel ?? frontMatter.tts?.model ?? CastVoiceGenerator.defaultModelSlug
 
         // Validate TTS model variant before any expensive work
         guard CastVoiceGenerator.supportedVariants.contains(effectiveTTSModel.lowercased()) else {

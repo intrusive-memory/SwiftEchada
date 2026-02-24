@@ -55,30 +55,29 @@ struct CastVoiceGenerator {
     private let verbose: Bool
     private let ttsModelVariant: String
 
-    init(projectDirectory: URL, forceRegenerate: Bool = false, verbose: Bool = false, ttsModelVariant: String = "1.7b") {
+    init(projectDirectory: URL, forceRegenerate: Bool = false, verbose: Bool = false, ttsModelVariant: String = Qwen3TTSModelRepo.base1_7B.slug) {
         self.projectDirectory = projectDirectory
         self.forceRegenerate = forceRegenerate
         self.verbose = verbose
         self.ttsModelVariant = ttsModelVariant
     }
 
+    /// The default model size slug.
+    static let defaultModelSlug = Qwen3TTSModelRepo.base1_7B.slug
+
     /// Known TTS model variant strings.
-    static let supportedVariants: Set<String> = ["0.6b", "1.7b"]
+    static let supportedVariants = Qwen3TTSModelRepo.supportedSlugs
 
     /// Resolves the TTS model variant string to a `Qwen3TTSModelRepo`.
     /// - Throws: If the variant is not recognized.
     private func resolvedModelRepo() throws -> Qwen3TTSModelRepo {
-        switch ttsModelVariant.lowercased() {
-        case "0.6b":
-            return .base0_6B
-        case "1.7b":
-            return .base1_7B
-        default:
+        guard let repo = Qwen3TTSModelRepo(slug: ttsModelVariant) else {
             throw CastVoiceGeneratorError.unsupportedTTSModel(
                 ttsModelVariant,
                 supported: Self.supportedVariants.sorted()
             )
         }
+        return repo
     }
 
     /// Generate .vox files for each cast member.

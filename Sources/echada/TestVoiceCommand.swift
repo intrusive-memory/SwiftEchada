@@ -18,18 +18,15 @@ struct TestVoiceCommand: AsyncParsableCommand {
     var output: String
 
     @Option(name: .long, help: "TTS model size variant (0.6b or 1.7b).")
-    var ttsModel: String = "1.7b"
+    var ttsModel: String = Qwen3TTSModelRepo.base1_7B.slug
 
     /// Resolves the `--tts-model` string to a `Qwen3TTSModelRepo`.
     private func resolvedModelRepo() throws -> Qwen3TTSModelRepo {
-        switch ttsModel.lowercased() {
-        case "0.6b":
-            return .base0_6B
-        case "1.7b":
-            return .base1_7B
-        default:
-            throw ValidationError("Unsupported TTS model '\(ttsModel)'. Use '0.6b' or '1.7b'.")
+        guard let repo = Qwen3TTSModelRepo(slug: ttsModel) else {
+            let slugs = Qwen3TTSModelRepo.supportedSlugs.sorted().joined(separator: "', '")
+            throw ValidationError("Unsupported TTS model '\(ttsModel)'. Use '\(slugs)'.")
         }
+        return repo
     }
 
     func run() async throws {
