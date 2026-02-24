@@ -1,13 +1,11 @@
 import ArgumentParser
 import Foundation
-import SwiftBruja
-import struct SwiftEchada.VoiceDescriptionEnricher
 import SwiftProyecto
 
 struct CastCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "cast",
-        abstract: "Generate custom on-device voices for cast members using VoxAlta."
+        abstract: "Generate on-device voices for cast members from their voice prompts in PROJECT.md."
     )
 
     @Option(name: .long, help: "Path to PROJECT.md file.")
@@ -16,17 +14,11 @@ struct CastCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Regenerate voices even if .vox files already exist.")
     var forceRegenerate: Bool = false
 
-    @Option(name: .long, help: "LLM model identifier for Bruja.")
-    var model: String = Bruja.defaultModel
-
     @Flag(name: .long, help: "Preview without writing any files.")
     var dryRun: Bool = false
 
-    @Flag(name: .long, help: "Show verbose output including LLM queries.")
+    @Flag(name: .long, help: "Show verbose output.")
     var verbose: Bool = false
-
-    @Option(name: .long, help: "Maximum tokens for LLM response.")
-    var maxTokens: Int = 2048
 
     @Option(name: .long, help: "TTS model variant for voice generation (0.6b, 1.7b). Defaults to tts.model from PROJECT.md, then 1.7b.")
     var ttsModel: String?
@@ -55,7 +47,7 @@ struct CastCommand: AsyncParsableCommand {
         }
 
         guard let cast = frontMatter.cast, !cast.isEmpty else {
-            throw ValidationError("No cast members found in \(project). Run 'echada extract' first.")
+            throw ValidationError("No cast members found in \(project).")
         }
 
         // Filter cast to a single character if requested
@@ -70,84 +62,40 @@ struct CastCommand: AsyncParsableCommand {
         }
 
         print("Project: \(frontMatter.title)")
-        print("Model: \(model)")
         print("TTS model: \(effectiveTTSModel)\(ttsModel != nil ? "" : " (from \(frontMatter.tts?.model != nil ? "PROJECT.md" : "default"))")")
         print("Cast members: \(targetCast.count)\(character != nil ? " (filtered: \(character!))" : "")")
         if forceRegenerate { print("Force regenerate: yes") }
         print("")
         fflush(stdout)
 
-        // Capture locals for closure safety
-        let modelId = model
-        let tokens = maxTokens
-        let isVerbose = verbose
-
-        // --- Pass 1: Voice Description Enrichment ---
-        print("Pass 1: Enriching voice descriptions...")
-        fflush(stdout)
-
-        let enricher = VoiceDescriptionEnricher()
-        let enrichResult = await enricher.enrich(
-            cast: targetCast,
-            genre: frontMatter.genre,
-            queryFn: { userPrompt, systemPrompt in
-                try await Bruja.query(
-                    userPrompt,
-                    model: modelId,
-                    temperature: 0.7,
-                    maxTokens: tokens,
-                    system: systemPrompt
-                )
-            },
-            verbose: isVerbose
-        )
-
-        print("  Enriched: \(enrichResult.enrichedCount)")
-        print("  Skipped: \(enrichResult.skippedCount)")
-        print("")
-        fflush(stdout)
-
         if dryRun {
-            print("Pass 1 results (dry run):")
-            for member in enrichResult.updatedCast {
-                let desc = member.voiceDescription ?? "(none)"
+            print("Cast voice prompts:")
+            for member in targetCast {
+                let desc = member.voiceDescription ?? "(empty — will skip)"
                 print("  \(member.character): \(desc)")
             }
             print("\n(dry run — no voice generation or file writes)")
             return
         }
 
-        // --- Pass 2: Voice Generation ---
-        print("Pass 2: Generating voices...")
+        // Generate voices
+        print("Generating voices...")
         print("Loading VoxAlta models (this may take a moment)...")
         fflush(stdout)
 
         let generator = CastVoiceGenerator(
             projectDirectory: projectDir,
             forceRegenerate: forceRegenerate,
-            verbose: isVerbose,
+            verbose: verbose,
             ttsModelVariant: effectiveTTSModel
         )
 
-        let genResult = try await generator.generate(
-            cast: enrichResult.updatedCast,
-            queryFn: { userPrompt, systemPrompt in
-                try await Bruja.query(
-                    userPrompt,
-                    model: modelId,
-                    temperature: 0.3,
-                    maxTokens: tokens,
-                    system: systemPrompt
-                )
-            },
-            model: modelId
-        )
+        let genResult = try await generator.generate(cast: targetCast)
 
         print("  Generated: \(genResult.generatedCount)")
         print("  Skipped: \(genResult.skippedCount)")
         print("")
 
-        // Print final cast summary
         for member in genResult.updatedCast {
             if member.voices.isEmpty {
                 print("  \(member.character): (none)")
@@ -160,7 +108,6 @@ struct CastCommand: AsyncParsableCommand {
         // Merge filtered results back into the full cast list
         let finalCast: [CastMember]
         if character != nil {
-            // Build a lookup of updated members by character name
             let updatedByName = Dictionary(
                 genResult.updatedCast.map { ($0.character, $0) },
                 uniquingKeysWith: { _, last in last }

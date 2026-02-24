@@ -20,7 +20,6 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/intrusive-memory/SwiftProyecto.git", branch: "development"),
-        .package(url: "https://github.com/intrusive-memory/SwiftBruja.git", branch: "main"),
         .package(url: "https://github.com/intrusive-memory/SwiftVoxAlta.git", branch: "development"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.3.0"),
         .package(url: "https://github.com/ml-explore/mlx-swift", from: "0.21.0"),
@@ -42,7 +41,6 @@ let package = Package(
             name: "echada",
             dependencies: [
                 "SwiftEchada",
-                .product(name: "SwiftBruja", package: "SwiftBruja"),
                 .product(name: "SwiftVoxAlta", package: "SwiftVoxAlta"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "MLX", package: "mlx-swift"),
@@ -56,13 +54,6 @@ let package = Package(
         ),
         .testTarget(
             name: "SwiftEchadaTests",
-            dependencies: ["SwiftEchada"],
-            swiftSettings: [
-                .enableUpcomingFeature("StrictConcurrency"),
-            ]
-        ),
-        .testTarget(
-            name: "SwiftEchadaIntegrationTests",
             dependencies: ["SwiftEchada"],
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency"),
