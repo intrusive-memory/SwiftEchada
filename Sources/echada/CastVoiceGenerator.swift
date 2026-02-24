@@ -246,22 +246,8 @@ struct CastVoiceGenerator {
                     )
                 }
 
-                let slug = VoxExporter.modelSizeSlug(for: modelRepo)
-                try vox.add(voiceLock.clonePromptData, at: VoxExporter.clonePromptPath(for: modelRepo), metadata: [
-                    "key": "qwen3-tts-\(slug)",
-                    "model": modelRepo.rawValue,
-                    "engine": "qwen3-tts",
-                    "format": "bin",
-                    "description": "Clone prompt for voice cloning (\(slug))",
-                ])
-                // Add sample audio with explicit key matching deriveEmbeddingKey format
-                try vox.add(candidate.candidateWAV, at: VoxExporter.sampleAudioPath(for: modelRepo), metadata: [
-                    "key": "qwen3-tts-\(slug)-sample-audio",
-                    "model": modelRepo.rawValue,
-                    "engine": "qwen3-tts",
-                    "format": "wav",
-                    "description": "Engine-generated voice sample (\(slug))",
-                ])
+                try VoxExporter.addClonePrompt(to: vox, data: voiceLock.clonePromptData, modelRepo: modelRepo)
+                try VoxExporter.addSampleAudio(to: vox, data: candidate.candidateWAV, modelRepo: modelRepo)
                 try vox.write(to: candidate.voxURL)
 
                 if verbose {
