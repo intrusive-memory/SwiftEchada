@@ -254,9 +254,11 @@ struct CastVoiceGenerator {
                     "format": "bin",
                     "description": "Clone prompt for voice cloning (\(slug))",
                 ])
-                // Add sample audio with unique key to avoid overwriting clone prompt entry
-                try vox.add(candidate.candidateWAV, at: "embeddings/qwen3-tts/\(slug)/sample-audio.wav", metadata: [
-                    "key": "qwen3-tts-sample-\(slug)",
+                // Add sample audio with explicit key matching deriveEmbeddingKey format
+                try vox.add(candidate.candidateWAV, at: VoxExporter.sampleAudioPath(for: modelRepo), metadata: [
+                    "key": "qwen3-tts-\(slug)-sample-audio",
+                    "model": modelRepo.rawValue,
+                    "engine": "qwen3-tts",
                     "format": "wav",
                     "description": "Engine-generated voice sample (\(slug))",
                 ])

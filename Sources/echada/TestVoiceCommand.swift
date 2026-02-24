@@ -64,13 +64,15 @@ struct TestVoiceCommand: AsyncParsableCommand {
             license: "CC0-1.0",
             notes: "Test voice generated via echada test-voice command."
         )
-        try vox.add(voiceLock.clonePromptData, at: "embeddings/qwen3-tts/1.7b/clone-prompt.bin", metadata: [
-            "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base-bf16",
+        try vox.add(voiceLock.clonePromptData, at: VoxExporter.clonePromptPath(for: .base1_7B), metadata: [
+            "key": "qwen3-tts-1.7b-clone-prompt",
+            "model": Qwen3TTSModelRepo.base1_7B.rawValue,
             "engine": "qwen3-tts",
             "format": "bin",
             "description": "Clone prompt for voice cloning (1.7b)",
         ])
-        try vox.add(candidateWAV, at: "embeddings/qwen3-tts/1.7b/sample-audio.wav", metadata: [
+        try vox.add(candidateWAV, at: VoxExporter.sampleAudioPath(for: .base1_7B), metadata: [
+            "key": "qwen3-tts-1.7b-sample-audio",
             "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base-bf16",
             "engine": "qwen3-tts",
             "format": "wav",
