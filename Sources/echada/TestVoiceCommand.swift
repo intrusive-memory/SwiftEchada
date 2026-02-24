@@ -5,6 +5,7 @@ import struct SwiftEchada.SampleSentenceGenerator
 import SwiftProyecto
 import SwiftVoxAlta
 @preconcurrency import VoxFormat
+@preconcurrency import MLXAudioTTS
 
 struct TestVoiceCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -69,11 +70,11 @@ struct TestVoiceCommand: AsyncParsableCommand {
             "format": "bin",
             "description": "Clone prompt for voice cloning (1.7b)",
         ])
-        try vox.add(candidateWAV, at: "embeddings/qwen3-tts/sample-audio.wav", metadata: [
+        try vox.add(candidateWAV, at: "embeddings/qwen3-tts/1.7b/sample-audio.wav", metadata: [
             "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base-bf16",
             "engine": "qwen3-tts",
             "format": "wav",
-            "description": "Engine-generated voice sample",
+            "description": "Engine-generated voice sample (1.7b)",
         ])
         try vox.write(to: outputURL)
 

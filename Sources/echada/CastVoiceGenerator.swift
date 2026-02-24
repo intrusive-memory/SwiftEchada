@@ -5,6 +5,9 @@ import struct SwiftEchada.SampleSentenceGenerator
 import SwiftProyecto
 import SwiftVoxAlta
 @preconcurrency import VoxFormat
+@preconcurrency import MLXAudioTTS
+@preconcurrency import MLX
+@preconcurrency import MLXLMCommon
 
 /// Errors thrown by CastVoiceGenerator.
 enum CastVoiceGeneratorError: LocalizedError {
@@ -142,34 +145,29 @@ struct CastVoiceGenerator {
                 print("[verbose] --- Designing voice: \(item.member.character) ---")
             }
 
-            do {
-                let profile = try await analyzer.analyze(
-                    member: item.member,
-                    queryFn: queryFn,
-                    verbose: verbose
-                )
+            // Check if voice description exists
+            guard let voiceDescription = item.member.voiceDescription, !voiceDescription.isEmpty else {
+                print("⚠️  Warning: No voice description for '\(item.member.character)' - skipping voice generation")
+                print("   Add a 'description' field to this character in PROJECT.md cast list")
+                continue
+            }
 
-                let designInstruction = VoiceDesigner.composeVoiceDescription(from: profile)
+            do {
+                let designInstruction = voiceDescription
                 if verbose {
                     print("[verbose] Voice description: \(designInstruction)")
                 }
 
-                let sampleSentence: String
-                do {
-                    sampleSentence = try await sentenceGen.generate(
-                        from: profile,
-                        queryFn: queryFn
-                    )
-                } catch {
-                    sampleSentence = SampleSentenceGenerator.defaultSentence(for: profile.name)
-                }
+                let sampleSentence = SampleSentenceGenerator.defaultSentence(for: item.member.character)
 
                 if verbose {
                     print("[verbose] Sample sentence: \(sampleSentence)")
                 }
 
-                let candidateWAV = try await VoiceDesigner.generateCandidate(
-                    profile: profile,
+                // Generate candidate audio using the voice description directly
+                let candidateWAV = try await Self.generateCandidateWithDescription(
+                    voiceDescription: designInstruction,
+                    characterName: item.member.character,
                     modelManager: modelManager,
                     sampleSentence: sampleSentence
                 )
@@ -178,10 +176,20 @@ struct CastVoiceGenerator {
                     print("[verbose] Generated candidate WAV (\(candidateWAV.count) bytes)")
                 }
 
+                // Create minimal profile (not used for generation, only for metadata)
+                let minimalProfile = CharacterProfile(
+                    name: item.member.character,
+                    gender: .notSpecified,
+                    ageRange: "adult",
+                    description: designInstruction,
+                    voiceTraits: [],
+                    summary: designInstruction
+                )
+
                 candidates.append(CandidateResult(
                     index: item.index,
                     member: item.member,
-                    profile: profile,
+                    profile: minimalProfile,
                     designInstruction: designInstruction,
                     candidateWAV: candidateWAV,
                     voxPath: item.voxPath,
@@ -240,16 +248,17 @@ struct CastVoiceGenerator {
 
                 let slug = VoxExporter.modelSizeSlug(for: modelRepo)
                 try vox.add(voiceLock.clonePromptData, at: VoxExporter.clonePromptPath(for: modelRepo), metadata: [
+                    "key": "qwen3-tts-\(slug)",
                     "model": modelRepo.rawValue,
                     "engine": "qwen3-tts",
                     "format": "bin",
                     "description": "Clone prompt for voice cloning (\(slug))",
                 ])
-                try vox.add(candidate.candidateWAV, at: VoxExporter.sampleAudioPath, metadata: [
-                    "model": modelRepo.rawValue,
-                    "engine": "qwen3-tts",
+                // Add sample audio with unique key to avoid overwriting clone prompt entry
+                try vox.add(candidate.candidateWAV, at: "embeddings/qwen3-tts/\(slug)/sample-audio.wav", metadata: [
+                    "key": "qwen3-tts-sample-\(slug)",
                     "format": "wav",
-                    "description": "Engine-generated voice sample",
+                    "description": "Engine-generated voice sample (\(slug))",
                 ])
                 try vox.write(to: candidate.voxURL)
 
@@ -273,5 +282,32 @@ struct CastVoiceGenerator {
             generatedCount: generatedCount,
             skippedCount: skippedCount
         )
+    }
+
+    /// Generate candidate audio using a voice description string directly.
+    private static func generateCandidateWithDescription(
+        voiceDescription: String,
+        characterName: String,
+        modelManager: VoxAltaModelManager,
+        sampleSentence: String
+    ) async throws -> Data {
+        let model = try await modelManager.loadModel(.voiceDesign1_7B)
+
+        guard let qwenModel = model as? Qwen3TTSModel else {
+            throw VoiceDesignerError.modelCastFailed
+        }
+
+        let audioArray = try await qwenModel.generate(
+            text: sampleSentence,
+            voice: voiceDescription,
+            language: "en",
+            generationParameters: GenerateParameters()
+        )
+
+        // Flush GPU state after generation
+        Stream.defaultStream(.gpu).synchronize()
+        Memory.clearCache()
+
+        return try AudioConversion.mlxArrayToWAVData(audioArray, sampleRate: qwenModel.sampleRate)
     }
 }
