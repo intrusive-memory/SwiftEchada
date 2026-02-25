@@ -71,8 +71,9 @@ enum VoiceDesigner {
             voice: voiceDescription,
             language: "en",
             generationParameters: GenerateParameters(
-                maxTokens: 4096,
+                maxTokens: 16384,
                 temperature: 0.6,
+                topP: 0.6,
                 repetitionPenalty: 1.5
             )
         )
