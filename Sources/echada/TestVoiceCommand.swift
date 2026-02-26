@@ -65,6 +65,7 @@ struct TestVoiceCommand: AsyncParsableCommand {
             candidateAudio: candidateWAV,
             designInstruction: designInstruction,
             modelManager: modelManager,
+            sampleSentence: sampleSentence,
             modelRepo: modelRepo
         )
         print("Voice lock created")

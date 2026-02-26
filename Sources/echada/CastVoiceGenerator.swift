@@ -43,6 +43,7 @@ struct CastVoiceGenerator {
         let member: CastMember
         let voicePrompt: String
         let candidateWAV: Data
+        let sampleSentence: String
         let voxPath: String
         let voxURL: URL
     }
@@ -159,6 +160,7 @@ struct CastVoiceGenerator {
                     member: item.member,
                     voicePrompt: voicePrompt,
                     candidateWAV: candidateWAV,
+                    sampleSentence: sampleSentence,
                     voxPath: item.voxPath,
                     voxURL: item.voxURL
                 ))
@@ -188,6 +190,7 @@ struct CastVoiceGenerator {
                     candidateAudio: candidate.candidateWAV,
                     designInstruction: candidate.voicePrompt,
                     modelManager: modelManager,
+                    sampleSentence: candidate.sampleSentence,
                     modelRepo: modelRepo
                 )
 

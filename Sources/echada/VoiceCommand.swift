@@ -81,6 +81,7 @@ struct VoiceCommand: AsyncParsableCommand {
             candidateAudio: candidateWAV,
             designInstruction: prompt,
             modelManager: modelManager,
+            sampleSentence: sampleSentence,
             modelRepo: modelRepo
         )
 
