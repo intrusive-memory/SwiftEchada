@@ -1,6 +1,5 @@
 import ArgumentParser
 import Foundation
-import SwiftBruja
 import enum SwiftEchada.SwiftEchada
 import SwiftProyecto
 
@@ -8,9 +7,9 @@ import SwiftProyecto
 struct EchadaCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "echada",
-        abstract: "AI-powered cast management for screenplay projects.",
+        abstract: "On-device voice generation for screenplay projects.",
         version: SwiftEchada.version,
-        subcommands: [ExtractCommand.self, CastCommand.self, DownloadCommand.self, TestVoiceCommand.self],
-        defaultSubcommand: ExtractCommand.self
+        subcommands: [VoiceCommand.self, CastCommand.self, TestVoiceCommand.self],
+        defaultSubcommand: CastCommand.self
     )
 }

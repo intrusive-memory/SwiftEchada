@@ -1,109 +1,56 @@
 # GEMINI.md
 
-**⚠️ Read [AGENTS.md](AGENTS.md) first** for universal project documentation, architecture, and development guidelines.
-
-This file contains instructions specific to Google Gemini agents working on SwiftEchada.
+**Read [AGENTS.md](AGENTS.md) first** for project overview. Deep dives in [Docs/](Docs/).
 
 ---
 
-## Quick Reference
+## Gemini-Specific Rules
 
-**Project**: SwiftEchada - AI-powered cast management for screenplay projects
+1. **No MCP access** -- use raw `xcodebuild` commands or the Makefile.
+2. **Never use `swift build` or `swift test`** -- Metal shaders require xcodebuild.
+3. **Always set `GIT_LFS_SKIP_SMUDGE=1`** before xcodebuild commands.
+4. **Test scheme is `SwiftEchada-Package`**, not `SwiftEchada`.
 
-**Platforms**: iOS 26.0+, macOS 26.0+
-
-**Key Components**:
-- Character extraction from screenplay files via LLM
-- On-device voice generation via VoxAlta (Qwen3-TTS)
-- Character deduplication and merging
-- `echada` CLI for cast management
-
----
-
-## Gemini-Specific Configuration
-
-**Build Tools**: Standard `xcodebuild` commands (no MCP access)
-
-**Test Strategy**: Use `xcodebuild test` with `-scheme SwiftEchada-Package`
-
----
-
-## Build and Test Commands
-
-**CRITICAL**: This project requires `xcodebuild` for ALL build and test operations due to Metal shader dependencies in SwiftBruja.
-
-### Build Library
+## Build Commands
 
 ```bash
-GIT_LFS_SKIP_SMUDGE=1 xcodebuild \
-  -scheme SwiftEchada \
-  -destination 'platform=macOS,arch=arm64' \
-  build
+# Preferred: use the Makefile
+make build            # Debug build
+make test             # Run unit tests
+make clean            # Clean artifacts
+
+# Raw xcodebuild (if Makefile unavailable)
+GIT_LFS_SKIP_SMUDGE=1 xcodebuild -scheme echada -destination 'platform=macOS,arch=arm64' build
+GIT_LFS_SKIP_SMUDGE=1 xcodebuild test -scheme SwiftEchada-Package -destination 'platform=macOS,arch=arm64'
 ```
 
-### Run Tests
+Binary location after build: `DerivedData/SwiftEchada-*/Build/Products/Debug/echada`
 
-```bash
-GIT_LFS_SKIP_SMUDGE=1 xcodebuild \
-  -scheme SwiftEchada-Package \
-  -destination 'platform=macOS,arch=arm64' \
-  test
-```
-
-**Important**: Use `-scheme SwiftEchada-Package` for tests, NOT `-scheme SwiftEchada`.
-
-### Build CLI Executable
-
-```bash
-GIT_LFS_SKIP_SMUDGE=1 xcodebuild \
-  -scheme echada \
-  -destination 'platform=macOS,arch=arm64' \
-  build
-```
-
-Binary location: `DerivedData/SwiftEchada-*/Build/Products/Debug/echada`
-
----
-
-## Gemini-Specific Critical Rules
-
-1. **Use standard `xcodebuild` commands** - No MCP access; follow commands above
-2. **NEVER use `swift build` or `swift test`** - Metal shader requirement makes these fail
-3. **Always use `GIT_LFS_SKIP_SMUDGE=1`** - Avoid pulling large model files from dependencies
-4. **Test scheme is `SwiftEchada-Package`** - NOT `SwiftEchada` (see AGENTS.md)
-5. **Follow Xcode best practices** - Standard iOS/macOS development patterns
-
----
-
-## CI/CD Integration
-
-For GitHub Actions workflows:
+## CI/CD
 
 ```yaml
-- name: Build and Test
-  run: |
-    GIT_LFS_SKIP_SMUDGE=1 xcodebuild \
-      -scheme SwiftEchada-Package \
-      -destination 'platform=macOS,arch=arm64' \
-      test
+runs-on: macos-26    # Always macos-26 or later
 ```
 
-**Requirements**:
-- Runner: `macos-26` or later
-- Swift: 6.2+
-- Xcode: Latest stable
+```bash
+GIT_LFS_SKIP_SMUDGE=1 xcodebuild test \
+  -scheme SwiftEchada-Package \
+  -destination 'platform=macOS,arch=arm64'
+```
 
-See [AGENTS.md](AGENTS.md) for complete build requirements.
+See [Docs/build-and-test.md](Docs/build-and-test.md) for full CI/CD details.
+
+## Key Documentation
+
+| Need | Read |
+|------|------|
+| Architecture & data flow | [Docs/architecture.md](Docs/architecture.md) |
+| How .vox files are created | [Docs/vox-pipeline.md](Docs/vox-pipeline.md) |
+| Full API reference | [Docs/api.md](Docs/api.md) |
+| Build, test, CI/CD | [Docs/build-and-test.md](Docs/build-and-test.md) |
+| All dependencies | [Docs/dependencies.md](Docs/dependencies.md) |
+| Common pitfalls | [Docs/gotchas.md](Docs/gotchas.md) |
 
 ---
 
-## Future Gemini Integrations
-
-**Placeholder for**:
-- Gemini API integration patterns (if applicable)
-- Gemini Code Assist workflows (if configured)
-- Custom Gemini-specific automation (TBD)
-
----
-
-**Last Updated**: February 22, 2026 (v0.9.4)
+**Last Updated**: February 28, 2026 (v0.10.1)

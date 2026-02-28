@@ -1,121 +1,71 @@
 # AGENTS.md
 
-This file provides comprehensive documentation for AI agents working with the SwiftEchada codebase.
+Universal project documentation for AI agents. Agent-specific files: [CLAUDE.md](CLAUDE.md), [GEMINI.md](GEMINI.md).
 
-**Current Version**: 0.9.4 (February 2026)
+**Version**: 0.10.1 | **Swift**: 6.2 | **Platforms**: macOS 26+, iOS 26+
 
 ---
 
-## Project Overview
+## What Is This?
 
-SwiftEchada is an AI-powered cast management library for screenplay projects, focused on three core functions:
+SwiftEchada generates on-device custom voices from text prompts and manages cast data in PROJECT.md files for screenplay projects.
 
-1. **Extract characters + generate voice prompts** (library)
-2. **Generate .vox voice files from prompts** (CLI, on-device via VoxAlta)
-3. **Write casting to PROJECT.md** (library, via SwiftProyecto)
+- **Library** (`SwiftEchada`): Pure data types -- `CharacterProfile`, `CharacterInfo`, `CharacterMerger`, `SampleSentenceGenerator`. Depends only on SwiftProyecto. No ML.
+- **CLI** (`echada`): Voice generation via Qwen3-TTS. Depends on SwiftVoxAlta, MLX, vox-format.
 
-## Project Structure
+## Build and Test (30-second version)
 
-- `Sources/SwiftEchada/` -- Library target (depends only on SwiftProyecto, uses closure-based DI for LLM queries)
-- `Sources/echada/` -- CLI executable target (depends on SwiftBruja for LLM, SwiftVoxAlta + MLX for voice generation)
-- `Tests/SwiftEchadaTests/` -- Unit tests (CharacterProfile, CharacterAnalyzer, SampleSentenceGenerator, ParentheticalMapper, CharacterInfo, CharacterMerger, VoiceDescriptionEnricher, version)
-- `Tests/SwiftEchadaIntegrationTests/` -- Integration tests (CharacterExtractor end-to-end, fixture-based)
-- `Fixtures/` -- Test fixture files (fountain screenplays, PROJECT.md)
+```bash
+make build   # Debug build
+make test    # Unit tests (32 tests)
+make clean   # Clean artifacts
+```
 
-## Key Components
+**Never use `swift build` or `swift test`** -- Metal shaders require xcodebuild. The Makefile handles everything.
 
-### Library (`Sources/SwiftEchada/`)
-
-| File | Purpose |
-|------|---------|
-| `CharacterExtractor.swift` | Discovers screenplay files in `episodesDir`, extracts characters via LLM, scene-based chunking for large files |
-| `CharacterMerger.swift` | Deduplicates characters by name (case-insensitive), preserves voice/actor data |
-| `CharacterInfo.swift` | Codable struct for extracted character data (`name`, `description`, `voiceDescription`) |
-| `CharacterProfile.swift` | Detailed voice profile for a character (`name`, `gender`, `ageRange`, `voiceTraits`, `summary`) |
-| `CharacterAnalyzer.swift` | Builds `CharacterProfile` from `CastMember` via LLM with heuristic fallback |
-| `SampleSentenceGenerator.swift` | Returns random Dorothy Parker / Fran Lebowitz quotes for TTS auditions |
-| `ParentheticalMapper.swift` | Maps screenplay parentheticals to TTS instruct strings (static lookup + LLM fallback) |
-| `VoiceDescriptionEnricher.swift` | Enriches cast members missing voice descriptions via LLM |
-| `SwiftEchada.swift` | Module version constant |
-
-### CLI (`Sources/echada/`)
-
-| File | Purpose |
-|------|---------|
-| `EchadaCLI.swift` | Entry point, subcommand registration |
-| `ExtractCommand.swift` | Extract characters from screenplay files |
-| `CastCommand.swift` | Generate on-device voices (Pass 1: enrich, Pass 2: generate .vox) |
-| `DownloadCommand.swift` | Download LLM models |
-| `VoiceDesigner.swift` | Composes voice descriptions and generates candidate WAV via VoiceDesign model |
-| `CastVoiceGenerator.swift` | Orchestrates .vox generation pipeline per cast member |
-| `ReferenceAudioGenerator.swift` | macOS fallback using `say` command for reference audio |
+Full details: [Docs/build-and-test.md](Docs/build-and-test.md)
 
 ## CLI Commands
 
-| Command | File | Key flags |
-|---------|------|-----------|
-| `extract` (default) | `ExtractCommand.swift` | `--project`, `--model`, `--concurrency`, `--dry-run`, `--quiet`, `--max-tokens` |
-| `cast` | `CastCommand.swift` | `--project`, `--model`, `--force-regenerate`, `--dry-run`, `--verbose`, `--max-tokens`, `--tts-model`, `--character` |
-| `download` | `DownloadCommand.swift` | `--model`, `--force`, `--quiet` |
+| Command | Description |
+|---------|-------------|
+| `echada cast` (default) | Generate voices for all cast members from PROJECT.md |
+| `echada voice <prompt>` | Generate a single .vox from a text description |
+| `echada test-voice` (hidden) | Integration test helper |
 
-`extract` is the default subcommand.
+Full CLI reference: [Docs/api.md](Docs/api.md#cli-echada)
 
-## Dependencies
+## Architecture at a Glance
 
-| Package | Branch | Purpose |
-|---------|--------|---------|
-| SwiftProyecto | development | `ProjectFrontMatter`, `CastMember`, `ProjectMarkdownParser`, `Gender` |
-| SwiftBruja | main | Local LLM inference (CLI only) |
-| SwiftVoxAlta | development | On-device voice generation, VoiceLockManager, VoxAltaModelManager (CLI only) |
-| mlx-swift | 0.21.0+ | MLX framework for ML inference (CLI only) |
-| mlx-swift-lm | main | MLXLMCommon for GenerateParameters (CLI only) |
-| mlx-audio-swift | development | Qwen3TTSModel for voice synthesis (CLI only) |
-| vox-format | 0.2.0+ | VoxFile, VoxManifest for .vox archives (CLI only) |
-| swift-argument-parser | 1.3.0+ | CLI argument parsing |
-
-**Library target depends only on SwiftProyecto** -- all ML/voice deps are CLI-only.
-
-## Build and Test
-
-**CRITICAL**: This library must ONLY be compiled using `xcodebuild`. Do NOT use `swift build` or `swift test`. The `swift` CLI does not correctly resolve all dependencies for this project.
-
-```bash
-# Library tests
-GIT_LFS_SKIP_SMUDGE=1 xcodebuild -scheme SwiftEchada-Package -destination 'platform=macOS,arch=arm64' test
-
-# CLI build
-GIT_LFS_SKIP_SMUDGE=1 xcodebuild -scheme echada -destination 'platform=macOS,arch=arm64' build
+```
+Library:  SwiftEchada --> SwiftProyecto (pure data types, no ML)
+CLI:      echada --> SwiftEchada + SwiftVoxAlta + MLX + vox-format
 ```
 
-Use `GIT_LFS_SKIP_SMUDGE=1` with build commands to avoid pulling large model files.
+Voice generation uses a **two-phase pipeline** to avoid GPU OOM:
+1. **Phase A**: VoiceDesign 1.7B generates candidate WAVs
+2. **Phase B**: Base model creates voice locks and exports .vox bundles
 
-## Design Patterns
+Full architecture: [Docs/architecture.md](Docs/architecture.md)
+| .vox pipeline detail: [Docs/vox-pipeline.md](Docs/vox-pipeline.md)
 
-- **Closure-based DI**: Library accepts `queryFn` closures so tests use mocks, CLI passes `Bruja.query`
-- **Targeted imports**: CLI files use `import struct SwiftEchada.CharacterProfile` (not `import SwiftEchada`) to avoid the module/type name collision (`SwiftEchada` is both a module and an enum)
-- **Scene-based chunking**: Files >2000 estimated tokens are split at scene headings
-- **Character name normalization**: Parentheticals stripped during extraction
-- **Strict concurrency**: Swift 6 language mode, `Sendable` throughout
+## Deep Dives
 
-## Cast Pipeline
+| Document | Contents |
+|----------|----------|
+| [Docs/architecture.md](Docs/architecture.md) | Module graph, source layout, data flow diagrams |
+| [Docs/vox-pipeline.md](Docs/vox-pipeline.md) | Step-by-step .vox creation process |
+| [Docs/api.md](Docs/api.md) | Complete public API with Swift type signatures |
+| [Docs/build-and-test.md](Docs/build-and-test.md) | Makefile, testing, CI/CD, release process |
+| [Docs/dependencies.md](Docs/dependencies.md) | All packages, pins, key types from each |
+| [Docs/gotchas.md](Docs/gotchas.md) | Sharp edges that will trip you up |
 
-### Extract (`echada extract`)
-1. Validates PROJECT.md, parses front matter
-2. Discovers screenplay files via `filePattern` in `episodesDir`
-3. LLM extracts characters as JSON; large files chunked by scene headings
-4. `CharacterMerger` deduplicates across files, preserves existing voice/actor data
-5. Writes updated cast to PROJECT.md
+## Critical Rules (All Agents)
 
-### Cast (`echada cast`)
-1. **Pass 1**: `VoiceDescriptionEnricher` generates voice descriptions for characters missing them
-2. **Pass 2**: For each character:
-   - `CharacterAnalyzer` builds a `CharacterProfile` from the voice description
-   - `SampleSentenceGenerator` selects a random quote for audition
-   - `VoiceDesigner` generates candidate WAV via Qwen3-TTS VoiceDesign model
-   - `VoiceLockManager.createLock()` extracts speaker embedding from candidate
-   - `VoxFile` writes `.vox` bundle with clone prompt and sample audio
-3. Updates PROJECT.md with `voxalta` voice paths
+1. **Use the Makefile** -- `make build`, `make test`, never `swift build`/`swift test`
+2. **Test scheme is `SwiftEchada-Package`** -- not `SwiftEchada`
+3. **Targeted imports in CLI** -- `import struct SwiftEchada.CharacterProfile` (module/type name collision)
+4. **Library has no ML deps** -- all voice generation is CLI-only
+5. **Default subcommand is `cast`** -- `extract` and `download` were removed
 
-## Homebrew
-
-Distributed via `brew tap intrusive-memory/tap && brew install echada`. Formula at `intrusive-memory/homebrew-tap/Formula/echada.rb`. Requires the `mlx-swift_Cmlx.bundle` to be colocated with the binary (installed to libexec).
+More: [Docs/gotchas.md](Docs/gotchas.md)

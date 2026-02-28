@@ -5,6 +5,22 @@ All notable changes to SwiftEchada will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [0.10.1] - 2026-02-28
+
+### Added
+- VoxFile integration tests (5 tests verifying .vox creation, multi-model support, append workflow, gender mapping)
+- VoxFormat added as test target dependency for end-to-end testing with synthetic data
+
+### Changed
+- CI workflow cleaned up: removed obsolete integration-tests job and `-skip-testing` flag
+- Branch protection updated: only "Unit Tests" required (removed defunct "Integration Tests" check)
+- Restructured documentation: AGENTS.md tightened to onboarding hub with links to Docs/
+- Moved detailed reference docs to `Docs/` folder: architecture, vox-pipeline, api, build-and-test, dependencies, gotchas
+- CLAUDE.md and GEMINI.md streamlined to agent-specific concerns with doc links
+- API.md redirects to Docs/api.md
+
 ## [0.9.2] - 2026-02-21
 
 ### Added

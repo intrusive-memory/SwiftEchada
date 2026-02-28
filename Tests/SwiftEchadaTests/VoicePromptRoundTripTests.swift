@@ -12,8 +12,6 @@ import SwiftProyecto
 @Suite("Voice Prompt Round-Trip Tests")
 struct VoicePromptRoundTripTests {
 
-    private let analyzer = CharacterAnalyzer()
-
     // MARK: - YAML → CastMember deserialization
 
     @Test func voicePromptFieldSurvivesYAMLParsing() throws {
@@ -70,114 +68,6 @@ struct VoicePromptRoundTripTests {
         let prompt = try #require(gild.voiceDescription,
             "Legacy voiceDescription field should still be parsed")
         #expect(prompt.contains("gruff"))
-    }
-
-    // MARK: - CastMember → CharacterAnalyzer uses the prompt
-
-    @Test func analyzerReceivesVoicePromptNotCharacterName() async throws {
-        let complexPrompt = """
-            A warm, sardonic American male voice in his late 40s to early 50s, \
-            with the measured cadence of an experienced journalist. Smooth baritone, \
-            unhurried and deliberately precise. Dry wit delivered with understated elegance.
-            """
-
-        let member = CastMember(
-            character: "MITCH",
-            gender: .male,
-            voiceDescription: complexPrompt,
-            voices: ["voxalta": "voices/MITCH.vox"]
-        )
-
-        // Capture what the analyzer sends to the LLM
-        nonisolated(unsafe) var capturedUserPrompt: String?
-
-        let profile = try await analyzer.analyze(member: member) { userPrompt, _ in
-            capturedUserPrompt = userPrompt
-            // Return valid JSON so we can inspect what the LLM received
-            return """
-                {
-                  "name": "MITCH",
-                  "gender": "male",
-                  "ageRange": "late 40s",
-                  "description": "\(complexPrompt.replacingOccurrences(of: "\n", with: " "))",
-                  "voiceTraits": ["warm", "sardonic", "baritone", "unhurried", "precise"],
-                  "summary": "Experienced journalist with smooth baritone and dry wit"
-                }
-                """
-        }
-
-        // The LLM prompt must contain the complex description, not just "MITCH"
-        let prompt = try #require(capturedUserPrompt)
-        #expect(prompt.contains("sardonic"),
-            "Analyzer should send the full voice prompt to the LLM, not just the character name")
-        #expect(prompt.contains("baritone"))
-        #expect(prompt.contains("journalist"))
-
-        // The resulting profile should carry the rich description through
-        #expect(profile.description.contains("sardonic"))
-        #expect(profile.voiceTraits.contains("baritone"))
-    }
-
-    @Test func analyzerFallsBackToCharacterNameWhenNoPrompt() async throws {
-        let member = CastMember(
-            character: "MITCH",
-            voices: ["voxalta": "voices/MITCH.vox"]
-        )
-
-        nonisolated(unsafe) var capturedUserPrompt: String?
-
-        _ = try await analyzer.analyze(member: member) { userPrompt, _ in
-            capturedUserPrompt = userPrompt
-            throw NSError(domain: "test", code: 1)
-        }
-
-        // Without a voiceDescription, it falls back to character name
-        let prompt = try #require(capturedUserPrompt)
-        #expect(prompt.contains("MITCH"))
-        #expect(!prompt.contains("sardonic"),
-            "Should not contain rich description when voiceDescription is nil")
-    }
-
-    // MARK: - Full round-trip: YAML → parse → analyze → compose
-
-    @Test func fullPipelinePreservesComplexPrompt() async throws {
-        let yaml = """
-            ---
-            type: project
-            title: Test
-            author: Test
-            created: 2026-01-01T00:00:00Z
-            cast:
-              - character: OLIVIA
-                voicePrompt: "A commanding, imperious Black woman's voice in her 60s -- self-possessed, elegant, and unafraid of silence. Sharp, precise diction. A velvet hammer."
-                voices:
-                  voxalta: voices/OLIVIA.vox
-            ---
-            """
-
-        let parser = ProjectMarkdownParser()
-        let (frontMatter, _) = try parser.parse(content: yaml)
-        let cast = try #require(frontMatter.cast)
-        let member = cast[0]
-
-        // Verify the prompt survived parsing
-        let voiceDesc = try #require(member.voiceDescription)
-        #expect(voiceDesc.contains("imperious"))
-        #expect(voiceDesc.contains("velvet hammer"))
-
-        // Verify the analyzer passes it through (not the character name)
-        nonisolated(unsafe) var capturedPrompt: String?
-        _ = try await analyzer.analyze(member: member) { userPrompt, _ in
-            capturedPrompt = userPrompt
-            throw NSError(domain: "test", code: 1) // force fallback to inspect raw behavior
-        }
-
-        let sent = try #require(capturedPrompt)
-        #expect(sent.contains("imperious"),
-            "Full pipeline: voicePrompt from YAML must reach the LLM query")
-        #expect(sent.contains("velvet hammer"))
-        #expect(!sent.contains("Voice description: OLIVIA"),
-            "Must not degrade to character name as the voice description")
     }
 
     // MARK: - Serialization round-trip
