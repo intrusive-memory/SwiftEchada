@@ -54,7 +54,10 @@ let package = Package(
         ),
         .testTarget(
             name: "SwiftEchadaTests",
-            dependencies: ["SwiftEchada"],
+            dependencies: [
+                "SwiftEchada",
+                .product(name: "VoxFormat", package: "vox-format"),
+            ],
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency"),
             ]
