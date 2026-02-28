@@ -2,7 +2,7 @@
 
 Universal project documentation for AI agents. Agent-specific files: [CLAUDE.md](CLAUDE.md), [GEMINI.md](GEMINI.md).
 
-**Version**: 0.10.0 | **Swift**: 6.2 | **Platforms**: macOS 26+, iOS 26+
+**Version**: 0.10.1 | **Swift**: 6.2 | **Platforms**: macOS 26+, iOS 26+
 
 ---
 
@@ -17,7 +17,7 @@ SwiftEchada generates on-device custom voices from text prompts and manages cast
 
 ```bash
 make build   # Debug build
-make test    # Unit tests (31 tests)
+make test    # Unit tests (32 tests)
 make clean   # Clean artifacts
 ```
 
