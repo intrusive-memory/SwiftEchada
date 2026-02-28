@@ -13,10 +13,10 @@ This file contains instructions specific to Google Gemini agents working on Swif
 **Platforms**: iOS 26.0+, macOS 26.0+
 
 **Key Components**:
-- Character extraction from screenplay files via LLM
-- On-device voice generation via VoxAlta (Qwen3-TTS)
-- Character deduplication and merging
-- `echada` CLI for cast management
+- Data types for character profiles and voice descriptions (library)
+- On-device voice generation from text prompts via VoxAlta/Qwen3-TTS (CLI)
+- Character deduplication and merging (library)
+- `echada` CLI with `cast`, `voice`, and `test-voice` commands
 
 ---
 
@@ -30,7 +30,7 @@ This file contains instructions specific to Google Gemini agents working on Swif
 
 ## Build and Test Commands
 
-**CRITICAL**: This project requires `xcodebuild` for ALL build and test operations due to Metal shader dependencies in SwiftBruja.
+**CRITICAL**: This project requires `xcodebuild` for ALL build and test operations due to Metal shader dependencies in SwiftVoxAlta.
 
 ### Build Library
 
@@ -97,13 +97,6 @@ See [AGENTS.md](AGENTS.md) for complete build requirements.
 
 ---
 
-## Future Gemini Integrations
-
-**Placeholder for**:
-- Gemini API integration patterns (if applicable)
-- Gemini Code Assist workflows (if configured)
-- Custom Gemini-specific automation (TBD)
-
 ---
 
-**Last Updated**: February 22, 2026 (v0.9.4)
+**Last Updated**: February 28, 2026 (v0.10.0)

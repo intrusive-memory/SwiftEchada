@@ -70,4 +70,4 @@ XcodeBuildMCP provides structured Swift package operations. While available, the
 
 ---
 
-**Last Updated**: February 24, 2026 (v0.9.4)
+**Last Updated**: February 28, 2026 (v0.10.0)
