@@ -19,13 +19,13 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/intrusive-memory/SwiftProyecto.git", branch: "development"),
-        .package(url: "https://github.com/intrusive-memory/SwiftVoxAlta.git", branch: "development"),
+        .package(url: "https://github.com/intrusive-memory/SwiftProyecto.git", branch: "main"),
+        .package(url: "https://github.com/intrusive-memory/SwiftVoxAlta.git", branch: "main"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.3.0"),
         .package(url: "https://github.com/ml-explore/mlx-swift", from: "0.21.0"),
         .package(url: "https://github.com/ml-explore/mlx-swift-lm", branch: "main"),
-        .package(url: "https://github.com/intrusive-memory/mlx-audio-swift.git", branch: "development"),
-        .package(url: "https://github.com/intrusive-memory/vox-format.git", from: "0.3.0"),
+        .package(url: "https://github.com/intrusive-memory/mlx-audio-swift.git", branch: "main"),
+        .package(url: "https://github.com/intrusive-memory/vox-format.git", branch: "main"),
     ],
     targets: [
         .target(
