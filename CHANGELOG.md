@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.3] - 2026-03-27
+
+### Changed
+- All intrusive-memory dependencies now track main branch (previously development)
+- Cleaned up development branch history (rebased onto main after squash merges)
+
 ## [0.10.1] - 2026-02-28
 
 ### Added
