@@ -19,13 +19,14 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/intrusive-memory/SwiftProyecto.git", branch: "main"),
-        .package(url: "https://github.com/intrusive-memory/SwiftVoxAlta.git", branch: "main"),
-        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.3.0"),
-        .package(url: "https://github.com/ml-explore/mlx-swift", from: "0.21.0"),
-        .package(url: "https://github.com/ml-explore/mlx-swift-lm", branch: "main"),
-        .package(url: "https://github.com/intrusive-memory/mlx-audio-swift.git", branch: "main"),
-        .package(url: "https://github.com/intrusive-memory/vox-format.git", branch: "main"),
+        .package(url: "https://github.com/intrusive-memory/SwiftProyecto.git", from: "3.4.0"),
+        .package(url: "https://github.com/intrusive-memory/SwiftVoxAlta.git", from: "0.9.6"),
+        .package(url: "https://github.com/intrusive-memory/SwiftAcervo.git", from: "0.6.0"),
+        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0"),
+        .package(url: "https://github.com/ml-explore/mlx-swift", from: "0.30.0"),
+        .package(url: "https://github.com/ml-explore/mlx-swift-lm", from: "2.30.6"),
+        .package(url: "https://github.com/intrusive-memory/mlx-audio-swift.git", from: "0.3.4"),
+        .package(url: "https://github.com/intrusive-memory/vox-format.git", from: "0.3.1"),
     ],
     targets: [
         .target(
@@ -57,6 +58,8 @@ let package = Package(
             dependencies: [
                 "SwiftEchada",
                 .product(name: "VoxFormat", package: "vox-format"),
+                .product(name: "SwiftVoxAlta", package: "SwiftVoxAlta"),
+                .product(name: "SwiftAcervo", package: "SwiftAcervo"),
             ],
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency"),
