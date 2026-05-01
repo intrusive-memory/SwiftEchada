@@ -1,6 +1,6 @@
 # Architecture
 
-**Version**: 0.10.4-dev | **Swift**: 6.2 | **Platforms**: macOS 26+, iOS 26+
+**Version**: 0.10.5 | **Swift**: 6.2 | **Platforms**: macOS 26+, iOS 26+
 
 ---
 
