@@ -1,0 +1,111 @@
+name: Ensure Model on CDN (Midnight)
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  ensure-model-cdn:
+    name: Upload ${{ matrix.model.slug }}
+    runs-on: macos-26
+    timeout-minutes: 240
+
+    strategy:
+      fail-fast: false
+      matrix:
+        model:
+          - id: qwen3-tts-voicedesign-1.7b
+            repo: mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16
+            slug: mlx-community_Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16
+          - id: qwen3-tts-base-1.7b
+            repo: mlx-community/Qwen3-TTS-12Hz-1.7B-Base-bf16
+            slug: mlx-community_Qwen3-TTS-12Hz-1.7B-Base-bf16
+          - id: qwen3-tts-base-0.6b
+            repo: mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16
+            slug: mlx-community_Qwen3-TTS-12Hz-0.6B-Base-bf16
+
+    env:
+      MODEL_ID: ${{ matrix.model.id }}
+      MODEL_REPO: ${{ matrix.model.repo }}
+      MODEL_SLUG: ${{ matrix.model.slug }}
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      CDN_BASE: ${{ secrets.CDN_BASE_URL }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install SwiftAcervo via Homebrew
+        run: |
+          brew tap intrusive-memory/tools
+          brew install swiftacervo
+          swiftacervo --version
+
+      - name: Check if manifest exists on CDN
+        id: check-manifest
+        run: |
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "${{ env.CDN_BASE }}/models/${{ env.MODEL_SLUG }}/manifest.json")
+          echo "status=$HTTP_STATUS" >> $GITHUB_OUTPUT
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "Model manifest already on CDN — skipping upload"
+          else
+            echo "Model manifest not found — will download and upload"
+          fi
+
+      - name: Download model files from HuggingFace
+        if: steps.check-manifest.outputs.status != '200'
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/model_download/${{ env.MODEL_SLUG }}
+          cd /tmp/model_download/${{ env.MODEL_SLUG }}
+          swiftacervo download \
+            --repo ${{ env.MODEL_REPO }} \
+            --output . \
+            --verify-checksums
+
+      - name: Generate manifest with SHA-256
+        if: steps.check-manifest.outputs.status != '200'
+        run: |
+          set -euo pipefail
+          cd /tmp/model_download/${{ env.MODEL_SLUG }}
+          swiftacervo manifest generate \
+            --model-id ${{ env.MODEL_ID }} \
+            --model-repo ${{ env.MODEL_REPO }} \
+            --output manifest.json
+
+      - name: Upload to R2 CDN
+        if: steps.check-manifest.outputs.status != '200'
+        run: |
+          set -euo pipefail
+          cd /tmp/model_download/${{ env.MODEL_SLUG }}
+          swiftacervo upload \
+            --bucket ${{ env.R2_BUCKET }} \
+            --account-id ${{ env.R2_ACCOUNT_ID }} \
+            --access-key-id ${{ env.R2_ACCESS_KEY_ID }} \
+            --secret-access-key ${{ env.R2_SECRET_ACCESS_KEY }} \
+            --model-slug ${{ env.MODEL_SLUG }} \
+            --manifest manifest.json
+
+      - name: Verify upload
+        if: steps.check-manifest.outputs.status != '200'
+        run: |
+          set -euo pipefail
+          swiftacervo verify \
+            --cdn-base ${{ env.CDN_BASE }} \
+            --model-slug ${{ env.MODEL_SLUG }} \
+            --manifest-path /tmp/model_download/${{ env.MODEL_SLUG }}/manifest.json
+
+      - name: Notify on success
+        run: echo "Model ${{ env.MODEL_SLUG }} verified on CDN"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "CDN upload failed for ${{ env.MODEL_SLUG }}"
+          exit 1
