@@ -1,6 +1,6 @@
 # API Reference
 
-**Version**: 0.10.4 | **Platforms**: iOS 26.0+, macOS 26.0+
+**Version**: 0.10.4-dev | **Platforms**: iOS 26.0+, macOS 26.0+
 **Swift**: 6.2 | **Language Mode**: v6 (strict concurrency)
 
 ---
@@ -15,7 +15,7 @@ Module version constant.
 
 ```swift
 public enum SwiftEchada {
-    public static let version: String  // "0.10.4"
+    public static let version: String  // "0.10.4-dev"
 }
 ```
 
