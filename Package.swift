@@ -72,6 +72,7 @@ let package = Package(
             name: "SwiftEchadaTests",
             dependencies: [
                 "SwiftEchada",
+                "echada",
                 .product(name: "VoxFormat", package: "vox-format"),
                 .product(name: "SwiftVoxAlta", package: "SwiftVoxAlta"),
             ],

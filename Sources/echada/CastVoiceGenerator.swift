@@ -11,13 +11,63 @@ import struct SwiftEchada.SampleSentenceGenerator
 /// Errors thrown by CastVoiceGenerator.
 enum CastVoiceGeneratorError: LocalizedError {
   case unsupportedTTSModel(String, supported: [String])
+  case existingVoxUnreadable(path: String, underlying: Error)
 
   var errorDescription: String? {
     switch self {
     case .unsupportedTTSModel(let value, let supported):
       return
         "Unsupported TTS model variant '\(value)'. Supported values: \(supported.joined(separator: ", "))"
+    case .existingVoxUnreadable(let path, let underlying):
+      return
+        "Existing voice bundle at '\(path)' could not be opened: \(underlying.localizedDescription). Refusing to overwrite — re-run with --force-regenerate to discard it."
     }
+  }
+}
+
+/// Decision outcome for whether a character's existing `.vox` should be skipped
+/// or fed through the generation pipeline (so the requested variant's embedding
+/// can be added to the existing bundle).
+enum VoxGenerationDecision: Equatable {
+  /// No existing file, or `--force-regenerate` was set, or the requested variant
+  /// is missing from the existing bundle. Run Phase A/B for this member.
+  case generate
+  /// The existing `.vox` already contains the requested variant. Skip.
+  case skipExistingHasVariant
+  /// The existing `.vox` is corrupt / unreadable. Don't silently overwrite —
+  /// surface the error and increment skippedCount.
+  case skipExistingUnreadable
+}
+
+/// Pure decision function: should we skip this character because the existing
+/// `.vox` already has what we need?
+///
+/// Skipping is correct only when ALL of:
+///   - the file exists,
+///   - `--force-regenerate` is NOT set,
+///   - the existing bundle's manifest declares an embedding matching
+///     `ttsModelVariant` (matched via `VoxFile.supportsModel(_:)`).
+///
+/// Otherwise we fall through and let Phase A/B run; the existing block in
+/// `generate(cast:)` will open the existing VoxFile and append the new
+/// variant's clone-prompt + sample-audio to it.
+func decideVoxGeneration(
+  existingFileExists: Bool,
+  forceRegenerate: Bool,
+  ttsModelVariant: String,
+  openExistingVox: () throws -> VoxFile
+) -> VoxGenerationDecision {
+  guard existingFileExists, !forceRegenerate else {
+    return .generate
+  }
+  do {
+    let existing = try openExistingVox()
+    if existing.supportsModel(ttsModelVariant) {
+      return .skipExistingHasVariant
+    }
+    return .generate
+  } catch {
+    return .skipExistingUnreadable
   }
 }
 
@@ -111,9 +161,20 @@ struct CastVoiceGenerator {
       let voxPath = "voices/\(sanitizedName).vox"
       let voxURL = projectDirectory.appending(path: voxPath)
 
-      if FileManager.default.fileExists(atPath: voxURL.path) && !forceRegenerate {
+      let fileExists = FileManager.default.fileExists(atPath: voxURL.path)
+      let decision = decideVoxGeneration(
+        existingFileExists: fileExists,
+        forceRegenerate: forceRegenerate,
+        ttsModelVariant: ttsModelVariant,
+        openExistingVox: { try VoxFile(contentsOf: voxURL) }
+      )
+
+      switch decision {
+      case .skipExistingHasVariant:
         if verbose {
-          print("[verbose] Skipping \(member.character) — \(voxPath) already exists")
+          print(
+            "[verbose] Skipping \(member.character) — \(voxPath) already has \(ttsModelVariant) embedding"
+          )
         }
         if member.voices["voxalta"] == nil {
           updatedCast[index].voices = {
@@ -123,9 +184,23 @@ struct CastVoiceGenerator {
           }()
         }
         continue
-      }
 
-      membersToGenerate.append((index, member, voxPath, voxURL))
+      case .skipExistingUnreadable:
+        print(
+          "  Error: existing \(voxPath) for \(member.character) could not be opened. "
+            + "Refusing to overwrite — re-run with --force-regenerate to discard it."
+        )
+        skippedCount += 1
+        continue
+
+      case .generate:
+        if verbose, fileExists, !forceRegenerate {
+          print(
+            "[verbose] \(member.character) — \(voxPath) exists but lacks \(ttsModelVariant); will append embedding"
+          )
+        }
+        membersToGenerate.append((index, member, voxPath, voxURL))
+      }
     }
 
     guard !membersToGenerate.isEmpty else {
