@@ -10,7 +10,7 @@ DERIVED_DATA = $(HOME)/Library/Developer/Xcode/DerivedData
 
 export GIT_LFS_SKIP_SMUDGE = 1
 
-.PHONY: all build release install clean test test-cdn resolve help integration-test
+.PHONY: all build release install clean test resolve help integration-test
 
 all: install
 
@@ -66,16 +66,7 @@ install: resolve
 
 # Run tests via xcodebuild
 test: resolve
-	xcodebuild test -scheme $(TEST_SCHEME) -destination '$(DESTINATION)' -only-testing:SwiftEchadaTests -skip-testing:SwiftEchadaTests/CDNAvailabilityTests
-
-# CDN availability tests (requires network; downloads config.json only)
-# Validates that voiceDesign1_7B, base1_7B, and base0_6B are reachable on the Acervo CDN.
-test-cdn: resolve
-	@echo "Running CDN availability tests (network required)..."
-	xcodebuild test \
-	  -scheme $(TEST_SCHEME) \
-	  -destination '$(DESTINATION)' \
-	  -only-testing:SwiftEchadaTests/CDNAvailabilityTests
+	xcodebuild test -scheme $(TEST_SCHEME) -destination '$(DESTINATION)' -only-testing:SwiftEchadaTests
 
 # Clean build artifacts
 clean:
@@ -119,7 +110,6 @@ help:
 	@echo "  install          - Debug build + copy to ./bin (default)"
 	@echo "  release          - Release build + copy to ./bin"
 	@echo "  test             - Run unit tests with xcodebuild"
-	@echo "  test-cdn         - Check echada pipeline models are available on CDN (requires network)"
 	@echo "  integration-test - Voice creation pipeline integration test"
 	@echo "  clean            - Clean build artifacts"
 	@echo "  help             - Show this help"
