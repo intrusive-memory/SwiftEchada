@@ -1,6 +1,7 @@
 import Testing
+
 @testable import SwiftEchada
 
 @Test func versionIsSet() {
-    #expect(!SwiftEchada.version.isEmpty)
+  #expect(!SwiftEchada.version.isEmpty)
 }
