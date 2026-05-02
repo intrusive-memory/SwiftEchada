@@ -10,7 +10,7 @@ DERIVED_DATA = $(HOME)/Library/Developer/Xcode/DerivedData
 
 export GIT_LFS_SKIP_SMUDGE = 1
 
-.PHONY: all build release install clean test resolve help integration-test
+.PHONY: all build release install clean test resolve help integration-test lint
 
 all: install
 
@@ -68,6 +68,11 @@ install: resolve
 test: resolve
 	xcodebuild test -scheme $(TEST_SCHEME) -destination '$(DESTINATION)' -only-testing:SwiftEchadaTests
 
+# Format Swift source files with swift-format
+lint:
+	swift format -i -r .
+	@echo "Swift source files formatted."
+
 # Clean build artifacts
 clean:
 	xcodebuild clean -scheme $(SCHEME) -destination '$(DESTINATION)' 2>/dev/null || true
@@ -111,6 +116,7 @@ help:
 	@echo "  release          - Release build + copy to ./bin"
 	@echo "  test             - Run unit tests with xcodebuild"
 	@echo "  integration-test - Voice creation pipeline integration test"
+	@echo "  lint             - Format Swift source files with swift-format"
 	@echo "  clean            - Clean build artifacts"
 	@echo "  help             - Show this help"
 	@echo ""

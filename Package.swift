@@ -10,76 +10,84 @@ import PackageDescription
 let useLocalSiblings = ProcessInfo.processInfo.environment["CI"] != "true"
 
 func sibling(_ name: String, remote: String, from version: Version) -> Package.Dependency {
-    let localPath = "../\(name)"
-    if useLocalSiblings && FileManager.default.fileExists(atPath: localPath) {
-        return .package(path: localPath)
-    }
-    return .package(url: remote, .upToNextMajor(from: version))
+  let localPath = "../\(name)"
+  if useLocalSiblings && FileManager.default.fileExists(atPath: localPath) {
+    return .package(path: localPath)
+  }
+  return .package(url: remote, .upToNextMajor(from: version))
 }
 
 let package = Package(
-    name: "SwiftEchada",
-    platforms: [
-        .iOS(.v26),
-        .macOS(.v26)
-    ],
-    products: [
-        .library(
-            name: "SwiftEchada",
-            targets: ["SwiftEchada"]
-        ),
-        .executable(
-            name: "echada",
-            targets: ["echada"]
-        ),
-    ],
-    dependencies: [
-        sibling("SwiftProyecto", remote: "https://github.com/intrusive-memory/SwiftProyecto.git", from: "3.5.0"),
-        sibling("SwiftVoxAlta", remote: "https://github.com/intrusive-memory/SwiftVoxAlta.git", from: "0.10.1"),
-        sibling("SwiftAcervo", remote: "https://github.com/intrusive-memory/SwiftAcervo.git", from: "0.8.4"),
-        .package(url: "https://github.com/apple/swift-argument-parser", .upToNextMajor(from: "1.7.1")),
-        .package(url: "https://github.com/ml-explore/mlx-swift", .upToNextMajor(from: "0.31.3")),
-        .package(url: "https://github.com/ml-explore/mlx-swift-lm", .upToNextMajor(from: "3.31.3")),
-        sibling("mlx-audio-swift", remote: "https://github.com/intrusive-memory/mlx-audio-swift.git", from: "0.6.0"),
-        sibling("vox-format", remote: "https://github.com/intrusive-memory/vox-format.git", from: "0.3.1"),
-    ],
-    targets: [
-        .target(
-            name: "SwiftEchada",
-            dependencies: [
-                .product(name: "SwiftProyecto", package: "SwiftProyecto"),
-            ],
-            swiftSettings: [
-                .enableUpcomingFeature("StrictConcurrency"),
-            ]
-        ),
-        .executableTarget(
-            name: "echada",
-            dependencies: [
-                "SwiftEchada",
-                .product(name: "SwiftVoxAlta", package: "SwiftVoxAlta"),
-                .product(name: "ArgumentParser", package: "swift-argument-parser"),
-                .product(name: "MLX", package: "mlx-swift"),
-                .product(name: "MLXAudioTTS", package: "mlx-audio-swift"),
-                .product(name: "MLXLMCommon", package: "mlx-swift-lm"),
-                .product(name: "VoxFormat", package: "vox-format"),
-            ],
-            swiftSettings: [
-                .enableUpcomingFeature("StrictConcurrency"),
-            ]
-        ),
-        .testTarget(
-            name: "SwiftEchadaTests",
-            dependencies: [
-                "SwiftEchada",
-                "echada",
-                .product(name: "VoxFormat", package: "vox-format"),
-                .product(name: "SwiftVoxAlta", package: "SwiftVoxAlta"),
-            ],
-            swiftSettings: [
-                .enableUpcomingFeature("StrictConcurrency"),
-            ]
-        ),
-    ],
-    swiftLanguageModes: [.v6]
+  name: "SwiftEchada",
+  platforms: [
+    .iOS(.v26),
+    .macOS(.v26),
+  ],
+  products: [
+    .library(
+      name: "SwiftEchada",
+      targets: ["SwiftEchada"]
+    ),
+    .executable(
+      name: "echada",
+      targets: ["echada"]
+    ),
+  ],
+  dependencies: [
+    sibling(
+      "SwiftProyecto", remote: "https://github.com/intrusive-memory/SwiftProyecto.git",
+      from: "3.5.0"),
+    sibling(
+      "SwiftVoxAlta", remote: "https://github.com/intrusive-memory/SwiftVoxAlta.git", from: "0.10.1"
+    ),
+    sibling(
+      "SwiftAcervo", remote: "https://github.com/intrusive-memory/SwiftAcervo.git", from: "0.8.4"),
+    .package(url: "https://github.com/apple/swift-argument-parser", .upToNextMajor(from: "1.7.1")),
+    .package(url: "https://github.com/ml-explore/mlx-swift", .upToNextMajor(from: "0.31.3")),
+    .package(url: "https://github.com/ml-explore/mlx-swift-lm", .upToNextMajor(from: "3.31.3")),
+    sibling(
+      "mlx-audio-swift", remote: "https://github.com/intrusive-memory/mlx-audio-swift.git",
+      from: "0.6.0"),
+    sibling(
+      "vox-format", remote: "https://github.com/intrusive-memory/vox-format.git", from: "0.3.1"),
+  ],
+  targets: [
+    .target(
+      name: "SwiftEchada",
+      dependencies: [
+        .product(name: "SwiftProyecto", package: "SwiftProyecto")
+      ],
+      swiftSettings: [
+        .enableUpcomingFeature("StrictConcurrency")
+      ]
+    ),
+    .executableTarget(
+      name: "echada",
+      dependencies: [
+        "SwiftEchada",
+        .product(name: "SwiftVoxAlta", package: "SwiftVoxAlta"),
+        .product(name: "ArgumentParser", package: "swift-argument-parser"),
+        .product(name: "MLX", package: "mlx-swift"),
+        .product(name: "MLXAudioTTS", package: "mlx-audio-swift"),
+        .product(name: "MLXLMCommon", package: "mlx-swift-lm"),
+        .product(name: "VoxFormat", package: "vox-format"),
+      ],
+      swiftSettings: [
+        .enableUpcomingFeature("StrictConcurrency")
+      ]
+    ),
+    .testTarget(
+      name: "SwiftEchadaTests",
+      dependencies: [
+        "SwiftEchada",
+        "echada",
+        .product(name: "VoxFormat", package: "vox-format"),
+        .product(name: "SwiftVoxAlta", package: "SwiftVoxAlta"),
+      ],
+      swiftSettings: [
+        .enableUpcomingFeature("StrictConcurrency")
+      ]
+    ),
+  ],
+  swiftLanguageModes: [.v6]
 )
