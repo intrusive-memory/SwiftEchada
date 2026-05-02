@@ -53,4 +53,4 @@ See [Docs/build-and-test.md](Docs/build-and-test.md) for full CI/CD details.
 
 ---
 
-**Last Updated**: May 1, 2026 (v0.10.5)
+**Last Updated**: May 1, 2026 (v0.10.6)
