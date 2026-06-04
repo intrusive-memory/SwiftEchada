@@ -10,7 +10,7 @@ DERIVED_DATA = $(HOME)/Library/Developer/Xcode/DerivedData
 
 export GIT_LFS_SKIP_SMUDGE = 1
 
-.PHONY: all build release install clean test resolve help integration-test lint
+.PHONY: all build release install clean test resolve help integration-test lint codesign-cli
 
 all: install
 
@@ -104,6 +104,29 @@ integration-test: install
 	@rm -rf /tmp/echada-integration-test
 	@echo "=== Integration Test PASSED ==="
 
+# ── App Group code-signing ────────────────────────────────────────────────
+# Sign the echada CLI with the com.apple.security.application-groups entitlement
+# so the group ID is embedded in the binary and SwiftAcervo (reached at runtime
+# via SwiftVoxAlta / mlx-audio) resolves the shared models container
+# (~/Library/Group Containers/group.intrusive-memory.models/) WITHOUT requiring
+# ACERVO_APP_GROUP_ID in the environment. Container access is plain POSIX
+# (same-user, mode 700); the entitlement only supplies the group identifier at
+# runtime via SecTaskCopyValueForEntitlement.
+#
+# Default identity is ad-hoc (-). For a distributable build, override with a
+# Developer ID by certificate SHA-1 (names collide in the keychain):
+#   make install codesign-cli CODESIGN_IDENTITY=<sha1>
+APP_GROUP_ID ?= group.intrusive-memory.models
+CODESIGN_IDENTITY ?= -
+CODESIGN_FLAGS ?=
+CODESIGN_ENTITLEMENTS ?= cli.entitlements
+
+codesign-cli:
+	@test -f "$(BIN_DIR)/$(BINARY)" || { echo "Error: $(BIN_DIR)/$(BINARY) not found — run 'make install' or 'make release' first."; exit 1; }
+	@codesign --force --sign "$(CODESIGN_IDENTITY)" --entitlements "$(CODESIGN_ENTITLEMENTS)" $(CODESIGN_FLAGS) "$(BIN_DIR)/$(BINARY)"
+	@echo "Signed $(BIN_DIR)/$(BINARY) (identity: $(CODESIGN_IDENTITY), group: $(APP_GROUP_ID))"
+	@codesign -d --entitlements - "$(BIN_DIR)/$(BINARY)" 2>/dev/null | grep -A1 "application-groups" || true
+
 help:
 	@echo "SwiftEchada Makefile"
 	@echo ""
@@ -117,6 +140,7 @@ help:
 	@echo "  test             - Run unit tests with xcodebuild"
 	@echo "  integration-test - Voice creation pipeline integration test"
 	@echo "  lint             - Format Swift source files with swift-format"
+	@echo "  codesign-cli     - Sign the echada CLI with the App Group entitlement (run after install/release)"
 	@echo "  clean            - Clean build artifacts"
 	@echo "  help             - Show this help"
 	@echo ""

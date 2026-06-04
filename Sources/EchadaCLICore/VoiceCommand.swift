@@ -8,27 +8,29 @@ import SwiftVoxAlta
 
 import struct SwiftEchada.SampleSentenceGenerator
 
-struct VoiceCommand: AsyncParsableCommand {
-  static let configuration = CommandConfiguration(
+public struct VoiceCommand: AsyncParsableCommand {
+  public static let configuration = CommandConfiguration(
     commandName: "voice",
     abstract: "Generate a .vox voice file from a text prompt."
   )
 
   @Argument(
     help: "Voice description prompt (e.g., \"A warm female voice with a slight southern accent\").")
-  var prompt: String
+  public var prompt: String
 
   @Option(name: .long, help: "Output path for the .vox file.")
-  var output: String = "voice.vox"
+  public var output: String = "voice.vox"
 
   @Option(name: .long, help: "Character name for the .vox manifest.")
-  var name: String = "Voice"
+  public var name: String = "Voice"
 
   @Option(name: .long, help: "TTS model variant (0.6b, 1.7b).")
-  var ttsModel: String = Qwen3TTSModelRepo.base1_7B.slug
+  public var ttsModel: String = Qwen3TTSModelRepo.base1_7B.slug
 
   @Flag(name: .long, help: "Show verbose output.")
-  var verbose: Bool = false
+  public var verbose: Bool = false
+
+  public init() {}
 
   private func resolvedModelRepo() throws -> Qwen3TTSModelRepo {
     guard let repo = Qwen3TTSModelRepo(slug: ttsModel) else {
@@ -38,7 +40,7 @@ struct VoiceCommand: AsyncParsableCommand {
     return repo
   }
 
-  func run() async throws {
+  public func run() async throws {
     let modelRepo = try resolvedModelRepo()
     let modelManager = VoxAltaModelManager()
     let outputURL = URL(fileURLWithPath: output)

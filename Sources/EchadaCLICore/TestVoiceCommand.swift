@@ -8,18 +8,20 @@ import SwiftVoxAlta
 import struct SwiftEchada.CharacterProfile
 import struct SwiftEchada.SampleSentenceGenerator
 
-struct TestVoiceCommand: AsyncParsableCommand {
-  static let configuration = CommandConfiguration(
+public struct TestVoiceCommand: AsyncParsableCommand {
+  public static let configuration = CommandConfiguration(
     commandName: "test-voice",
     abstract: "Generate a test .vox file for integration testing.",
     shouldDisplay: false
   )
 
   @Option(name: .long, help: "Output path for the .vox file.")
-  var output: String
+  public var output: String
 
   @Option(name: .long, help: "TTS model size variant (0.6b or 1.7b).")
-  var ttsModel: String = Qwen3TTSModelRepo.base1_7B.slug
+  public var ttsModel: String = Qwen3TTSModelRepo.base1_7B.slug
+
+  public init() {}
 
   /// Resolves the `--tts-model` string to a `Qwen3TTSModelRepo`.
   private func resolvedModelRepo() throws -> Qwen3TTSModelRepo {
@@ -30,7 +32,7 @@ struct TestVoiceCommand: AsyncParsableCommand {
     return repo
   }
 
-  func run() async throws {
+  public func run() async throws {
     let modelRepo = try resolvedModelRepo()
 
     let profile = CharacterProfile(
