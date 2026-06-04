@@ -2,35 +2,37 @@ import ArgumentParser
 import Foundation
 import SwiftProyecto
 
-struct CastCommand: AsyncParsableCommand {
-  static let configuration = CommandConfiguration(
+public struct CastCommand: AsyncParsableCommand {
+  public static let configuration = CommandConfiguration(
     commandName: "cast",
     abstract: "Generate on-device voices for cast members from their voice prompts in PROJECT.md."
   )
 
   @Option(name: .long, help: "Path to PROJECT.md file.")
-  var project: String = "PROJECT.md"
+  public var project: String = "PROJECT.md"
 
   @Flag(name: .long, help: "Regenerate voices even if .vox files already exist.")
-  var forceRegenerate: Bool = false
+  public var forceRegenerate: Bool = false
 
   @Flag(name: .long, help: "Preview without writing any files.")
-  var dryRun: Bool = false
+  public var dryRun: Bool = false
 
   @Flag(name: .long, help: "Show verbose output.")
-  var verbose: Bool = false
+  public var verbose: Bool = false
 
   @Option(
     name: .long,
     help:
       "TTS model variant for voice generation (0.6b, 1.7b). Defaults to tts.model from PROJECT.md, then 1.7b."
   )
-  var ttsModel: String?
+  public var ttsModel: String?
 
   @Option(name: .long, help: "Generate voice for a single character (by name).")
-  var character: String?
+  public var character: String?
 
-  func run() async throws {
+  public init() {}
+
+  public func run() async throws {
     let fileURL = URL(fileURLWithPath: project)
     guard FileManager.default.fileExists(atPath: fileURL.path) else {
       throw ValidationError("Project file not found: \(project)")
