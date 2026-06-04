@@ -37,7 +37,7 @@ Add to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/intrusive-memory/SwiftEchada.git", from: "0.10.6-dev"),
+    .package(url: "https://github.com/intrusive-memory/SwiftEchada.git", from: "0.11.0"),
 ]
 ```
 
