@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @preconcurrency import VoxFormat
 
-@testable import echada
+@testable import EchadaCLICore
 
 // MARK: - Helpers
 
