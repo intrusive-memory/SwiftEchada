@@ -30,7 +30,30 @@ public struct CastCommand: AsyncParsableCommand {
   @Option(name: .long, help: "Generate voice for a single character (by name).")
   public var character: String?
 
+  @Option(
+    name: .long,
+    help:
+      "BCP-47 language code(s) for the reference sample (default: en). Repeat to cast multiple languages into one .vox (e.g. --language es --language en)."
+  )
+  public var language: [String] = []
+
   public init() {}
+
+  /// Normalizes the `--language` flag: empty → `["en"]`, lowercased, de-duplicated
+  /// preserving order. Validates each code is non-empty.
+  func resolvedLanguages() throws -> [String] {
+    guard !language.isEmpty else { return ["en"] }
+    var seen: Set<String> = []
+    var result: [String] = []
+    for raw in language {
+      let code = raw.trimmingCharacters(in: .whitespaces).lowercased()
+      guard !code.isEmpty else {
+        throw ValidationError("--language values must be non-empty BCP-47 codes.")
+      }
+      if seen.insert(code).inserted { result.append(code) }
+    }
+    return result
+  }
 
   public func run() async throws {
     let fileURL = URL(fileURLWithPath: project)
@@ -52,6 +75,8 @@ public struct CastCommand: AsyncParsableCommand {
           + "Supported values: \(CastVoiceGenerator.supportedVariants.sorted().joined(separator: ", "))"
       )
     }
+
+    let languages = try resolvedLanguages()
 
     guard let cast = frontMatter.cast, !cast.isEmpty else {
       throw ValidationError("No cast members found in \(project).")
@@ -78,6 +103,7 @@ public struct CastCommand: AsyncParsableCommand {
     )
     print(
       "Cast members: \(targetCast.count)\(character != nil ? " (filtered: \(character!))" : "")")
+    print("Languages: \(languages.joined(separator: ", "))")
     if forceRegenerate { print("Force regenerate: yes") }
     print("")
     fflush(stdout)
@@ -101,7 +127,8 @@ public struct CastCommand: AsyncParsableCommand {
       projectDirectory: projectDir,
       forceRegenerate: forceRegenerate,
       verbose: verbose,
-      ttsModelVariant: effectiveTTSModel
+      ttsModelVariant: effectiveTTSModel,
+      languages: languages
     )
 
     let genResult = try await generator.generate(cast: targetCast)

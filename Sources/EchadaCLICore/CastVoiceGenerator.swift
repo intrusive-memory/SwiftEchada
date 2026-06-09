@@ -8,6 +8,17 @@ import SwiftVoxAlta
 
 import struct SwiftEchada.SampleSentenceGenerator
 
+/// Maps a casting `--language` value to the `.vox` storage language tag.
+///
+/// English (`"en"`) is the language-less DEFAULT path, so it maps to `nil` —
+/// preserving byte-for-byte equivalence with pre-language output. Any other
+/// language is stored at its `<lang>`-segmented path. The generation/extraction
+/// language strings (passed to `generate`/`createLock`) are kept verbatim; only
+/// the storage tag collapses `"en"` to the default path.
+func voxLanguageTag(for language: String) -> String? {
+  language.lowercased() == "en" ? nil : language
+}
+
 /// Errors thrown by CastVoiceGenerator.
 enum CastVoiceGeneratorError: LocalizedError {
   case unsupportedTTSModel(String, supported: [String])
@@ -96,6 +107,7 @@ struct CastVoiceGenerator {
     let voicePrompt: String
     let candidateWAV: Data
     let sampleSentence: String
+    let language: String
     let voxPath: String
     let voxURL: URL
   }
@@ -104,15 +116,22 @@ struct CastVoiceGenerator {
   private let forceRegenerate: Bool
   private let verbose: Bool
   private let ttsModelVariant: String
+  /// BCP-47 language codes to cast into each `.vox` (default `["en"]`). Each
+  /// language gets its own same-language reference sentence, candidate audio,
+  /// clone prompt, and sample audio. `"en"` is stored at the language-less
+  /// default path; others at their `<lang>`-segmented paths.
+  private let languages: [String]
 
   init(
     projectDirectory: URL, forceRegenerate: Bool = false, verbose: Bool = false,
-    ttsModelVariant: String = Qwen3TTSModelRepo.base1_7B.slug
+    ttsModelVariant: String = Qwen3TTSModelRepo.base1_7B.slug,
+    languages: [String] = ["en"]
   ) {
     self.projectDirectory = projectDirectory
     self.forceRegenerate = forceRegenerate
     self.verbose = verbose
     self.ttsModelVariant = ttsModelVariant
+    self.languages = languages.isEmpty ? ["en"] : languages
   }
 
   /// The default model size slug.
@@ -209,7 +228,7 @@ struct CastVoiceGenerator {
 
     // --- Phase A: Generate all candidate WAVs (VoiceDesign model loaded once) ---
     print(
-      "Phase A: Generating candidate audio (\(membersToGenerate.count) characters, VoiceDesign 1.7B)..."
+      "Phase A: Generating candidate audio (\(membersToGenerate.count) characters × \(languages.count) language(s), VoiceDesign 1.7B)..."
     )
     fflush(stdout)
 
@@ -223,36 +242,43 @@ struct CastVoiceGenerator {
         print("[verbose] Prompt: \(voicePrompt)")
       }
 
-      do {
-        let sampleSentence = SampleSentenceGenerator.defaultSentence(for: item.member.character)
-        if verbose {
-          print("[verbose] Sample sentence: \(sampleSentence)")
-        }
+      // One candidate per (member, language). Each language uses a same-language
+      // reference sentence so the clone prompt is extracted from matching audio.
+      for language in languages {
+        do {
+          let sampleSentence = SampleSentenceGenerator.defaultSentence(
+            for: item.member.character, language: language)
+          if verbose {
+            print("[verbose] Language: \(language) — sample sentence: \(sampleSentence)")
+          }
 
-        let candidateWAV = try await Self.generateCandidateWithPrompt(
-          voicePrompt: voicePrompt,
-          modelManager: modelManager,
-          sampleSentence: sampleSentence
-        )
-
-        if verbose {
-          print("[verbose] Generated candidate WAV (\(candidateWAV.count) bytes)")
-        }
-
-        candidates.append(
-          CandidateResult(
-            index: item.index,
-            member: item.member,
+          let candidateWAV = try await Self.generateCandidateWithPrompt(
             voicePrompt: voicePrompt,
-            candidateWAV: candidateWAV,
+            modelManager: modelManager,
             sampleSentence: sampleSentence,
-            voxPath: item.voxPath,
-            voxURL: item.voxURL
-          ))
+            language: language
+          )
 
-      } catch {
-        print("  Error generating voice for \(item.member.character): \(error)")
-        skippedCount += 1
+          if verbose {
+            print("[verbose] Generated candidate WAV (\(candidateWAV.count) bytes)")
+          }
+
+          candidates.append(
+            CandidateResult(
+              index: item.index,
+              member: item.member,
+              voicePrompt: voicePrompt,
+              candidateWAV: candidateWAV,
+              sampleSentence: sampleSentence,
+              language: language,
+              voxPath: item.voxPath,
+              voxURL: item.voxURL
+            ))
+
+        } catch {
+          print("  Error generating voice for \(item.member.character) [\(language)]: \(error)")
+          skippedCount += 1
+        }
       }
     }
 
@@ -265,9 +291,16 @@ struct CastVoiceGenerator {
       "Phase B: Creating voice locks (\(candidates.count) characters, Base \(ttsModelVariant))...")
     fflush(stdout)
 
+    // Tracks `.vox` paths written during THIS run so that subsequent languages
+    // (and, under --force-regenerate, the 2nd+ language for a member) append to
+    // the freshly-written bundle instead of clobbering the prior language.
+    var writtenThisRun: Set<String> = []
+
     for candidate in candidates {
+      let languageTag = voxLanguageTag(for: candidate.language)
       if verbose {
-        print("[verbose] --- Locking voice: \(candidate.member.character) ---")
+        print(
+          "[verbose] --- Locking voice: \(candidate.member.character) [\(candidate.language)] ---")
       }
 
       do {
@@ -277,21 +310,26 @@ struct CastVoiceGenerator {
           designInstruction: candidate.voicePrompt,
           modelManager: modelManager,
           sampleSentence: candidate.sampleSentence,
-          modelRepo: modelRepo
+          modelRepo: modelRepo,
+          language: candidate.language
         )
 
         if verbose {
           print(
-            "[verbose] Created voice lock for \(candidate.member.character) (model: \(ttsModelVariant))"
+            "[verbose] Created voice lock for \(candidate.member.character) (model: \(ttsModelVariant), language: \(candidate.language))"
           )
         }
 
         let vox: VoxFile
-        if !forceRegenerate, FileManager.default.fileExists(atPath: candidate.voxURL.path) {
+        let fileExists = FileManager.default.fileExists(atPath: candidate.voxURL.path)
+        let appendToExisting =
+          writtenThisRun.contains(candidate.voxPath) || (!forceRegenerate && fileExists)
+        if appendToExisting {
           vox = try VoxFile(contentsOf: candidate.voxURL)
           if verbose {
             print(
-              "[verbose] Opened existing \(candidate.voxPath) to add \(ttsModelVariant) embedding")
+              "[verbose] Opened existing \(candidate.voxPath) to add \(ttsModelVariant) embedding [\(candidate.language)]"
+            )
           }
         } else {
           vox = VoxFile(name: candidate.member.character, description: candidate.voicePrompt)
@@ -304,12 +342,14 @@ struct CastVoiceGenerator {
         }
 
         try VoxExporter.addClonePrompt(
-          to: vox, data: voiceLock.clonePromptData, modelRepo: modelRepo)
-        try VoxExporter.addSampleAudio(to: vox, data: candidate.candidateWAV, modelRepo: modelRepo)
+          to: vox, data: voiceLock.clonePromptData, modelRepo: modelRepo, language: languageTag)
+        try VoxExporter.addSampleAudio(
+          to: vox, data: candidate.candidateWAV, modelRepo: modelRepo, language: languageTag)
         try vox.write(to: candidate.voxURL)
+        writtenThisRun.insert(candidate.voxPath)
 
         if verbose {
-          print("[verbose] Exported \(candidate.voxPath)")
+          print("[verbose] Exported \(candidate.voxPath) [\(candidate.language)]")
         }
 
         updatedCast[candidate.index].voices = {
@@ -320,7 +360,9 @@ struct CastVoiceGenerator {
         generatedCount += 1
 
       } catch {
-        print("  Error locking voice for \(candidate.member.character): \(error)")
+        print(
+          "  Error locking voice for \(candidate.member.character) [\(candidate.language)]: \(error)"
+        )
         skippedCount += 1
       }
     }
@@ -336,7 +378,8 @@ struct CastVoiceGenerator {
   private static func generateCandidateWithPrompt(
     voicePrompt: String,
     modelManager: VoxAltaModelManager,
-    sampleSentence: String
+    sampleSentence: String,
+    language: String = "en"
   ) async throws -> Data {
     let model = try await modelManager.loadModel(.voiceDesign1_7B)
 
@@ -347,7 +390,7 @@ struct CastVoiceGenerator {
     let audioArray = try await qwenModel.generate(
       text: sampleSentence,
       voice: voicePrompt,
-      language: "en",
+      language: language,
       generationParameters: GenerateParameters()
     )
 

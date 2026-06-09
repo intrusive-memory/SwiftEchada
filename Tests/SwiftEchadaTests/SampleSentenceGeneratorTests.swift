@@ -48,4 +48,47 @@ struct SampleSentenceGeneratorTests {
       #expect(SampleSentenceGenerator.quotes.contains(quote))
     }
   }
+
+  // MARK: - Language-aware quotes
+
+  @Test func randomQuoteSpanishReturnsSpanish() {
+    for _ in 0..<10 {
+      let quote = SampleSentenceGenerator.randomQuote(language: "es")
+      #expect(SampleSentenceGenerator.quotesES.contains(quote))
+    }
+  }
+
+  @Test func randomQuoteEnglishMatchesDefaultPool() {
+    for _ in 0..<10 {
+      let quote = SampleSentenceGenerator.randomQuote(language: "en")
+      #expect(SampleSentenceGenerator.quotes.contains(quote))
+    }
+  }
+
+  @Test func unknownLanguageFallsBackToEnglish() {
+    for _ in 0..<10 {
+      let quote = SampleSentenceGenerator.randomQuote(language: "xx")
+      #expect(SampleSentenceGenerator.quotes.contains(quote))
+    }
+  }
+
+  @Test func regionSubtagResolvesToBaseLanguage() {
+    for _ in 0..<10 {
+      let quote = SampleSentenceGenerator.randomQuote(language: "es-MX")
+      #expect(SampleSentenceGenerator.quotesES.contains(quote))
+    }
+  }
+
+  @Test func defaultSentenceWithLanguageSpanish() {
+    let sentence = SampleSentenceGenerator.defaultSentence(for: "VILLANO", language: "es")
+    #expect(SampleSentenceGenerator.quotesES.contains(sentence))
+  }
+
+  @Test func zeroArgOverloadsUnchanged() {
+    // Source-compat: the no-language overloads still draw from the English pool.
+    #expect(SampleSentenceGenerator.quotes.contains(SampleSentenceGenerator.randomQuote()))
+    #expect(
+      SampleSentenceGenerator.quotes.contains(
+        SampleSentenceGenerator.defaultSentence(for: "X")))
+  }
 }

@@ -27,6 +27,11 @@ public struct VoiceCommand: AsyncParsableCommand {
   @Option(name: .long, help: "TTS model variant (0.6b, 1.7b).")
   public var ttsModel: String = Qwen3TTSModelRepo.base1_7B.slug
 
+  @Option(
+    name: .long,
+    help: "BCP-47 language code for the reference sample (default: en).")
+  public var language: String = "en"
+
   @Flag(name: .long, help: "Show verbose output.")
   public var verbose: Bool = false
 
@@ -42,13 +47,19 @@ public struct VoiceCommand: AsyncParsableCommand {
 
   public func run() async throws {
     let modelRepo = try resolvedModelRepo()
+    let normalizedLanguage = language.trimmingCharacters(in: .whitespaces).lowercased()
+    guard !normalizedLanguage.isEmpty else {
+      throw ValidationError("--language must be a non-empty BCP-47 code.")
+    }
+    let languageTag = voxLanguageTag(for: normalizedLanguage)
     let modelManager = VoxAltaModelManager()
     let outputURL = URL(fileURLWithPath: output)
-    let sampleSentence = SampleSentenceGenerator.randomQuote()
+    let sampleSentence = SampleSentenceGenerator.randomQuote(language: normalizedLanguage)
 
     print("Generating voice from prompt...")
     if verbose {
       print("[verbose] Prompt: \(prompt)")
+      print("[verbose] Language: \(normalizedLanguage)")
       print("[verbose] Sample sentence: \(sampleSentence)")
     }
     fflush(stdout)
@@ -62,7 +73,7 @@ public struct VoiceCommand: AsyncParsableCommand {
     let audioArray = try await qwenModel.generate(
       text: sampleSentence,
       voice: prompt,
-      language: "en",
+      language: normalizedLanguage,
       generationParameters: GenerateParameters()
     )
 
@@ -87,7 +98,8 @@ public struct VoiceCommand: AsyncParsableCommand {
       designInstruction: prompt,
       modelManager: modelManager,
       sampleSentence: sampleSentence,
-      modelRepo: modelRepo
+      modelRepo: modelRepo,
+      language: normalizedLanguage
     )
 
     let vox: VoxFile
@@ -106,8 +118,10 @@ public struct VoiceCommand: AsyncParsableCommand {
       )
     }
 
-    try VoxExporter.addClonePrompt(to: vox, data: voiceLock.clonePromptData, modelRepo: modelRepo)
-    try VoxExporter.addSampleAudio(to: vox, data: candidateWAV, modelRepo: modelRepo)
+    try VoxExporter.addClonePrompt(
+      to: vox, data: voiceLock.clonePromptData, modelRepo: modelRepo, language: languageTag)
+    try VoxExporter.addSampleAudio(
+      to: vox, data: candidateWAV, modelRepo: modelRepo, language: languageTag)
     try vox.write(to: outputURL)
 
     print("Wrote \(outputURL.path)")

@@ -68,7 +68,7 @@ let package = Package(
     sibling(
       "SwiftVoxAlta",
       remote: "https://github.com/intrusive-memory/SwiftVoxAlta.git",
-      from: "0.11.2"),
+      from: "0.13.0"),
     .package(url: "https://github.com/apple/swift-argument-parser", .upToNextMajor(from: "1.7.1")),
     .package(url: "https://github.com/ml-explore/mlx-swift", .upToNextMajor(from: "0.31.3")),
     .package(url: "https://github.com/ml-explore/mlx-swift-lm", .upToNextMajor(from: "3.31.3")),
@@ -79,7 +79,7 @@ let package = Package(
     sibling(
       "vox-format",
       remote: "https://github.com/intrusive-memory/vox-format.git",
-      from: "0.3.1"),
+      from: "0.4.0"),
   ],
   targets: [
     .target(
