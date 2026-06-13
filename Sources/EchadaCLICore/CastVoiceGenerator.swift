@@ -219,10 +219,12 @@ struct CastVoiceGenerator {
     var membersToGenerate: [(index: Int, member: CastMember, voxPath: String, voxURL: URL)] = []
 
     for (index, member) in cast.enumerated() {
-      // Skip members with no voice prompt
-      guard let voiceDescription = member.voiceDescription, !voiceDescription.isEmpty else {
+      // Skip members with no castable language — use castableLanguages() so that a member
+      // with only localized voices (e.g. voices["es"]) but no voiceDescription is NOT skipped.
+      let castable = castableLanguages(for: member, requestedLanguages: languages)
+      guard !castable.isEmpty else {
         if verbose {
-          print("[verbose] Skipping \(member.character) — no voice prompt")
+          print("[verbose] Skipping \(member.character) — no voice prompt for any requested language")
         }
         skippedCount += 1
         continue
@@ -287,21 +289,32 @@ struct CastVoiceGenerator {
     var candidates: [CandidateResult] = []
 
     for item in membersToGenerate {
-      let selectedPrompt = item.member.voiceDescription!
-      let voicePrompt = composeVoicePrompt(base: selectedPrompt, accent: accent)
-
       if verbose {
         print("[verbose] --- Generating voice: \(item.member.character) ---")
-        print("[verbose] Prompt: \(voicePrompt)")
       }
 
       // One candidate per (member, language). Each language uses a same-language
       // reference sentence so the clone prompt is extracted from matching audio.
+      // Prompt selection is per-language: use the localized voice prompt when available,
+      // falling back to the base voiceDescription.
       for language in languages {
+        // Select the prompt for this specific language, then compose --accent onto it.
+        // member.voice(for:) returns nil when no localized entry exists for this language,
+        // so we fall back to voiceDescription. If neither exists (castableLanguages already
+        // filtered this member in), skip this language gracefully.
+        guard let selectedPrompt = item.member.voice(for: language) ?? item.member.voiceDescription else {
+          if verbose {
+            print("[verbose] Skipping \(item.member.character) [\(language)] — no prompt available for this language")
+          }
+          continue
+        }
+        let voicePrompt = composeVoicePrompt(base: selectedPrompt, accent: accent)
+
         do {
           let sampleSentence = SampleSentenceGenerator.defaultSentence(
             for: item.member.character, language: language)
           if verbose {
+            print("[verbose] Language: \(language) — prompt: \(voicePrompt)")
             print("[verbose] Language: \(language) — sample sentence: \(sampleSentence)")
           }
 
