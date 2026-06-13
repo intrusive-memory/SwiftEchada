@@ -1,3 +1,7 @@
+---
+state: completed
+---
+
 # EVAL MATRIX — OPERATION ACCENT TOWER
 
 **Status: ✓ SIGNED OFF — human listening verdict recorded 2026-06-12 (Tom Stovall): "yes, this sounds good." Both Piece 1 and Piece 2 PASS.**

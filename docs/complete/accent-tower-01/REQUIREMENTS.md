@@ -1,3 +1,8 @@
+---
+state: completed
+mission: accent-tower-01
+---
+
 # REQUIREMENTS — Accent control for cast voice generation
 
 **Repo:** SwiftEchada · **Status:** Draft · **Target:** v0.12.0 (additive, from v0.11.0)

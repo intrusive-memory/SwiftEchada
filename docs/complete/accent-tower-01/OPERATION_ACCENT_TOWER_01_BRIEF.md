@@ -1,5 +1,5 @@
 ---
-state: complete
+state: completed
 ---
 
 # Iteration 01 Brief — OPERATION ACCENT TOWER

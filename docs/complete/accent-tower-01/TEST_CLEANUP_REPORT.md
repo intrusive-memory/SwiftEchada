@@ -1,3 +1,7 @@
+---
+state: completed
+---
+
 # TEST_CLEANUP_REPORT — OPERATION ACCENT TOWER
 
 **Mission branch:** `mission/accent-tower/01` · **Starting commit:** `bd95a2d` · **Date:** 2026-06-12

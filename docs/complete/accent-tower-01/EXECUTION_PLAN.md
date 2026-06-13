@@ -3,6 +3,7 @@ feature_name: OPERATION ACCENT TOWER
 starting_point_commit: bd95a2dccae0a3c9abf2f6ad871c4c915e811235
 mission_branch: mission/accent-tower/01
 iteration: 1
+state: completed
 ---
 
 # EXECUTION_PLAN.md — SwiftEchada: Accent control for cast voice generation
