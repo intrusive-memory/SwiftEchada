@@ -246,7 +246,8 @@ struct CastVoiceGenerator {
       let castable = castableLanguages(for: member, requestedLanguages: languages)
       guard !castable.isEmpty else {
         if verbose {
-          print("[verbose] Skipping \(member.character) — no voice prompt for any requested language")
+          print(
+            "[verbose] Skipping \(member.character) — no voice prompt for any requested language")
         }
         skippedCount += 1
         continue
@@ -326,9 +327,14 @@ struct CastVoiceGenerator {
         // no localized prompt exists at all — at which point we fall back to
         // voiceDescription. If neither exists (castableLanguages already filtered this
         // member in), skip this language gracefully.
-        guard let selectedPrompt = localizedVoicePrompt(for: item.member, language: language) ?? item.member.voiceDescription else {
+        guard
+          let selectedPrompt = localizedVoicePrompt(for: item.member, language: language)
+            ?? item.member.voiceDescription
+        else {
           if verbose {
-            print("[verbose] Skipping \(item.member.character) [\(language)] — no prompt available for this language")
+            print(
+              "[verbose] Skipping \(item.member.character) [\(language)] — no prompt available for this language"
+            )
           }
           continue
         }
