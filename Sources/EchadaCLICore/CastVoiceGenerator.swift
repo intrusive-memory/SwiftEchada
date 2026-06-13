@@ -69,6 +69,31 @@ enum VoxGenerationDecision: Equatable {
   case skipExistingUnreadable
 }
 
+/// Pure decision function: which of the requested languages is this cast member
+/// castable for?
+///
+/// A member is castable for language `L` if either:
+///   - `member.voice(for: L)` returns a non-nil value (a localized voice prompt
+///     is stored under that language key), OR
+///   - `member.voiceDescription` is non-empty (a base prompt exists that can be
+///     used as a fallback for any language).
+///
+/// This function is side-effect-free and requires no model — safe to call from
+/// unit tests without constructing a `CastVoiceGenerator`.
+///
+/// - Parameters:
+///   - member: The cast member to evaluate.
+///   - requestedLanguages: The set of BCP-47 language codes the caller wants to
+///     cast into (e.g. `["en", "es"]`).
+/// - Returns: The subset of `requestedLanguages` that the member can be cast
+///   for. An empty array means the member should be skipped entirely.
+func castableLanguages(for member: CastMember, requestedLanguages: [String]) -> [String] {
+  let hasBasePrompt = member.voiceDescription.map { !$0.isEmpty } ?? false
+  return requestedLanguages.filter { language in
+    member.voice(for: language) != nil || hasBasePrompt
+  }
+}
+
 /// Pure decision function: should we skip this character because the existing
 /// `.vox` already has what we need?
 ///
