@@ -10,3 +10,10 @@ Package.resolved
 bin/*
 default.profraw
 .eval-accent-tower/
+
+# graphify codemap: commit the portable graph artifacts, ignore machine-specific
+# markers (absolute paths) and the regenerable semantic cache.
+graphify-out/.graphify_python
+graphify-out/.graphify_root
+graphify-out/.graphify_detect.json
+graphify-out/cache/
