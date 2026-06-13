@@ -8,6 +8,36 @@ import SwiftVoxAlta
 
 import struct SwiftEchada.SampleSentenceGenerator
 
+/// Maps a casting `--language` value to the `.vox` storage language tag.
+///
+/// English (`"en"`) is the language-less DEFAULT path, so it maps to `nil` —
+/// preserving byte-for-byte equivalence with pre-language output. Any other
+/// language is stored at its `<lang>`-segmented path. The generation/extraction
+/// language strings (passed to `generate`/`createLock`) are kept verbatim; only
+/// the storage tag collapses `"en"` to the default path.
+func voxLanguageTag(for language: String) -> String? {
+  language.lowercased() == "en" ? nil : language
+}
+
+/// Composes an optional accent/delivery directive onto a voice prompt string.
+///
+/// When `accent` is `nil` or empty (after trimming whitespace), the `base`
+/// prompt is returned verbatim — preserving byte-for-byte equivalence with the
+/// no-accent path. When a non-empty accent is supplied it is appended to `base`
+/// with a clear delimiter so VoiceDesign can pick up both the character voice
+/// and the delivery style.
+///
+/// - Parameters:
+///   - base: The character's voice prompt string.
+///   - accent: An optional accent/delivery directive (e.g. `"slow southern drawl"`).
+/// - Returns: The composed prompt, or `base` unchanged when accent is absent.
+func composeVoicePrompt(base: String, accent: String?) -> String {
+  guard let trimmed = accent?.trimmingCharacters(in: .whitespaces), !trimmed.isEmpty else {
+    return base
+  }
+  return "\(base) — accent/delivery: \(trimmed)"
+}
+
 /// Errors thrown by CastVoiceGenerator.
 enum CastVoiceGeneratorError: LocalizedError {
   case unsupportedTTSModel(String, supported: [String])
@@ -37,6 +67,53 @@ enum VoxGenerationDecision: Equatable {
   /// The existing `.vox` is corrupt / unreadable. Don't silently overwrite —
   /// surface the error and increment skippedCount.
   case skipExistingUnreadable
+}
+
+/// Resolves the localized voice prompt for a BCP-47 `language` tag, trying the
+/// exact tag first and then its base subtag.
+///
+/// `CastMember.voice(for:)` is an exact (lowercased) dictionary lookup, so a
+/// regional request like `"es-MX"` misses a prompt stored under the documented
+/// base key `voices["es"]`. This helper mirrors the sample-sentence path, which
+/// already treats regional tags (`es-MX`) by their base language (`es`) via the
+/// same `split(separator: "-").first` derivation.
+///
+/// - Returns: The localized prompt stored under the exact tag, else under its
+///   base subtag, else `nil` when neither key exists. (Does not fall through to
+///   `voiceDescription` — callers layer that fallback themselves.)
+func localizedVoicePrompt(for member: CastMember, language: String) -> String? {
+  if let exact = member.voice(for: language) {
+    return exact
+  }
+  let base = language.split(separator: "-").first.map(String.init) ?? language
+  // When `base == language` the exact lookup above already covered it.
+  return base == language ? nil : member.voice(for: base)
+}
+
+/// Pure decision function: which of the requested languages is this cast member
+/// castable for?
+///
+/// A member is castable for language `L` if either:
+///   - `localizedVoicePrompt(for:language:)` returns a non-nil value (a localized
+///     voice prompt is stored under `L` or its base subtag — so `es-MX` matches a
+///     documented `voices["es"]` entry), OR
+///   - `member.voiceDescription` is non-empty (a base prompt exists that can be
+///     used as a fallback for any language).
+///
+/// This function is side-effect-free and requires no model — safe to call from
+/// unit tests without constructing a `CastVoiceGenerator`.
+///
+/// - Parameters:
+///   - member: The cast member to evaluate.
+///   - requestedLanguages: The set of BCP-47 language codes the caller wants to
+///     cast into (e.g. `["en", "es"]`).
+/// - Returns: The subset of `requestedLanguages` that the member can be cast
+///   for. An empty array means the member should be skipped entirely.
+func castableLanguages(for member: CastMember, requestedLanguages: [String]) -> [String] {
+  let hasBasePrompt = member.voiceDescription.map { !$0.isEmpty } ?? false
+  return requestedLanguages.filter { language in
+    localizedVoicePrompt(for: member, language: language) != nil || hasBasePrompt
+  }
 }
 
 /// Pure decision function: should we skip this character because the existing
@@ -96,6 +173,7 @@ struct CastVoiceGenerator {
     let voicePrompt: String
     let candidateWAV: Data
     let sampleSentence: String
+    let language: String
     let voxPath: String
     let voxURL: URL
   }
@@ -104,15 +182,30 @@ struct CastVoiceGenerator {
   private let forceRegenerate: Bool
   private let verbose: Bool
   private let ttsModelVariant: String
+  /// BCP-47 language codes to cast into each `.vox` (default `["en"]`). Each
+  /// language gets its own same-language reference sentence, candidate audio,
+  /// clone prompt, and sample audio. `"en"` is stored at the language-less
+  /// default path; others at their `<lang>`-segmented paths.
+  private let languages: [String]
+
+  /// Optional accent/delivery directive applied to every character's voice prompt
+  /// before the VoiceDesign call. `nil` means no accent — the default path is
+  /// byte-for-byte unchanged. Flows ONLY through the `voice` argument to
+  /// `qwenModel.generate`; never passed as `instruct:`.
+  private let accent: String?
 
   init(
     projectDirectory: URL, forceRegenerate: Bool = false, verbose: Bool = false,
-    ttsModelVariant: String = Qwen3TTSModelRepo.base1_7B.slug
+    ttsModelVariant: String = Qwen3TTSModelRepo.base1_7B.slug,
+    languages: [String] = ["en"],
+    accent: String? = nil
   ) {
     self.projectDirectory = projectDirectory
     self.forceRegenerate = forceRegenerate
     self.verbose = verbose
     self.ttsModelVariant = ttsModelVariant
+    self.languages = languages.isEmpty ? ["en"] : languages
+    self.accent = accent
   }
 
   /// The default model size slug.
@@ -148,10 +241,13 @@ struct CastVoiceGenerator {
     var membersToGenerate: [(index: Int, member: CastMember, voxPath: String, voxURL: URL)] = []
 
     for (index, member) in cast.enumerated() {
-      // Skip members with no voice prompt
-      guard let voiceDescription = member.voiceDescription, !voiceDescription.isEmpty else {
+      // Skip members with no castable language — use castableLanguages() so that a member
+      // with only localized voices (e.g. voices["es"]) but no voiceDescription is NOT skipped.
+      let castable = castableLanguages(for: member, requestedLanguages: languages)
+      guard !castable.isEmpty else {
         if verbose {
-          print("[verbose] Skipping \(member.character) — no voice prompt")
+          print(
+            "[verbose] Skipping \(member.character) — no voice prompt for any requested language")
         }
         skippedCount += 1
         continue
@@ -209,50 +305,76 @@ struct CastVoiceGenerator {
 
     // --- Phase A: Generate all candidate WAVs (VoiceDesign model loaded once) ---
     print(
-      "Phase A: Generating candidate audio (\(membersToGenerate.count) characters, VoiceDesign 1.7B)..."
+      "Phase A: Generating candidate audio (\(membersToGenerate.count) characters × \(languages.count) language(s), VoiceDesign 1.7B)..."
     )
     fflush(stdout)
 
     var candidates: [CandidateResult] = []
 
     for item in membersToGenerate {
-      let voicePrompt = item.member.voiceDescription!
-
       if verbose {
         print("[verbose] --- Generating voice: \(item.member.character) ---")
-        print("[verbose] Prompt: \(voicePrompt)")
       }
 
-      do {
-        let sampleSentence = SampleSentenceGenerator.defaultSentence(for: item.member.character)
-        if verbose {
-          print("[verbose] Sample sentence: \(sampleSentence)")
+      // One candidate per (member, language). Each language uses a same-language
+      // reference sentence so the clone prompt is extracted from matching audio.
+      // Prompt selection is per-language: use the localized voice prompt when available,
+      // falling back to the base voiceDescription.
+      for language in languages {
+        // Select the prompt for this specific language, then compose --accent onto it.
+        // localizedVoicePrompt(for:language:) tries the exact tag then its base subtag
+        // (so es-MX picks up a documented voices["es"] entry), and returns nil only when
+        // no localized prompt exists at all — at which point we fall back to
+        // voiceDescription. If neither exists (castableLanguages already filtered this
+        // member in), skip this language gracefully.
+        guard
+          let selectedPrompt = localizedVoicePrompt(for: item.member, language: language)
+            ?? item.member.voiceDescription
+        else {
+          if verbose {
+            print(
+              "[verbose] Skipping \(item.member.character) [\(language)] — no prompt available for this language"
+            )
+          }
+          continue
         }
+        let voicePrompt = composeVoicePrompt(base: selectedPrompt, accent: accent)
 
-        let candidateWAV = try await Self.generateCandidateWithPrompt(
-          voicePrompt: voicePrompt,
-          modelManager: modelManager,
-          sampleSentence: sampleSentence
-        )
+        do {
+          let sampleSentence = SampleSentenceGenerator.defaultSentence(
+            for: item.member.character, language: language)
+          if verbose {
+            print("[verbose] Language: \(language) — prompt: \(voicePrompt)")
+            print("[verbose] Language: \(language) — sample sentence: \(sampleSentence)")
+          }
 
-        if verbose {
-          print("[verbose] Generated candidate WAV (\(candidateWAV.count) bytes)")
-        }
-
-        candidates.append(
-          CandidateResult(
-            index: item.index,
-            member: item.member,
+          let candidateWAV = try await Self.generateCandidateWithPrompt(
             voicePrompt: voicePrompt,
-            candidateWAV: candidateWAV,
+            modelManager: modelManager,
             sampleSentence: sampleSentence,
-            voxPath: item.voxPath,
-            voxURL: item.voxURL
-          ))
+            language: language
+          )
 
-      } catch {
-        print("  Error generating voice for \(item.member.character): \(error)")
-        skippedCount += 1
+          if verbose {
+            print("[verbose] Generated candidate WAV (\(candidateWAV.count) bytes)")
+          }
+
+          candidates.append(
+            CandidateResult(
+              index: item.index,
+              member: item.member,
+              voicePrompt: voicePrompt,
+              candidateWAV: candidateWAV,
+              sampleSentence: sampleSentence,
+              language: language,
+              voxPath: item.voxPath,
+              voxURL: item.voxURL
+            ))
+
+        } catch {
+          print("  Error generating voice for \(item.member.character) [\(language)]: \(error)")
+          skippedCount += 1
+        }
       }
     }
 
@@ -265,9 +387,16 @@ struct CastVoiceGenerator {
       "Phase B: Creating voice locks (\(candidates.count) characters, Base \(ttsModelVariant))...")
     fflush(stdout)
 
+    // Tracks `.vox` paths written during THIS run so that subsequent languages
+    // (and, under --force-regenerate, the 2nd+ language for a member) append to
+    // the freshly-written bundle instead of clobbering the prior language.
+    var writtenThisRun: Set<String> = []
+
     for candidate in candidates {
+      let languageTag = voxLanguageTag(for: candidate.language)
       if verbose {
-        print("[verbose] --- Locking voice: \(candidate.member.character) ---")
+        print(
+          "[verbose] --- Locking voice: \(candidate.member.character) [\(candidate.language)] ---")
       }
 
       do {
@@ -277,21 +406,26 @@ struct CastVoiceGenerator {
           designInstruction: candidate.voicePrompt,
           modelManager: modelManager,
           sampleSentence: candidate.sampleSentence,
-          modelRepo: modelRepo
+          modelRepo: modelRepo,
+          language: candidate.language
         )
 
         if verbose {
           print(
-            "[verbose] Created voice lock for \(candidate.member.character) (model: \(ttsModelVariant))"
+            "[verbose] Created voice lock for \(candidate.member.character) (model: \(ttsModelVariant), language: \(candidate.language))"
           )
         }
 
         let vox: VoxFile
-        if !forceRegenerate, FileManager.default.fileExists(atPath: candidate.voxURL.path) {
+        let fileExists = FileManager.default.fileExists(atPath: candidate.voxURL.path)
+        let appendToExisting =
+          writtenThisRun.contains(candidate.voxPath) || (!forceRegenerate && fileExists)
+        if appendToExisting {
           vox = try VoxFile(contentsOf: candidate.voxURL)
           if verbose {
             print(
-              "[verbose] Opened existing \(candidate.voxPath) to add \(ttsModelVariant) embedding")
+              "[verbose] Opened existing \(candidate.voxPath) to add \(ttsModelVariant) embedding [\(candidate.language)]"
+            )
           }
         } else {
           vox = VoxFile(name: candidate.member.character, description: candidate.voicePrompt)
@@ -304,12 +438,14 @@ struct CastVoiceGenerator {
         }
 
         try VoxExporter.addClonePrompt(
-          to: vox, data: voiceLock.clonePromptData, modelRepo: modelRepo)
-        try VoxExporter.addSampleAudio(to: vox, data: candidate.candidateWAV, modelRepo: modelRepo)
+          to: vox, data: voiceLock.clonePromptData, modelRepo: modelRepo, language: languageTag)
+        try VoxExporter.addSampleAudio(
+          to: vox, data: candidate.candidateWAV, modelRepo: modelRepo, language: languageTag)
         try vox.write(to: candidate.voxURL)
+        writtenThisRun.insert(candidate.voxPath)
 
         if verbose {
-          print("[verbose] Exported \(candidate.voxPath)")
+          print("[verbose] Exported \(candidate.voxPath) [\(candidate.language)]")
         }
 
         updatedCast[candidate.index].voices = {
@@ -320,7 +456,9 @@ struct CastVoiceGenerator {
         generatedCount += 1
 
       } catch {
-        print("  Error locking voice for \(candidate.member.character): \(error)")
+        print(
+          "  Error locking voice for \(candidate.member.character) [\(candidate.language)]: \(error)"
+        )
         skippedCount += 1
       }
     }
@@ -336,7 +474,8 @@ struct CastVoiceGenerator {
   private static func generateCandidateWithPrompt(
     voicePrompt: String,
     modelManager: VoxAltaModelManager,
-    sampleSentence: String
+    sampleSentence: String,
+    language: String = "en"
   ) async throws -> Data {
     let model = try await modelManager.loadModel(.voiceDesign1_7B)
 
@@ -347,7 +486,7 @@ struct CastVoiceGenerator {
     let audioArray = try await qwenModel.generate(
       text: sampleSentence,
       voice: voicePrompt,
-      language: "en",
+      language: language,
       generationParameters: GenerateParameters()
     )
 

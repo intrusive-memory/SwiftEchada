@@ -37,7 +37,7 @@ Add to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/intrusive-memory/SwiftEchada.git", from: "0.11.0"),
+    .package(url: "https://github.com/intrusive-memory/SwiftEchada.git", from: "0.12.0"),
 ]
 ```
 
@@ -52,14 +52,14 @@ The `echada` CLI has three commands:
 Generate on-device custom voices for cast members using Qwen3-TTS. Reads voice description prompts from PROJECT.md and generates `.vox` voice files.
 
 ```bash
-echada cast --project PROJECT.md [--tts-model <0.6b|1.7b>] [--character <name>] [--force-regenerate] [--dry-run] [--verbose]
+echada cast --project PROJECT.md [--tts-model <0.6b|1.7b>] [--character <name>] [--language <bcp-47>]... [--accent <directive>] [--force-regenerate] [--dry-run] [--verbose]
 ```
 
 Uses a two-phase pipeline:
 1. **Phase A** — VoiceDesign 1.7B model generates candidate WAVs from voice prompts
 2. **Phase B** — Base model creates voice locks (speaker embeddings) and exports `.vox` bundles
 
-Use `--tts-model` to select the TTS model variant (default: `1.7b`). Use `--character` to regenerate a single character's voice without affecting others.
+Use `--tts-model` to select the TTS model variant (default: `1.7b`). Use `--character` to regenerate a single character's voice without affecting others. Pass `--language` one or more BCP-47 codes (default `en`) to cast multiple languages into a single `.vox` — the per-language voice prompt drives the accent for each (e.g. `--language es --language en`). Use `--accent` to apply a delivery directive (e.g. `"slow southern drawl"`) to every character's voice prompt; omit for neutral delivery.
 
 ### Generate a Voice
 

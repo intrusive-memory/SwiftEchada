@@ -51,11 +51,13 @@ enum VoiceDesigner {
   ///   - modelManager: The VoxAlta model manager.
   ///   - sampleSentence: The text to speak in the generated audio.
   ///     Defaults to a simple greeting.
+  ///   - language: BCP-47 language code for generation (default `"en"`).
   /// - Returns: WAV format Data (24kHz, 16-bit PCM, mono).
   static func generateCandidate(
     profile: CharacterProfile,
     modelManager: VoxAltaModelManager,
-    sampleSentence: String? = nil
+    sampleSentence: String? = nil,
+    language: String = "en"
   ) async throws -> Data {
     let model = try await modelManager.loadModel(.voiceDesign1_7B)
 
@@ -66,12 +68,12 @@ enum VoiceDesigner {
     let voiceDescription = composeVoiceDescription(from: profile)
     let text =
       sampleSentence
-      ?? SampleSentenceGenerator.defaultSentence(for: profile.name)
+      ?? SampleSentenceGenerator.defaultSentence(for: profile.name, language: language)
 
     let audioArray = try await qwenModel.generate(
       text: text,
       voice: voiceDescription,
-      language: "en",
+      language: language,
       generationParameters: GenerateParameters(
         maxTokens: 16384,
         temperature: 0.6,
@@ -99,14 +101,16 @@ enum VoiceDesigner {
     profile: CharacterProfile,
     count: Int = 3,
     modelManager: VoxAltaModelManager,
-    sampleSentence: String? = nil
+    sampleSentence: String? = nil,
+    language: String = "en"
   ) async throws -> [Data] {
     var candidates: [Data] = []
     for _ in 0..<count {
       let candidate = try await generateCandidate(
         profile: profile,
         modelManager: modelManager,
-        sampleSentence: sampleSentence
+        sampleSentence: sampleSentence,
+        language: language
       )
       candidates.append(candidate)
     }

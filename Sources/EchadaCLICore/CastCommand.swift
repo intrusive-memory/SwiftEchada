@@ -30,7 +30,44 @@ public struct CastCommand: AsyncParsableCommand {
   @Option(name: .long, help: "Generate voice for a single character (by name).")
   public var character: String?
 
+  @Option(
+    name: .long,
+    help:
+      "BCP-47 language code(s) for the reference sample (default: en). Repeat to cast multiple languages into one .vox (e.g. --language es --language en)."
+  )
+  public var language: [String] = []
+
+  @Option(
+    name: .long,
+    help:
+      "Accent or delivery directive applied to every character's voice prompt (e.g. \"slow southern drawl\"). Optional — omit for neutral delivery."
+  )
+  public var accent: String?
+
   public init() {}
+
+  /// Normalizes the `--accent` flag: `nil` or whitespace-only → `nil`; otherwise trimmed.
+  func resolvedAccent() -> String? {
+    guard let raw = accent else { return nil }
+    let trimmed = raw.trimmingCharacters(in: .whitespaces)
+    return trimmed.isEmpty ? nil : trimmed
+  }
+
+  /// Normalizes the `--language` flag: empty → `["en"]`, lowercased, de-duplicated
+  /// preserving order. Validates each code is non-empty.
+  func resolvedLanguages() throws -> [String] {
+    guard !language.isEmpty else { return ["en"] }
+    var seen: Set<String> = []
+    var result: [String] = []
+    for raw in language {
+      let code = raw.trimmingCharacters(in: .whitespaces).lowercased()
+      guard !code.isEmpty else {
+        throw ValidationError("--language values must be non-empty BCP-47 codes.")
+      }
+      if seen.insert(code).inserted { result.append(code) }
+    }
+    return result
+  }
 
   public func run() async throws {
     let fileURL = URL(fileURLWithPath: project)
@@ -52,6 +89,8 @@ public struct CastCommand: AsyncParsableCommand {
           + "Supported values: \(CastVoiceGenerator.supportedVariants.sorted().joined(separator: ", "))"
       )
     }
+
+    let languages = try resolvedLanguages()
 
     guard let cast = frontMatter.cast, !cast.isEmpty else {
       throw ValidationError("No cast members found in \(project).")
@@ -78,6 +117,9 @@ public struct CastCommand: AsyncParsableCommand {
     )
     print(
       "Cast members: \(targetCast.count)\(character != nil ? " (filtered: \(character!))" : "")")
+    let resolvedAccentValue = resolvedAccent()
+    let accentSuffix = resolvedAccentValue.map { "  (accent: \($0))" } ?? ""
+    print("Languages: \(languages.joined(separator: ", "))\(accentSuffix)")
     if forceRegenerate { print("Force regenerate: yes") }
     print("")
     fflush(stdout)
@@ -87,6 +129,9 @@ public struct CastCommand: AsyncParsableCommand {
       for member in targetCast {
         let desc = member.voiceDescription ?? "(empty — will skip)"
         print("  \(member.character): \(desc)")
+      }
+      if let accentValue = resolvedAccentValue {
+        print("Accent: \(accentValue)")
       }
       print("\n(dry run — no voice generation or file writes)")
       return
@@ -101,7 +146,9 @@ public struct CastCommand: AsyncParsableCommand {
       projectDirectory: projectDir,
       forceRegenerate: forceRegenerate,
       verbose: verbose,
-      ttsModelVariant: effectiveTTSModel
+      ttsModelVariant: effectiveTTSModel,
+      languages: languages,
+      accent: resolvedAccentValue
     )
 
     let genResult = try await generator.generate(cast: targetCast)

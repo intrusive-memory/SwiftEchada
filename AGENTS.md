@@ -2,7 +2,7 @@
 
 Universal project documentation for AI agents. Agent-specific files: [CLAUDE.md](CLAUDE.md), [GEMINI.md](GEMINI.md).
 
-**Version**: 0.11.0 | **Swift**: 6.2 | **Platforms**: macOS 26+, iOS 26+
+**Version**: 0.12.0 | **Swift**: 6.2 | **Platforms**: macOS 26+, iOS 26+
 
 ---
 
@@ -48,6 +48,24 @@ Voice generation uses a **two-phase pipeline** to avoid GPU OOM:
 
 Full architecture: [Docs/architecture.md](Docs/architecture.md)
 | .vox pipeline detail: [Docs/vox-pipeline.md](Docs/vox-pipeline.md)
+
+## Queryable Codemap
+
+A prebuilt [graphify](https://pypi.org/project/graphifyy/) knowledge graph of this
+codebase lives in [`graphify-out/`](graphify-out/) — 322 nodes · 524 edges across 14
+communities, mapping how the library, CLI, tests, and fixtures connect. **Prefer
+querying it before grepping** when answering architecture or "what connects to what"
+questions:
+
+```bash
+graphify query "How does cast voice generation flow from CLI to .vox?"
+graphify path "CastCommand" "VoxFile"      # shortest path between two nodes
+graphify explain "decideVoxGeneration"     # plain-language node explanation
+```
+
+- Human-readable summary (god nodes, communities, surprising edges): [`graphify-out/GRAPH_REPORT.md`](graphify-out/GRAPH_REPORT.md)
+- Interactive visualization: `graphify-out/graph.html` · GraphRAG JSON: `graphify-out/graph.json`
+- Rebuild after significant changes: `graphify . --update`
 
 ## Deep Dives
 
