@@ -19,6 +19,25 @@ func voxLanguageTag(for language: String) -> String? {
   language.lowercased() == "en" ? nil : language
 }
 
+/// Composes an optional accent/delivery directive onto a voice prompt string.
+///
+/// When `accent` is `nil` or empty (after trimming whitespace), the `base`
+/// prompt is returned verbatim — preserving byte-for-byte equivalence with the
+/// no-accent path. When a non-empty accent is supplied it is appended to `base`
+/// with a clear delimiter so VoiceDesign can pick up both the character voice
+/// and the delivery style.
+///
+/// - Parameters:
+///   - base: The character's voice prompt string.
+///   - accent: An optional accent/delivery directive (e.g. `"slow southern drawl"`).
+/// - Returns: The composed prompt, or `base` unchanged when accent is absent.
+func composeVoicePrompt(base: String, accent: String?) -> String {
+  guard let trimmed = accent?.trimmingCharacters(in: .whitespaces), !trimmed.isEmpty else {
+    return base
+  }
+  return "\(base) — accent/delivery: \(trimmed)"
+}
+
 /// Errors thrown by CastVoiceGenerator.
 enum CastVoiceGeneratorError: LocalizedError {
   case unsupportedTTSModel(String, supported: [String])
@@ -122,16 +141,24 @@ struct CastVoiceGenerator {
   /// default path; others at their `<lang>`-segmented paths.
   private let languages: [String]
 
+  /// Optional accent/delivery directive applied to every character's voice prompt
+  /// before the VoiceDesign call. `nil` means no accent — the default path is
+  /// byte-for-byte unchanged. Flows ONLY through the `voice` argument to
+  /// `qwenModel.generate`; never passed as `instruct:`.
+  private let accent: String?
+
   init(
     projectDirectory: URL, forceRegenerate: Bool = false, verbose: Bool = false,
     ttsModelVariant: String = Qwen3TTSModelRepo.base1_7B.slug,
-    languages: [String] = ["en"]
+    languages: [String] = ["en"],
+    accent: String? = nil
   ) {
     self.projectDirectory = projectDirectory
     self.forceRegenerate = forceRegenerate
     self.verbose = verbose
     self.ttsModelVariant = ttsModelVariant
     self.languages = languages.isEmpty ? ["en"] : languages
+    self.accent = accent
   }
 
   /// The default model size slug.
@@ -235,7 +262,8 @@ struct CastVoiceGenerator {
     var candidates: [CandidateResult] = []
 
     for item in membersToGenerate {
-      let voicePrompt = item.member.voiceDescription!
+      let selectedPrompt = item.member.voiceDescription!
+      let voicePrompt = composeVoicePrompt(base: selectedPrompt, accent: accent)
 
       if verbose {
         print("[verbose] --- Generating voice: \(item.member.character) ---")
