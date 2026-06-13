@@ -211,4 +211,70 @@ struct PerLanguagePromptTests {
     let composed = composeVoicePrompt(base: selected!, accent: nil)
     #expect(composed == localizedEs)
   }
+
+  // MARK: - Regional BCP-47 tags resolve to the base-subtag prompt
+
+  @Test func regionalTagResolvesLocalizedPromptStoredUnderBaseKey() {
+    // PROJECT.md documents the base key voices["es"]; a regional request "es-MX"
+    // must resolve that prompt via base-subtag fallback, not miss it.
+    let localizedEs = "narrador cálido con tono profundo"
+    let member = CastMember(
+      character: "NARRATOR",
+      voiceDescription: nil,
+      voices: ["es": localizedEs]
+    )
+    #expect(localizedVoicePrompt(for: member, language: "es-MX") == localizedEs)
+  }
+
+  @Test func regionalTagExactMatchPreferredOverBaseSubtag() {
+    // A region-specific entry wins over the base when both exist.
+    let localizedEs = "narrador peninsular"
+    let localizedEsMX = "narrador mexicano"
+    let member = CastMember(
+      character: "NARRATOR",
+      voiceDescription: nil,
+      voices: ["es": localizedEs, "es-mx": localizedEsMX]
+    )
+    #expect(localizedVoicePrompt(for: member, language: "es-MX") == localizedEsMX)
+  }
+
+  @Test func localizedOnlyMemberIsCastableForRegionalTagViaBaseSubtag() {
+    // Localized-only member (no voiceDescription) with voices["es"] must NOT skip
+    // when "es-MX" is requested — the prior exact-only lookup dropped it entirely.
+    let member = CastMember(
+      character: "NARRATOR",
+      voiceDescription: nil,
+      voices: ["es": "narrador cálido"]
+    )
+    let result = castableLanguages(for: member, requestedLanguages: ["es-MX"])
+    #expect(result == ["es-MX"])
+  }
+
+  @Test func regionalTagPrefersBaseSubtagPromptOverGenericDescription() {
+    // With BOTH a base voiceDescription and a localized voices["es"], a regional
+    // "es-MX" request must select the localized prompt, not silently fall back to
+    // the generic base description.
+    let localizedEs = "narrador cálido con tono profundo"
+    let base = "Deep, warm baritone with measured pacing"
+    let member = CastMember(
+      character: "NARRATOR",
+      voiceDescription: base,
+      voices: ["es": localizedEs]
+    )
+    let selected = localizedVoicePrompt(for: member, language: "es-MX") ?? member.voiceDescription
+    #expect(selected == localizedEs)
+  }
+
+  @Test func regionalTagWithNoBaseSubtagPromptFallsBackToDescription() {
+    // No localized entry under "fr" or "fr-CA" — regional request falls back to base.
+    let base = "Calm, authoritative narrator"
+    let member = CastMember(
+      character: "NARRATOR",
+      voiceDescription: base,
+      voices: ["es": "narrador cálido"]
+    )
+    #expect(localizedVoicePrompt(for: member, language: "fr-CA") == nil)
+    let selected = localizedVoicePrompt(for: member, language: "fr-CA") ?? member.voiceDescription
+    #expect(selected == base)
+  }
 }

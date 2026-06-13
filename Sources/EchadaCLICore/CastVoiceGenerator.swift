@@ -69,12 +69,34 @@ enum VoxGenerationDecision: Equatable {
   case skipExistingUnreadable
 }
 
+/// Resolves the localized voice prompt for a BCP-47 `language` tag, trying the
+/// exact tag first and then its base subtag.
+///
+/// `CastMember.voice(for:)` is an exact (lowercased) dictionary lookup, so a
+/// regional request like `"es-MX"` misses a prompt stored under the documented
+/// base key `voices["es"]`. This helper mirrors the sample-sentence path, which
+/// already treats regional tags (`es-MX`) by their base language (`es`) via the
+/// same `split(separator: "-").first` derivation.
+///
+/// - Returns: The localized prompt stored under the exact tag, else under its
+///   base subtag, else `nil` when neither key exists. (Does not fall through to
+///   `voiceDescription` — callers layer that fallback themselves.)
+func localizedVoicePrompt(for member: CastMember, language: String) -> String? {
+  if let exact = member.voice(for: language) {
+    return exact
+  }
+  let base = language.split(separator: "-").first.map(String.init) ?? language
+  // When `base == language` the exact lookup above already covered it.
+  return base == language ? nil : member.voice(for: base)
+}
+
 /// Pure decision function: which of the requested languages is this cast member
 /// castable for?
 ///
 /// A member is castable for language `L` if either:
-///   - `member.voice(for: L)` returns a non-nil value (a localized voice prompt
-///     is stored under that language key), OR
+///   - `localizedVoicePrompt(for:language:)` returns a non-nil value (a localized
+///     voice prompt is stored under `L` or its base subtag — so `es-MX` matches a
+///     documented `voices["es"]` entry), OR
 ///   - `member.voiceDescription` is non-empty (a base prompt exists that can be
 ///     used as a fallback for any language).
 ///
@@ -90,7 +112,7 @@ enum VoxGenerationDecision: Equatable {
 func castableLanguages(for member: CastMember, requestedLanguages: [String]) -> [String] {
   let hasBasePrompt = member.voiceDescription.map { !$0.isEmpty } ?? false
   return requestedLanguages.filter { language in
-    member.voice(for: language) != nil || hasBasePrompt
+    localizedVoicePrompt(for: member, language: language) != nil || hasBasePrompt
   }
 }
 
@@ -299,10 +321,12 @@ struct CastVoiceGenerator {
       // falling back to the base voiceDescription.
       for language in languages {
         // Select the prompt for this specific language, then compose --accent onto it.
-        // member.voice(for:) returns nil when no localized entry exists for this language,
-        // so we fall back to voiceDescription. If neither exists (castableLanguages already
-        // filtered this member in), skip this language gracefully.
-        guard let selectedPrompt = item.member.voice(for: language) ?? item.member.voiceDescription else {
+        // localizedVoicePrompt(for:language:) tries the exact tag then its base subtag
+        // (so es-MX picks up a documented voices["es"] entry), and returns nil only when
+        // no localized prompt exists at all — at which point we fall back to
+        // voiceDescription. If neither exists (castableLanguages already filtered this
+        // member in), skip this language gracefully.
+        guard let selectedPrompt = localizedVoicePrompt(for: item.member, language: language) ?? item.member.voiceDescription else {
           if verbose {
             print("[verbose] Skipping \(item.member.character) [\(language)] — no prompt available for this language")
           }
