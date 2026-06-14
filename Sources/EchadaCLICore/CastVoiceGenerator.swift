@@ -341,8 +341,13 @@ struct CastVoiceGenerator {
         let voicePrompt = composeVoicePrompt(base: selectedPrompt, accent: accent)
 
         do {
-          let sampleSentence = SampleSentenceGenerator.defaultSentence(
-            for: item.member.character, language: language)
+          // Prefer an in-language sentence from the on-device Foundation Model;
+          // fall back to the bundled curated pools when it's unavailable or
+          // doesn't support this locale.
+          let sampleSentence =
+            await FoundationModelSentence.auditionSentence(language: language)
+            ?? SampleSentenceGenerator.defaultSentence(
+              for: item.member.character, language: language)
           if verbose {
             print("[verbose] Language: \(language) — prompt: \(voicePrompt)")
             print("[verbose] Language: \(language) — sample sentence: \(sampleSentence)")
