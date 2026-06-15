@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-06-15
+
+### Added
+- `--verbose` language audit at the voice-designer generation boundary. When
+  `--verbose` is passed to `cast`/`voice`, each TTS generation site emits one
+  `[lang]` stderr line confirming the resolved `TTSLanguage` case and exact
+  `modelName` handed to `Qwen3TTSModel.generate(language:)`, and validates it
+  against the loaded model's real `codec_language_id` keys (via
+  `recognizesLanguage`) — surfacing values that would silently produce
+  un-conditioned audio. Ships in the signed release CLI (no longer `#if DEBUG`).
+
+### Changed
+- Bumped the mlx-audio-swift dependency floor `0.8.6` → `0.8.7` for the
+  language-key accessors the audit relies on.
+
 ## [0.14.0] - 2026-06-15
 
 ### Changed
