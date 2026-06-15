@@ -55,26 +55,22 @@ struct PerLanguagePromptTests {
 
   // MARK: - Criterion 7: base voiceDescription only — falls back for all languages
 
-  @Test func memberWithBaseDescriptionOnlyIsCastableForAllRequestedLanguages() {
-    // Member has voiceDescription but no localized voices — castable for both es and en
+  @Test(
+    "A base voiceDescription makes a member castable for every requested language",
+    arguments: [
+      ["es", "en"],
+      ["es", "en", "fr"],
+    ])
+  func memberWithBaseDescriptionIsCastableForAllRequestedLanguages(_ requested: [String]) {
+    // No localized voices — the base prompt is the universal fallback, so the
+    // member is castable for whatever languages are requested.
     let member = CastMember(
       character: "NARRATOR",
       voiceDescription: "Deep, warm baritone with measured pacing",
       voices: [:]
     )
-    let result = castableLanguages(for: member, requestedLanguages: ["es", "en"])
-    #expect(Set(result) == Set(["es", "en"]))
-  }
-
-  @Test func memberWithBaseDescriptionIsCastableForAllLanguages() {
-    // Base prompt is the fallback — should cover any requested language
-    let member = CastMember(
-      character: "NARRATOR",
-      voiceDescription: "Cheerful storyteller",
-      voices: [:]
-    )
-    let result = castableLanguages(for: member, requestedLanguages: ["es", "en", "fr"])
-    #expect(Set(result) == Set(["es", "en", "fr"]))
+    let result = castableLanguages(for: member, requestedLanguages: requested)
+    #expect(Set(result) == Set(requested))
   }
 
   // MARK: - Mixed: localized + base

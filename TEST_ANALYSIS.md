@@ -11,7 +11,7 @@
 
 | Pass | Findings | Highest priority item |
 |------|----------|------------------------|
-| 1. High-repetition tests | 1 (+1 note) | Two near-duplicate base-description castability tests in `PerLanguagePromptTests` |
+| 1. High-repetition tests | 0 (resolved) (+1 note) | ✅ Merged the two near-duplicate base-description castability tests in `PerLanguagePromptTests` |
 | 2. Superfluous tests | 1 | `versionIsSet()` asserts only non-emptiness of a string literal |
 | 3. Coverage gaps | 4 files | Model-dependent CLI paths (`VoiceCommand`, `CastVoiceGenerator.generate`) run in neither unit nor CI lanes |
 | 4. Flaky-in-CI predictions | 0 (1 note) | None — temp dirs and cleanup are correct; FM tests depend on the on-device model |
@@ -22,8 +22,7 @@ The suite is healthy: the pure library (`SwiftEchada`) is at 100% line coverage,
 ## Pass 1 — High-repetition tests
 
 ### Copy-paste patterns
-- `Tests/SwiftEchadaTests/PerLanguagePromptTests.swift:58-78` — `memberWithBaseDescriptionOnlyIsCastableForAllRequestedLanguages` and `memberWithBaseDescriptionIsCastableForAllLanguages` assert the same property (a base `voiceDescription` makes a member castable for every requested language), differing only in the language array (`["es","en"]` vs `["es","en","fr"]`). One parameterized test, or just one of the two, covers it.
-  - **Action**: merge (keep one, or table-drive the requested-language list)
+- ✅ **DONE** — `Tests/SwiftEchadaTests/PerLanguagePromptTests.swift` — the two near-duplicate base-description castability tests were merged into one parameterized `@Test(arguments: [["es","en"], ["es","en","fr"]]) memberWithBaseDescriptionIsCastableForAllRequestedLanguages(_:)`. Both language-list cases still run; the duplicated body is gone.
 
 > note (cross-file overlap, introduced this cycle): `NonEnglishPassthroughTests` parameterizes castability/prompt-selection over es/pt/it/de and partially overlaps the logical cases in `PerLanguagePromptTests` (e.g. `localizedVoiceCastableForItsLanguage` ↔ `memberWithLocalizedVoiceOnlyIsCastableForThatLanguage`; `baseDescriptionCastableForAllNonEnglish` ↔ the two tests above). The overlap is defensible — `PerLanguagePromptTests` covers logical edge cases (regional subtags, accent composition, empty input) while `NonEnglishPassthroughTests` pins the four target-language matrix — but if duplication grows, consolidate the plain castability assertions into the parameterized file and let `PerLanguagePromptTests` own the edge cases. Low priority; no action required now.
 
@@ -87,7 +86,7 @@ No findings. No `measure {}` blocks, `.timeLimit` benchmarks, `*Perf*`/`*Benchma
 - (optional, low priority) `Tests/SwiftEchadaTests/SwiftEchadaTests.swift:5` — `versionIsSet()` non-empty-on-a-literal check.
 
 ### Refactor / merge
-- `Tests/SwiftEchadaTests/PerLanguagePromptTests.swift:58-78` — merge the two base-description castability tests into one (parameterize the requested-language list).
+- ✅ **DONE** — merged the two base-description castability tests in `PerLanguagePromptTests.swift` into one parameterized test.
 - (watch, no action yet) Cross-file castability overlap between `NonEnglishPassthroughTests` and `PerLanguagePromptTests`.
 
 ### Gate / move out of CI
