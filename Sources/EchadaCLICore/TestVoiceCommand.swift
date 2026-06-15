@@ -6,6 +6,7 @@ import SwiftVoxAlta
 @preconcurrency import VoxFormat
 
 import struct SwiftEchada.CharacterProfile
+import enum SwiftEchada.SwiftEchada
 
 public struct TestVoiceCommand: AsyncParsableCommand {
   public static let configuration = CommandConfiguration(
@@ -86,7 +87,7 @@ public struct TestVoiceCommand: AsyncParsableCommand {
         method: "synthesized",
         engine: "qwen3-tts",
         license: "CC0-1.0",
-        notes: "Test voice generated via echada test-voice command."
+        notes: "Test voice generated via echada test-voice command (echada \(SwiftEchada.version))."
       )
     }
     try VoxExporter.addClonePrompt(to: vox, data: voiceLock.clonePromptData, modelRepo: modelRepo)

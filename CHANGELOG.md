@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.2] - 2026-06-14
+
+### Changed
+- `.vox` manifest provenance now records the generating echada utility version
+  (e.g. "echada 0.13.2") in its `notes` field, across the `cast`, `voice`, and
+  `test-voice` commands, for build traceability. The format-spec `voxVersion`
+  field is unchanged (still owned by vox-format).
+
 ## [0.10.3] - 2026-03-27
 
 ### Changed
