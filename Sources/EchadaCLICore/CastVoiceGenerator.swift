@@ -360,7 +360,7 @@ struct CastVoiceGenerator {
             voicePrompt: voicePrompt,
             modelManager: modelManager,
             sampleSentence: sampleSentence,
-            language: language
+            language: try TTSLanguage(languageCode: language)
           )
 
           if verbose {
@@ -415,7 +415,7 @@ struct CastVoiceGenerator {
           modelManager: modelManager,
           sampleSentence: candidate.sampleSentence,
           modelRepo: modelRepo,
-          language: candidate.language
+          language: try TTSLanguage(languageCode: candidate.language)
         )
 
         if verbose {
@@ -484,7 +484,7 @@ struct CastVoiceGenerator {
     voicePrompt: String,
     modelManager: VoxAltaModelManager,
     sampleSentence: String,
-    language: String = "en"
+    language: TTSLanguage = .english
   ) async throws -> Data {
     let model = try await modelManager.loadModel(.voiceDesign1_7B)
 
@@ -495,7 +495,7 @@ struct CastVoiceGenerator {
     let audioArray = try await qwenModel.generate(
       text: sampleSentence,
       voice: voicePrompt,
-      language: language,
+      language: language.modelName,
       generationParameters: GenerateParameters()
     )
 
