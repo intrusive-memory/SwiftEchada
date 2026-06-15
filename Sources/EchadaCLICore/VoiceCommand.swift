@@ -6,6 +6,8 @@ import Foundation
 import SwiftVoxAlta
 @preconcurrency import VoxFormat
 
+import enum SwiftEchada.SwiftEchada
+
 public struct VoiceCommand: AsyncParsableCommand {
   public static let configuration = CommandConfiguration(
     commandName: "voice",
@@ -116,7 +118,8 @@ public struct VoiceCommand: AsyncParsableCommand {
         method: "synthesized",
         engine: "qwen3-tts",
         license: "CC0-1.0",
-        notes: "Voice generated from text prompt via echada voice command."
+        notes:
+          "Voice generated from text prompt via echada voice command (echada \(SwiftEchada.version))."
       )
     }
 

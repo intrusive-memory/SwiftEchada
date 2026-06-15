@@ -89,14 +89,26 @@ enum FoundationModelSentence {
 
     // The leading locale phrase is the exact format Apple recommends to reduce
     // multilingual hallucinations; the explicit language clause pins the output.
+    //
+    // The phonetic-variety clause biases the model toward a Harvard/IEEE-style
+    // "phonetically balanced" sentence — one that exercises a broad spread of
+    // consonant and vowel sounds so the audition surfaces how the voice renders
+    // fricatives, plosives, nasals, and diphthongs. It is framed for the target
+    // language (not English-specific) and kept subordinate to "natural" on
+    // purpose: a small on-device model cannot verify true phonetic coverage, so
+    // this is a soft bias, and an unnatural tongue-twister would harm the clone
+    // (the audition audio doubles as the voice-lock reference) more than thin
+    // coverage would.
     let prompt = """
       The person's locale is \(locale.identifier). \
       You MUST respond only in \(englishName). \
       Write exactly one natural, vivid sentence of 15 to 25 words suitable for a \
-      text-to-speech voice audition. The sentence must be neutral, free of proper \
-      names, and free of quotation marks, ellipses, em dashes, and repeated \
-      punctuation. Output only the sentence itself — no preamble, no translation, \
-      and no commentary.
+      text-to-speech voice audition. While keeping the sentence natural, prefer \
+      word choices that exercise a wide variety of the consonant and vowel sounds \
+      of \(englishName), so the voice is auditioned across a broad range of speech \
+      sounds. The sentence must be neutral, free of proper names, and free of \
+      quotation marks, ellipses, em dashes, and repeated punctuation. Output only \
+      the sentence itself — no preamble, no translation, and no commentary.
       """
 
     let content: String

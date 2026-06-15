@@ -6,6 +6,8 @@ import SwiftProyecto
 import SwiftVoxAlta
 @preconcurrency import VoxFormat
 
+import enum SwiftEchada.SwiftEchada
+
 /// Maps a casting `--language` value to the `.vox` storage language tag.
 ///
 /// English (`"en"`) is the language-less DEFAULT path, so it maps to `nil` —
@@ -439,7 +441,8 @@ struct CastVoiceGenerator {
             method: "synthesized",
             engine: "qwen3-tts",
             license: "CC0-1.0",
-            notes: "Voice generated from text prompt via echada cast command."
+            notes:
+              "Voice generated from text prompt via echada cast command (echada \(SwiftEchada.version))."
           )
         }
 
