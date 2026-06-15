@@ -1,4 +1,4 @@
 /// SwiftEchada: AI-powered cast-to-voice matching for screenplay projects.
 public enum SwiftEchada {
-  public static let version = "0.12.0-dev"
+  public static let version = "0.13.0"
 }

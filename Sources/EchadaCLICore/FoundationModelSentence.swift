@@ -31,7 +31,8 @@ enum FoundationModelSentence {
     let baseCode =
       rawLanguage.split(separator: "-").first.map(String.init)?.lowercased()
       ?? rawLanguage.lowercased()
-    let englishName = Locale(identifier: "en_US").localizedString(forLanguageCode: baseCode)
+    let englishName =
+      Locale(identifier: "en_US").localizedString(forLanguageCode: baseCode)
       ?? baseCode
 
     // The leading locale phrase is the exact format Apple recommends to reduce
@@ -74,7 +75,8 @@ enum FoundationModelSentence {
 
     // Drop a single pair of wrapping quotes (straight or typographic).
     let quotePairs: [(Character, Character)] = [("\"", "\""), ("“", "”"), ("«", "»"), ("'", "'")]
-    for (open, close) in quotePairs where text.first == open && text.last == close && text.count > 1 {
+    for (open, close) in quotePairs where text.first == open && text.last == close && text.count > 1
+    {
       text = String(text.dropFirst().dropLast()).trimmingCharacters(in: .whitespaces)
       break
     }
