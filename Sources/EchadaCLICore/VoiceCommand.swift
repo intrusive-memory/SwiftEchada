@@ -6,8 +6,6 @@ import Foundation
 import SwiftVoxAlta
 @preconcurrency import VoxFormat
 
-import struct SwiftEchada.SampleSentenceGenerator
-
 public struct VoiceCommand: AsyncParsableCommand {
   public static let configuration = CommandConfiguration(
     commandName: "voice",
@@ -54,11 +52,11 @@ public struct VoiceCommand: AsyncParsableCommand {
     let languageTag = voxLanguageTag(for: normalizedLanguage)
     let modelManager = VoxAltaModelManager()
     let outputURL = URL(fileURLWithPath: output)
-    // Prefer an in-language sentence from the on-device Foundation Model; fall
-    // back to the bundled curated pools when it's unavailable or unsupported.
-    let sampleSentence =
-      await FoundationModelSentence.auditionSentence(language: normalizedLanguage)
-      ?? SampleSentenceGenerator.randomQuote(language: normalizedLanguage)
+    // The audition sentence is sourced exclusively from the on-device Foundation
+    // Model; an unavailable model or unsupported locale throws a clear
+    // configuration error rather than falling back to a canned sentence.
+    let sampleSentence = try await FoundationModelSentence.auditionSentence(
+      language: normalizedLanguage)
 
     print("Generating voice from prompt...")
     if verbose {

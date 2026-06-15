@@ -1,32 +1,84 @@
 import Foundation
 import FoundationModels
 
+/// Hard configuration failures surfaced when the on-device Foundation Model
+/// cannot produce a voice-audition sentence.
+///
+/// echada uses Apple's on-device Foundation Model as the *single* source of
+/// voice-audition reference sentences — there is no curated fallback pool — so an
+/// unavailable model or unsupported locale is a configuration error the user must
+/// fix, not something to silently work around.
+enum FoundationModelSentenceError: LocalizedError {
+  /// Apple Intelligence is not available on this device (disabled, unsupported
+  /// hardware, or the model is still downloading).
+  case appleIntelligenceUnavailable
+  /// Apple Intelligence is available but does not support the requested locale.
+  case unsupportedLanguage(String)
+  /// The model ran but produced no usable sentence.
+  case generationFailed(String)
+
+  var errorDescription: String? {
+    switch self {
+    case .appleIntelligenceUnavailable:
+      return """
+        Apple Intelligence is not available on this device. echada uses the \
+        on-device Foundation Model to generate voice-audition sentences, so you \
+        must have Apple Intelligence enabled to ride this ride. Enable it in \
+        System Settings ▸ Apple Intelligence & Siri on a supported Apple silicon Mac.
+        """
+    case .unsupportedLanguage(let language):
+      return """
+        Apple Intelligence does not support audition-sentence generation for \
+        language '\(language)' on this device. Choose a supported language, or \
+        enable that language in System Settings ▸ Apple Intelligence & Siri.
+        """
+    case .generationFailed(let language):
+      return
+        "Apple Intelligence returned no usable audition sentence for language '\(language)'."
+    }
+  }
+}
+
 /// Sources a short, in-language audition sentence from Apple's on-device
 /// Foundation Model (`SystemLanguageModel`).
 ///
 /// The on-device system model is multilingual and understands/produces text in
-/// every language Apple Intelligence supports (es, fr, it, pt, de, …). Using it
-/// for the voice-audition reference sentence means we get a genuinely
-/// in-language sample for any supported locale without maintaining a hand-curated
-/// quote pool per language.
+/// every language Apple Intelligence supports (es, fr, it, pt, de, …). echada
+/// relies on it as the single source of voice-audition reference sentences, so a
+/// genuinely in-language sample is produced for any supported locale with no
+/// hand-curated quote pools to maintain.
 ///
-/// This is strictly additive: every failure mode (Apple Intelligence off,
-/// unsupported locale, generation error, empty output) returns `nil` so callers
-/// fall back to the bundled ``SwiftEchada/SampleSentenceGenerator`` pools. The
-/// worst case therefore matches the pre-existing behavior exactly.
+/// Every failure mode (Apple Intelligence off, unsupported locale, generation
+/// error, empty output) throws a ``FoundationModelSentenceError`` so the caller
+/// can surface a clear configuration failure rather than falling back to a
+/// canned sentence.
 enum FoundationModelSentence {
 
-  /// Returns one in-language audition sentence, or `nil` when the on-device
-  /// model can't satisfy the request and the caller should fall back.
+  /// Fails fast with ``FoundationModelSentenceError/appleIntelligenceUnavailable``
+  /// when the on-device model is not usable. Call this before any expensive model
+  /// loading so the user sees the configuration error immediately.
+  static func requireAvailable() throws {
+    guard SystemLanguageModel.default.isAvailable else {
+      throw FoundationModelSentenceError.appleIntelligenceUnavailable
+    }
+  }
+
+  /// Returns one in-language audition sentence for `rawLanguage`.
   ///
   /// - Parameter rawLanguage: A BCP-47 code (e.g. `"es-MX"`, `"fr-FR"`, `"de"`).
-  static func auditionSentence(language rawLanguage: String) async -> String? {
+  /// - Throws: ``FoundationModelSentenceError`` when Apple Intelligence is
+  ///   unavailable, the locale is unsupported, or generation yields nothing.
+  static func auditionSentence(language rawLanguage: String) async throws -> String {
     let model = SystemLanguageModel.default
-    guard model.isAvailable else { return nil }
+    guard model.isAvailable else {
+      throw FoundationModelSentenceError.appleIntelligenceUnavailable
+    }
 
     let identifier = rawLanguage.replacingOccurrences(of: "-", with: "_")
     let locale = Locale(identifier: identifier)
-    guard model.supportsLocale(locale) else { return nil }
+    guard model.supportsLocale(locale) else {
+      throw FoundationModelSentenceError.unsupportedLanguage(rawLanguage)
+    }
 
     let baseCode =
       rawLanguage.split(separator: "-").first.map(String.init)?.lowercased()
@@ -47,12 +99,16 @@ enum FoundationModelSentence {
       and no commentary.
       """
 
+    let content: String
     do {
-      let response = try await LanguageModelSession().respond(to: prompt)
-      return sanitize(response.content)
+      content = try await LanguageModelSession().respond(to: prompt).content
     } catch {
-      return nil
+      throw FoundationModelSentenceError.generationFailed(rawLanguage)
     }
+    guard let sentence = sanitize(content) else {
+      throw FoundationModelSentenceError.generationFailed(rawLanguage)
+    }
+    return sentence
   }
 
   /// Normalizes model output into a single clean line safe for the TTS engine.

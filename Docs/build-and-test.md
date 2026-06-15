@@ -58,8 +58,9 @@ Swift Testing (`@Test` macro) -- not XCTest.
 | `CharacterProfileTests` | 6 | Profile struct, gender mapping, equality, JSON codability |
 | `CharacterInfoTests` | 9 | Extraction struct, optional fields, JSON round-trip |
 | `CharacterMergerTests` | 8 | Dedup, voice preservation, alphabetical sorting |
-| `SampleSentenceGeneratorTests` | 4 | Random quotes, async generation |
 | `VoicePromptRoundTripTests` | 3 | YAML parse/serialize, field preservation |
+| `NonEnglishPassthroughTests` | -- | Non-English `--language` passthrough (es/pt/it/de) |
+| `FoundationModelSentenceTests` | -- | On-device in-language audition sentences (es/pt/it/de) |
 
 ### Fixtures
 

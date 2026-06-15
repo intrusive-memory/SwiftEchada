@@ -6,7 +6,6 @@ import SwiftVoxAlta
 @preconcurrency import VoxFormat
 
 import struct SwiftEchada.CharacterProfile
-import struct SwiftEchada.SampleSentenceGenerator
 
 public struct TestVoiceCommand: AsyncParsableCommand {
   public static let configuration = CommandConfiguration(
@@ -45,7 +44,8 @@ public struct TestVoiceCommand: AsyncParsableCommand {
     )
 
     let modelManager = VoxAltaModelManager()
-    let sampleSentence = SampleSentenceGenerator.randomQuote()
+    // Audition sentences come exclusively from the on-device Foundation Model.
+    let sampleSentence = try await FoundationModelSentence.auditionSentence(language: "en")
 
     // Generate candidate WAV
     print("Generating candidate voice (\(ttsModel))...")

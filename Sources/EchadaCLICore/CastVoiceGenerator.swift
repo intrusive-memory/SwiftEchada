@@ -6,8 +6,6 @@ import SwiftProyecto
 import SwiftVoxAlta
 @preconcurrency import VoxFormat
 
-import struct SwiftEchada.SampleSentenceGenerator
-
 /// Maps a casting `--language` value to the `.vox` storage language tag.
 ///
 /// English (`"en"`) is the language-less DEFAULT path, so it maps to `nil` —
@@ -229,6 +227,11 @@ struct CastVoiceGenerator {
   ///
   /// Members without a `voiceDescription` (or with an empty one) are silently skipped.
   func generate(cast: [CastMember]) async throws -> GenerateResult {
+    // Audition sentences are sourced exclusively from the on-device Foundation
+    // Model — fail fast with a clear configuration error before any expensive
+    // model loading if Apple Intelligence isn't available.
+    try FoundationModelSentence.requireAvailable()
+
     let voicesDir = projectDirectory.appending(path: "voices")
     try FileManager.default.createDirectory(at: voicesDir, withIntermediateDirectories: true)
 
@@ -340,19 +343,17 @@ struct CastVoiceGenerator {
         }
         let voicePrompt = composeVoicePrompt(base: selectedPrompt, accent: accent)
 
-        do {
-          // Prefer an in-language sentence from the on-device Foundation Model;
-          // fall back to the bundled curated pools when it's unavailable or
-          // doesn't support this locale.
-          let sampleSentence =
-            await FoundationModelSentence.auditionSentence(language: language)
-            ?? SampleSentenceGenerator.defaultSentence(
-              for: item.member.character, language: language)
-          if verbose {
-            print("[verbose] Language: \(language) — prompt: \(voicePrompt)")
-            print("[verbose] Language: \(language) — sample sentence: \(sampleSentence)")
-          }
+        // The in-language audition sentence comes exclusively from the on-device
+        // Foundation Model. A configuration failure (Apple Intelligence off,
+        // unsupported locale) propagates out to abort the whole run rather than
+        // being swallowed as a per-character skip below.
+        let sampleSentence = try await FoundationModelSentence.auditionSentence(language: language)
+        if verbose {
+          print("[verbose] Language: \(language) — prompt: \(voicePrompt)")
+          print("[verbose] Language: \(language) — sample sentence: \(sampleSentence)")
+        }
 
+        do {
           let candidateWAV = try await Self.generateCandidateWithPrompt(
             voicePrompt: voicePrompt,
             modelManager: modelManager,

@@ -37,7 +37,7 @@ Add to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/intrusive-memory/SwiftEchada.git", from: "0.13.0"),
+    .package(url: "https://github.com/intrusive-memory/SwiftEchada.git", from: "0.13.1"),
 ]
 ```
 
@@ -104,11 +104,13 @@ let profile = CharacterProfile(
 
 ### Sample Sentences
 
-```swift
-import SwiftEchada
+Voice-audition sample sentences are sourced from Apple's on-device Foundation
+Model, which produces a genuinely in-language sentence for the requested
+language. Apple Intelligence must be enabled — there is no offline fallback.
 
-// Get a random quote for TTS auditions
-let quote = SampleSentenceGenerator.randomQuote()
+```swift
+// In the CLI (EchadaCLICore):
+let sentence = try await FoundationModelSentence.auditionSentence(language: "es")
 ```
 
 ## Architecture
