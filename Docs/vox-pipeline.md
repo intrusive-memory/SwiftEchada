@@ -176,11 +176,19 @@ Supported slugs come from `Qwen3TTSModelRepo.supportedSlugs`: currently `["0.6b"
 
 ## Sample Sentence Sources
 
+Every audition sentence is sourced from Apple's on-device Foundation Model via
+`FoundationModelSentence.auditionSentence(language:)`. The model produces a
+genuinely **in-language** sentence for the requested BCP-47 language, so there are
+no curated quote pools to maintain.
+
 | Command | Source |
 |---------|--------|
-| `echada cast` | `SampleSentenceGenerator.defaultSentence(for: characterName)` |
-| `echada voice` | `SampleSentenceGenerator.randomQuote()` |
-| `echada test-voice` | `SampleSentenceGenerator.randomQuote()` |
-| `VoiceDesigner.generateCandidate()` | `SampleSentenceGenerator.defaultSentence(for: profile.name)` (fallback) |
+| `echada cast` | `FoundationModelSentence.auditionSentence(language:)` |
+| `echada voice` | `FoundationModelSentence.auditionSentence(language:)` |
+| `echada test-voice` | `FoundationModelSentence.auditionSentence(language: "en")` |
 
-The pool contains 20 curated quotes (Dorothy Parker + Fran Lebowitz), 15-30 words each.
+**Apple Intelligence is required.** There is no offline fallback: if the
+on-device model is unavailable (Apple Intelligence disabled / unsupported host) or
+the requested locale is unsupported, the command fails with a
+`FoundationModelSentenceError` configuration error rather than substituting a
+canned sentence.

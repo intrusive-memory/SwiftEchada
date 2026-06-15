@@ -106,34 +106,6 @@ public struct CharacterMerger: Sendable {
 
 ---
 
-### `SampleSentenceGenerator` (struct)
-
-Generates sample sentences for TTS voice design auditions. Contains 20 curated Dorothy Parker and Fran Lebowitz quotes (15-30 words each). The `queryFn` parameters on `generate()` methods are accepted for API compatibility but ignored -- a random quote is always returned.
-
-```swift
-public struct SampleSentenceGenerator: Sendable {
-    public static let quotes: [String]
-
-    public static func randomQuote() -> String
-    public static func defaultSentence(for characterName: String) -> String
-
-    public init()
-
-    public func generate(
-        from profile: CharacterProfile,
-        queryFn: @escaping @Sendable (String, String) async throws -> String
-    ) async throws -> String
-
-    public func generate(
-        characterName: String,
-        description: String,
-        queryFn: @escaping @Sendable (String, String) async throws -> String
-    ) async throws -> String
-}
-```
-
----
-
 ## CLI (`echada`)
 
 The CLI executable depends on SwiftEchada, SwiftVoxAlta, MLX, MLXAudioTTS, MLXLMCommon, VoxFormat, and ArgumentParser.

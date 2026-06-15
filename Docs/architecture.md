@@ -51,7 +51,6 @@
 | `CharacterProfile.swift` | 74 | `CharacterProfile`, `CharacterEvidence` | Voice design specification with gender/age/traits |
 | `CharacterInfo.swift` | 12 | `CharacterInfo` | Lightweight extracted character from `.fountain` |
 | `CharacterMerger.swift` | 69 | `CharacterMerger` | Dedup + merge character lists, preserve voice data |
-| `SampleSentenceGenerator.swift` | 74 | `SampleSentenceGenerator` | 20 curated quotes for TTS auditions |
 
 ### CLI (`Sources/echada/` -- 7 files)
 
@@ -73,8 +72,9 @@
 | `CharacterProfileTests.swift` | 6 | Profile struct, gender mapping, codability |
 | `CharacterInfoTests.swift` | 9 | Extraction struct, JSON round-trip |
 | `CharacterMergerTests.swift` | 8 | Dedup, voice preservation, sorting |
-| `SampleSentenceGeneratorTests.swift` | 4 | Random quotes, async generation |
 | `VoicePromptRoundTripTests.swift` | 3 | YAML parse/serialize round-trips |
+| `NonEnglishPassthroughTests.swift` | -- | Non-English `--language` passthrough (es/pt/it/de) |
+| `FoundationModelSentenceTests.swift` | -- | On-device in-language audition sentences (es/pt/it/de) |
 
 ---
 
@@ -98,7 +98,7 @@ CastVoiceGenerator.generate(cast:)
       |── Phase A: Candidate Generation ──────────────────────────
       |   Load VoiceDesign 1.7B model (once for all characters)
       |   For each CastMember with voiceDescription:
-      |     1. SampleSentenceGenerator.defaultSentence(characterName)
+      |     1. FoundationModelSentence.auditionSentence(language:)
       |     2. Qwen3TTSModel.generate(text: sample, voice: prompt)
       |     3. AudioConversion.mlxArrayToWAVData() → candidateWAV
       |     4. GPU flush (Stream.synchronize + Memory.clearCache)
@@ -167,7 +167,6 @@ narrator.vox (zip archive)
 - All library types are `Sendable` (immutable structs)
 - CLI uses `AsyncParsableCommand` for async entry points
 - `@preconcurrency import` on VoxFormat, MLX, MLXAudioTTS, MLXLMCommon (thread-safety boundary)
-- `queryFn` closures marked `@Sendable` in `SampleSentenceGenerator`
 
 ---
 

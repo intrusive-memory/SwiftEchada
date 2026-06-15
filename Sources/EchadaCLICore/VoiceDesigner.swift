@@ -5,7 +5,6 @@ import Foundation
 import SwiftVoxAlta
 
 import struct SwiftEchada.CharacterProfile
-import struct SwiftEchada.SampleSentenceGenerator
 
 /// Composes voice descriptions and generates candidate WAV audio for voice design.
 ///
@@ -56,7 +55,7 @@ enum VoiceDesigner {
   static func generateCandidate(
     profile: CharacterProfile,
     modelManager: VoxAltaModelManager,
-    sampleSentence: String? = nil,
+    sampleSentence: String,
     language: String = "en"
   ) async throws -> Data {
     let model = try await modelManager.loadModel(.voiceDesign1_7B)
@@ -66,12 +65,9 @@ enum VoiceDesigner {
     }
 
     let voiceDescription = composeVoiceDescription(from: profile)
-    let text =
-      sampleSentence
-      ?? SampleSentenceGenerator.defaultSentence(for: profile.name, language: language)
 
     let audioArray = try await qwenModel.generate(
-      text: text,
+      text: sampleSentence,
       voice: voiceDescription,
       language: language,
       generationParameters: GenerateParameters(
@@ -101,7 +97,7 @@ enum VoiceDesigner {
     profile: CharacterProfile,
     count: Int = 3,
     modelManager: VoxAltaModelManager,
-    sampleSentence: String? = nil,
+    sampleSentence: String,
     language: String = "en"
   ) async throws -> [Data] {
     var candidates: [Data] = []

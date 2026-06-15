@@ -13,7 +13,7 @@ Things that will trip you up if you don't know about them.
 ```swift
 // CORRECT
 import struct SwiftEchada.CharacterProfile
-import struct SwiftEchada.SampleSentenceGenerator
+import struct SwiftEchada.CharacterInfo
 
 // WRONG -- creates ambiguity
 import SwiftEchada

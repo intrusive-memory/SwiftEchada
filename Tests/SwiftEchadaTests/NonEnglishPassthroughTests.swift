@@ -2,22 +2,20 @@ import Foundation
 import SwiftProyecto
 import Testing
 
-import struct SwiftEchada.SampleSentenceGenerator
-
 @testable import EchadaCLICore
 
-/// End-to-end passthrough coverage for non-English languages (Spanish,
-/// Portuguese, Italian, German) across every deterministic, model-free hop of
-/// the voice-generation pipeline:
+/// Deterministic, model-free passthrough coverage for non-English languages
+/// (Spanish, Portuguese, Italian, German) across the pure hops of the
+/// voice-generation pipeline:
 ///
 ///   `--language` flag → `resolvedLanguages()` → `castableLanguages(_:)`
 ///     → `localizedVoicePrompt(for:language:)` → `voxLanguageTag(for:)` (storage)
-///     → `SampleSentenceGenerator` (curated fallback pool)
 ///
-/// The actual TTS forward pass (`Qwen3TTSModel.generate(language:)`) and the
-/// on-device `FoundationModelSentence.auditionSentence(language:)` both require
-/// models/Apple Intelligence and are therefore exercised by the codepath rather
-/// than these unit tests. Everything below is pure and CI-safe.
+/// The audition-sentence source (`FoundationModelSentence.auditionSentence`) and
+/// the TTS forward pass (`Qwen3TTSModel.generate(language:)`) are exercised
+/// separately — the former by ``FoundationModelSentenceTests`` against on-device
+/// Apple Intelligence, the latter by the integration test. Everything below is
+/// pure and runs anywhere.
 @Suite("Non-English language passthrough (es, pt, it, de)")
 struct NonEnglishPassthroughTests {
 
@@ -108,31 +106,5 @@ struct NonEnglishPassthroughTests {
       voices: [pair.base: "prompt for \(pair.base)"]
     )
     #expect(localizedVoicePrompt(for: member, language: pair.regional) == "prompt for \(pair.base)")
-  }
-
-  // MARK: - Sample-sentence language resolution (curated fallback pool)
-
-  @Test("Spanish resolves to the curated Spanish quote pool")
-  func spanishUsesSpanishPool() {
-    let sentence = SampleSentenceGenerator.defaultSentence(for: "NARRATOR", language: "es")
-    #expect(SampleSentenceGenerator.quotesES.contains(sentence))
-  }
-
-  @Test("A Spanish regional subtag also resolves to the Spanish pool")
-  func spanishRegionalUsesSpanishPool() {
-    let sentence = SampleSentenceGenerator.randomQuote(language: "es-MX")
-    #expect(SampleSentenceGenerator.quotesES.contains(sentence))
-  }
-
-  @Test(
-    "Languages without a curated pool fall back to English (the FM path supplies the in-language sentence at runtime)",
-    arguments: ["pt", "it", "de"])
-  func unsupportedPoolFallsBackToEnglish(_ language: String) {
-    // pt/it/de have no bundled curated pool, so the *fallback* sentence is
-    // English. The genuinely in-language audition sentence for these languages
-    // comes from FoundationModelSentence.auditionSentence(language:) when Apple
-    // Intelligence is available — this asserts the documented fallback, not a gap.
-    let sentence = SampleSentenceGenerator.randomQuote(language: language)
-    #expect(SampleSentenceGenerator.quotes.contains(sentence))
   }
 }

@@ -10,7 +10,7 @@ Universal project documentation for AI agents. Agent-specific files: [CLAUDE.md]
 
 SwiftEchada generates on-device custom voices from text prompts and manages cast data in PROJECT.md files for screenplay projects.
 
-- **Library** (`SwiftEchada`): Pure data types -- `CharacterProfile`, `CharacterInfo`, `CharacterMerger`, `SampleSentenceGenerator`. Depends only on SwiftProyecto. No ML.
+- **Library** (`SwiftEchada`): Pure data types -- `CharacterProfile`, `CharacterInfo`, `CharacterMerger`. Depends only on SwiftProyecto. No ML.
 - **CLI** (`echada`): Voice generation via Qwen3-TTS. Depends on SwiftVoxAlta, MLX, vox-format.
 
 ## Build and Test (30-second version)
