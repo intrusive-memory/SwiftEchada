@@ -66,6 +66,10 @@ enum VoiceDesigner {
 
     let voiceDescription = composeVoiceDescription(from: profile)
 
+    #if DEBUG
+      debugAuditLanguage(language, model: qwenModel, site: "VoiceDesigner.generateCandidate")
+    #endif
+
     let audioArray = try await qwenModel.generate(
       text: sampleSentence,
       voice: voiceDescription,

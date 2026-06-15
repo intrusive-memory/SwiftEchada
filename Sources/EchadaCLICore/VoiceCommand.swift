@@ -78,6 +78,10 @@ public struct VoiceCommand: AsyncParsableCommand {
       throw VoiceDesignerError.modelCastFailed
     }
 
+    #if DEBUG
+      debugAuditLanguage(ttsLanguage, model: qwenModel, site: "voice.run")
+    #endif
+
     let audioArray = try await qwenModel.generate(
       text: sampleSentence,
       voice: prompt,

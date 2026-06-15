@@ -19,6 +19,35 @@ func voxLanguageTag(for language: String) -> String? {
   language.lowercased() == "en" ? nil : language
 }
 
+#if DEBUG
+  /// Debug-only audit of the language threaded into a TTS generation call.
+  ///
+  /// Verifies the two things that silently break in-language generation:
+  /// 1. **Passed correctly** — prints the resolved ``TTSLanguage`` case and the
+  ///    exact `modelName` string handed to `Qwen3TTSModel.generate(language:)`.
+  /// 2. **Format the recipient understands** — checks that `modelName` is an
+  ///    actual key in the *loaded model's* `codec_language_id` map via
+  ///    `recognizesLanguage(_:)`. A miss means the model emits no language token
+  ///    and generates UN-CONDITIONED audio with no error, so the line is flagged.
+  ///
+  /// Emitted on stderr with the same `[lang]` prefix SwiftVoxAlta's own
+  /// ``TTSLanguage/trace(_:_:)`` uses, so the value can be followed across the
+  /// stack. Compiled out of release builds.
+  func debugAuditLanguage(_ language: TTSLanguage, model: Qwen3TTSModel, site: String) {
+    let key = language.modelName
+    let recognized = model.recognizesLanguage(key)
+    let accepted = model.supportedLanguageKeys.sorted().joined(separator: ", ")
+    var line =
+      "[lang] \(site): TTSLanguage.\(language.rawValue) → "
+      + "generate(language: \"\(key)\") recognized=\(recognized)"
+    if !recognized {
+      line += " ⚠️ NOT a codec_language_id key — generation will be UN-CONDITIONED"
+    }
+    line += " (model accepts: \(accepted.isEmpty ? "<none>" : accepted))"
+    FileHandle.standardError.write(Data((line + "\n").utf8))
+  }
+#endif
+
 /// Composes an optional accent/delivery directive onto a voice prompt string.
 ///
 /// When `accent` is `nil` or empty (after trimming whitespace), the `base`
@@ -491,6 +520,10 @@ struct CastVoiceGenerator {
     guard let qwenModel = model as? Qwen3TTSModel else {
       throw VoiceDesignerError.modelCastFailed
     }
+
+    #if DEBUG
+      debugAuditLanguage(language, model: qwenModel, site: "cast.generateCandidateWithPrompt")
+    #endif
 
     let audioArray = try await qwenModel.generate(
       text: sampleSentence,
