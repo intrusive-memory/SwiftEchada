@@ -52,6 +52,10 @@ public struct VoiceCommand: AsyncParsableCommand {
       throw ValidationError("--language must be a non-empty BCP-47 code.")
     }
     let languageTag = voxLanguageTag(for: normalizedLanguage)
+    // The BCP-47 tag above is the .vox storage key (preserves region for
+    // per-language voices). For generation it is reduced to a model-aligned
+    // TTSLanguage — throws here if the language is not one Qwen3-TTS supports.
+    let ttsLanguage = try TTSLanguage(languageCode: normalizedLanguage)
     let modelManager = VoxAltaModelManager()
     let outputURL = URL(fileURLWithPath: output)
     // The audition sentence is sourced exclusively from the on-device Foundation
@@ -77,7 +81,7 @@ public struct VoiceCommand: AsyncParsableCommand {
     let audioArray = try await qwenModel.generate(
       text: sampleSentence,
       voice: prompt,
-      language: normalizedLanguage,
+      language: ttsLanguage.modelName,
       generationParameters: GenerateParameters()
     )
 
@@ -103,7 +107,7 @@ public struct VoiceCommand: AsyncParsableCommand {
       modelManager: modelManager,
       sampleSentence: sampleSentence,
       modelRepo: modelRepo,
-      language: normalizedLanguage
+      language: ttsLanguage
     )
 
     let vox: VoxFile

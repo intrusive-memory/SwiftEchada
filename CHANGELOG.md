@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-06-15
+
+### Changed
+- Adopted SwiftVoxAlta's type-safe `TTSLanguage` enum at the generation boundary
+  (`cast`, `voice`, and voice-lock creation), replacing the stringly-typed `"en"`
+  literal. The model-aligned `language.modelName` now conditions the speaker
+  encoder, fixing silent fall-through to un-conditioned generation.
+- Bumped the SwiftVoxAlta dependency floor to `0.14.0` (the release that ships
+  `TTSLanguage`) and vox-format to `0.4.1`. The prior floor (`0.13.1`) predated
+  `TTSLanguage`, so the build only resolved against a local sibling checkout.
+
 ## [0.13.2] - 2026-06-14
 
 ### Changed
