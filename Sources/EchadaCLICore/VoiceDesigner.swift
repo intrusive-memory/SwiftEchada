@@ -51,12 +51,15 @@ enum VoiceDesigner {
   ///   - sampleSentence: The text to speak in the generated audio.
   ///     Defaults to a simple greeting.
   ///   - language: The ``TTSLanguage`` for generation (default `.english`).
+  ///   - verbose: When `true`, emit a `[lang]` audit line for the language
+  ///     threaded into the model. Defaults to `false`.
   /// - Returns: WAV format Data (24kHz, 16-bit PCM, mono).
   static func generateCandidate(
     profile: CharacterProfile,
     modelManager: VoxAltaModelManager,
     sampleSentence: String,
-    language: TTSLanguage = .english
+    language: TTSLanguage = .english,
+    verbose: Bool = false
   ) async throws -> Data {
     let model = try await modelManager.loadModel(.voiceDesign1_7B)
 
@@ -66,9 +69,8 @@ enum VoiceDesigner {
 
     let voiceDescription = composeVoiceDescription(from: profile)
 
-    #if DEBUG
-      debugAuditLanguage(language, model: qwenModel, site: "VoiceDesigner.generateCandidate")
-    #endif
+    logLanguageAudit(
+      language, model: qwenModel, site: "VoiceDesigner.generateCandidate", verbose: verbose)
 
     let audioArray = try await qwenModel.generate(
       text: sampleSentence,
@@ -102,7 +104,8 @@ enum VoiceDesigner {
     count: Int = 3,
     modelManager: VoxAltaModelManager,
     sampleSentence: String,
-    language: TTSLanguage = .english
+    language: TTSLanguage = .english,
+    verbose: Bool = false
   ) async throws -> [Data] {
     var candidates: [Data] = []
     for _ in 0..<count {
@@ -110,7 +113,8 @@ enum VoiceDesigner {
         profile: profile,
         modelManager: modelManager,
         sampleSentence: sampleSentence,
-        language: language
+        language: language,
+        verbose: verbose
       )
       candidates.append(candidate)
     }
