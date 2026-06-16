@@ -31,7 +31,7 @@ let package = Package(
     .package(url: "https://github.com/ml-explore/mlx-swift", .upToNextMajor(from: "0.31.3")),
     .package(url: "https://github.com/ml-explore/mlx-swift-lm", .upToNextMajor(from: "3.31.3")),
     .package(
-      url: "https://github.com/intrusive-memory/mlx-audio-swift.git", .upToNextMajor(from: "0.8.6")),
+      url: "https://github.com/intrusive-memory/mlx-audio-swift.git", .upToNextMajor(from: "0.8.7")),
     .package(
       url: "https://github.com/intrusive-memory/vox-format.git", .upToNextMajor(from: "0.4.1")),
   ],

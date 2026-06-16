@@ -19,6 +19,37 @@ func voxLanguageTag(for language: String) -> String? {
   language.lowercased() == "en" ? nil : language
 }
 
+/// Audits the language threaded into a TTS generation call. No-op unless
+/// `verbose` is set, so it ships in release builds behind the `--verbose` flag.
+///
+/// Verifies the two things that silently break in-language generation:
+/// 1. **Passed correctly** — prints the resolved ``TTSLanguage`` case and the
+///    exact `modelName` string handed to `Qwen3TTSModel.generate(language:)`.
+/// 2. **Format the recipient understands** — checks that `modelName` is an
+///    actual key in the *loaded model's* `codec_language_id` map via
+///    `recognizesLanguage(_:)`. A miss means the model emits no language token
+///    and generates UN-CONDITIONED audio with no error, so the line is flagged.
+///
+/// Emitted on stderr with the same `[lang]` prefix SwiftVoxAlta's own
+/// ``TTSLanguage/trace(_:_:)`` uses, so the value can be followed across the
+/// stack.
+func logLanguageAudit(
+  _ language: TTSLanguage, model: Qwen3TTSModel, site: String, verbose: Bool
+) {
+  guard verbose else { return }
+  let key = language.modelName
+  let recognized = model.recognizesLanguage(key)
+  let accepted = model.supportedLanguageKeys.sorted().joined(separator: ", ")
+  var line =
+    "[lang] \(site): TTSLanguage.\(language.rawValue) → "
+    + "generate(language: \"\(key)\") recognized=\(recognized)"
+  if !recognized {
+    line += " ⚠️ NOT a codec_language_id key — generation will be UN-CONDITIONED"
+  }
+  line += " (model accepts: \(accepted.isEmpty ? "<none>" : accepted))"
+  FileHandle.standardError.write(Data((line + "\n").utf8))
+}
+
 /// Composes an optional accent/delivery directive onto a voice prompt string.
 ///
 /// When `accent` is `nil` or empty (after trimming whitespace), the `base`
@@ -88,6 +119,32 @@ func localizedVoicePrompt(for member: CastMember, language: String) -> String? {
   let base = language.split(separator: "-").first.map(String.init) ?? language
   // When `base == language` the exact lookup above already covered it.
   return base == language ? nil : member.voice(for: base)
+}
+
+/// Resolves the BCP-47 language(s) to cast a member into.
+///
+/// When the caller supplied an explicit `--language` list (`explicitLanguages`
+/// non-empty), that list wins and is applied uniformly to every member — this is
+/// the multi-embedding "casting loop" mechanism (run once per language to stack
+/// several language-keyed embeddings into one `.vox`).
+///
+/// When no explicit list was given (`explicitLanguages` empty), each member is
+/// cast in its OWN declared `member.language` — so a Spanish teacher (`es-MX`) is
+/// voiced in Spanish and an English narrator (`en`) in English from a single
+/// `echada cast`. This honors `CastMember.language` end-to-end (audition sentence,
+/// VoiceDesign language token, clone-prompt extraction, and `.vox` storage key)
+/// instead of silently forcing the whole stack to English.
+///
+/// The member's tag is trimmed and lowercased to match the explicit-flag path
+/// (`CastCommand.resolvedLanguages`). Falls back to `"en"` only when a member
+/// declares no language at all.
+///
+/// - Returns: A non-empty, order-preserving language list for this member.
+func castingLanguages(for member: CastMember, explicitLanguages: [String]) -> [String] {
+  if !explicitLanguages.isEmpty { return explicitLanguages }
+  let normalized = member.language?.trimmingCharacters(in: .whitespaces).lowercased()
+  if let normalized, !normalized.isEmpty { return [normalized] }
+  return ["en"]
 }
 
 /// Pure decision function: which of the requested languages is this cast member
@@ -182,11 +239,14 @@ struct CastVoiceGenerator {
   private let forceRegenerate: Bool
   private let verbose: Bool
   private let ttsModelVariant: String
-  /// BCP-47 language codes to cast into each `.vox` (default `["en"]`). Each
-  /// language gets its own same-language reference sentence, candidate audio,
-  /// clone prompt, and sample audio. `"en"` is stored at the language-less
-  /// default path; others at their `<lang>`-segmented paths.
-  private let languages: [String]
+  /// Explicit BCP-47 language override from `--language`. Empty means "no
+  /// override" — each member is then cast in its own `member.language` (see
+  /// `castingLanguages(for:explicitLanguages:)`). When non-empty, this list is
+  /// applied uniformly to every member. Each resolved language gets its own
+  /// same-language reference sentence, candidate audio, clone prompt, and sample
+  /// audio; `"en"` is stored at the language-less default path, others at their
+  /// `<lang>`-segmented paths.
+  private let explicitLanguages: [String]
 
   /// Optional accent/delivery directive applied to every character's voice prompt
   /// before the VoiceDesign call. `nil` means no accent — the default path is
@@ -197,14 +257,14 @@ struct CastVoiceGenerator {
   init(
     projectDirectory: URL, forceRegenerate: Bool = false, verbose: Bool = false,
     ttsModelVariant: String = Qwen3TTSModelRepo.base1_7B.slug,
-    languages: [String] = ["en"],
+    languages: [String] = [],
     accent: String? = nil
   ) {
     self.projectDirectory = projectDirectory
     self.forceRegenerate = forceRegenerate
     self.verbose = verbose
     self.ttsModelVariant = ttsModelVariant
-    self.languages = languages.isEmpty ? ["en"] : languages
+    self.explicitLanguages = languages
     self.accent = accent
   }
 
@@ -248,7 +308,11 @@ struct CastVoiceGenerator {
     for (index, member) in cast.enumerated() {
       // Skip members with no castable language — use castableLanguages() so that a member
       // with only localized voices (e.g. voices["es"]) but no voiceDescription is NOT skipped.
-      let castable = castableLanguages(for: member, requestedLanguages: languages)
+      // Each member's casting language(s) come from --language when set, else its own
+      // member.language (so a single `echada cast` voices each character in its own tongue).
+      let castable = castableLanguages(
+        for: member,
+        requestedLanguages: castingLanguages(for: member, explicitLanguages: explicitLanguages))
       guard !castable.isEmpty else {
         if verbose {
           print(
@@ -309,8 +373,11 @@ struct CastVoiceGenerator {
     }
 
     // --- Phase A: Generate all candidate WAVs (VoiceDesign model loaded once) ---
+    let totalCandidates = membersToGenerate.reduce(0) {
+      $0 + castingLanguages(for: $1.member, explicitLanguages: explicitLanguages).count
+    }
     print(
-      "Phase A: Generating candidate audio (\(membersToGenerate.count) characters × \(languages.count) language(s), VoiceDesign 1.7B)..."
+      "Phase A: Generating candidate audio (\(membersToGenerate.count) characters, \(totalCandidates) candidate(s), VoiceDesign 1.7B)..."
     )
     fflush(stdout)
 
@@ -325,7 +392,7 @@ struct CastVoiceGenerator {
       // reference sentence so the clone prompt is extracted from matching audio.
       // Prompt selection is per-language: use the localized voice prompt when available,
       // falling back to the base voiceDescription.
-      for language in languages {
+      for language in castingLanguages(for: item.member, explicitLanguages: explicitLanguages) {
         // Select the prompt for this specific language, then compose --accent onto it.
         // localizedVoicePrompt(for:language:) tries the exact tag then its base subtag
         // (so es-MX picks up a documented voices["es"] entry), and returns nil only when
@@ -360,7 +427,8 @@ struct CastVoiceGenerator {
             voicePrompt: voicePrompt,
             modelManager: modelManager,
             sampleSentence: sampleSentence,
-            language: try TTSLanguage(languageCode: language)
+            language: try TTSLanguage(languageCode: language),
+            verbose: verbose
           )
 
           if verbose {
@@ -484,13 +552,17 @@ struct CastVoiceGenerator {
     voicePrompt: String,
     modelManager: VoxAltaModelManager,
     sampleSentence: String,
-    language: TTSLanguage = .english
+    language: TTSLanguage = .english,
+    verbose: Bool = false
   ) async throws -> Data {
     let model = try await modelManager.loadModel(.voiceDesign1_7B)
 
     guard let qwenModel = model as? Qwen3TTSModel else {
       throw VoiceDesignerError.modelCastFailed
     }
+
+    logLanguageAudit(
+      language, model: qwenModel, site: "cast.generateCandidateWithPrompt", verbose: verbose)
 
     let audioArray = try await qwenModel.generate(
       text: sampleSentence,

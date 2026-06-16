@@ -53,10 +53,15 @@ public struct CastCommand: AsyncParsableCommand {
     return trimmed.isEmpty ? nil : trimmed
   }
 
-  /// Normalizes the `--language` flag: empty → `["en"]`, lowercased, de-duplicated
-  /// preserving order. Validates each code is non-empty.
+  /// Normalizes the `--language` flag into an explicit override list: lowercased,
+  /// de-duplicated, order-preserving, with each code validated non-empty.
+  ///
+  /// Returns `[]` when the flag is absent — signalling "no global override," at
+  /// which point each cast member is voiced in its OWN declared `language` (see
+  /// `castingLanguages(for:explicitLanguages:)`). A non-empty result is applied
+  /// uniformly to every member (the multi-embedding "casting loop" mechanism).
   func resolvedLanguages() throws -> [String] {
-    guard !language.isEmpty else { return ["en"] }
+    guard !language.isEmpty else { return [] }
     var seen: Set<String> = []
     var result: [String] = []
     for raw in language {
@@ -119,7 +124,11 @@ public struct CastCommand: AsyncParsableCommand {
       "Cast members: \(targetCast.count)\(character != nil ? " (filtered: \(character!))" : "")")
     let resolvedAccentValue = resolvedAccent()
     let accentSuffix = resolvedAccentValue.map { "  (accent: \($0))" } ?? ""
-    print("Languages: \(languages.joined(separator: ", "))\(accentSuffix)")
+    let languagesDesc =
+      languages.isEmpty
+      ? "per-character (from PROJECT.md `language`, default en)"
+      : languages.joined(separator: ", ")
+    print("Languages: \(languagesDesc)\(accentSuffix)")
     if forceRegenerate { print("Force regenerate: yes") }
     print("")
     fflush(stdout)
