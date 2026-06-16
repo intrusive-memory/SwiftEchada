@@ -20,9 +20,10 @@ struct LanguageOptionTests {
 
   // MARK: - CastCommand.resolvedLanguages normalization
 
-  @Test func noFlagDefaultsToEnglish() throws {
+  @Test func noFlagYieldsEmptyOverride() throws {
+    // Empty == "no global override" → each member cast in its own member.language.
     let cmd = try CastCommand.parse([])
-    #expect(try cmd.resolvedLanguages() == ["en"])
+    #expect(try cmd.resolvedLanguages() == [])
   }
 
   @Test func repeatedFlagPreservesOrder() throws {
