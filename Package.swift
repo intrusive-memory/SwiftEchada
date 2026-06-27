@@ -64,7 +64,7 @@ let package = Package(
     sibling(
       "SwiftProyecto",
       remote: "https://github.com/intrusive-memory/SwiftProyecto.git",
-      from: "3.8.0"),
+      from: "4.0.0"),
     sibling(
       "SwiftVoxAlta",
       remote: "https://github.com/intrusive-memory/SwiftVoxAlta.git",
