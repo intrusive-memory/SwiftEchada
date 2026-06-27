@@ -170,7 +170,8 @@ public struct CastCommand: AsyncParsableCommand {
       if member.voices.isEmpty {
         print("  \(member.character): (none)")
       } else {
-        let voiceList = member.voices.map { "\($0.key):\($0.value.joined(separator: "/"))" }.joined(separator: ", ")
+        let voiceList = member.voices.map { "\($0.key):\($0.value.joined(separator: "/"))" }.joined(
+          separator: ", ")
         print("  \(member.character): \(voiceList)")
       }
     }

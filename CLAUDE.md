@@ -1,3 +1,7 @@
+---
+type: project
+---
+
 # CLAUDE.md
 
 **Read [AGENTS.md](AGENTS.md) first** for project overview. Deep dives in [Docs/](Docs/).
@@ -41,4 +45,4 @@ Not applicable -- SwiftEchada is a library, not an app.
 
 ---
 
-**Last Updated**: June 15, 2026 (v0.14.1-dev)
+**Last Updated**: June 26, 2026 (v0.15.0)

@@ -22,7 +22,8 @@ struct CharacterMergerTests {
   @Test func preservesExistingVoiceAssignments() {
     let existing = [
       CastMember(
-        character: "NARRATOR", actor: "John", voices: ["apple": ["com.apple.voice.premium.en-US.Ava"]]
+        character: "NARRATOR", actor: "John",
+        voices: ["apple": ["com.apple.voice.premium.en-US.Ava"]]
       )
     ]
     let extracted: [[CharacterInfo]] = [
