@@ -1,3 +1,7 @@
+---
+type: doc
+---
+
 # Changelog
 
 All notable changes to SwiftEchada will be documented in this file.
@@ -6,6 +10,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.15.0] - 2026-06-26
+
+### Changed
+- Raised the `SwiftProyecto` dependency floor from `3.8.0` to `4.0.0`. SwiftProyecto
+  4.x changes `CastMember.voices` from `[String: String]` to `[String: [String]]`
+  (multiple voice IDs per provider). The voxalta voice-path writes now store
+  single-element arrays and the `cast` voice-list display joins each provider's
+  list. Reads via `CastMember.voice(for:)` are unchanged (it returns the first
+  entry). The transitive chain SwiftVoxAlta → SwiftHablare 6.2.0 → SwiftProyecto
+  4.x resolves with SwiftHablare 6.2.0 published.
 
 ## [0.14.1] - 2026-06-15
 

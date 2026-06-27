@@ -80,7 +80,7 @@ struct NonEnglishPassthroughTests {
     let member = CastMember(
       character: "NARRATOR",
       voiceDescription: nil,
-      voices: [language: "localized \(language) voice"]
+      voices: [language: ["localized \(language) voice"]]
     )
     #expect(castableLanguages(for: member, requestedLanguages: [language]) == [language])
   }
@@ -92,7 +92,7 @@ struct NonEnglishPassthroughTests {
     let member = CastMember(
       character: "NARRATOR",
       voiceDescription: "base english prompt",
-      voices: [language: "prompt for \(language)"]
+      voices: [language: ["prompt for \(language)"]]
     )
     #expect(localizedVoicePrompt(for: member, language: language) == "prompt for \(language)")
   }
@@ -103,7 +103,7 @@ struct NonEnglishPassthroughTests {
     let member = CastMember(
       character: "NARRATOR",
       voiceDescription: nil,
-      voices: [pair.base: "prompt for \(pair.base)"]
+      voices: [pair.base: ["prompt for \(pair.base)"]]
     )
     #expect(localizedVoicePrompt(for: member, language: pair.regional) == "prompt for \(pair.base)")
   }

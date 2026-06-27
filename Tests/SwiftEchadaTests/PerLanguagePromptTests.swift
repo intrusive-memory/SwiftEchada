@@ -14,7 +14,7 @@ struct PerLanguagePromptTests {
     let member = CastMember(
       character: "NARRATOR",
       voiceDescription: nil,
-      voices: ["es": "warm spanish narrator"]
+      voices: ["es": ["warm spanish narrator"]]
     )
     let result = castableLanguages(for: member, requestedLanguages: ["es"])
     #expect(result == ["es"])
@@ -47,7 +47,7 @@ struct PerLanguagePromptTests {
     let member = CastMember(
       character: "NARRATOR",
       voiceDescription: nil,
-      voices: ["es": "warm spanish narrator"]
+      voices: ["es": ["warm spanish narrator"]]
     )
     let result = castableLanguages(for: member, requestedLanguages: ["en"])
     #expect(result.isEmpty)
@@ -80,7 +80,7 @@ struct PerLanguagePromptTests {
     let member = CastMember(
       character: "NARRATOR",
       voiceDescription: "Warm storyteller",
-      voices: ["es": "narrador cálido"]
+      voices: ["es": ["narrador cálido"]]
     )
     let result = castableLanguages(for: member, requestedLanguages: ["es", "en"])
     #expect(Set(result) == Set(["es", "en"]))
@@ -92,7 +92,7 @@ struct PerLanguagePromptTests {
     let member = CastMember(
       character: "NARRATOR",
       voiceDescription: "Some description",
-      voices: ["es": "voice"]
+      voices: ["es": ["voice"]]
     )
     let result = castableLanguages(for: member, requestedLanguages: [])
     #expect(result.isEmpty)
@@ -108,7 +108,7 @@ struct PerLanguagePromptTests {
     let member = CastMember(
       character: "NARRATOR",
       voiceDescription: base,
-      voices: ["es": localizedEs]
+      voices: ["es": [localizedEs]]
     )
 
     // "es" → localized value
@@ -163,7 +163,7 @@ struct PerLanguagePromptTests {
     let member = CastMember(
       character: "NARRATOR",
       voiceDescription: base,
-      voices: ["es": localizedEs]
+      voices: ["es": [localizedEs]]
     )
 
     let selectedEs = member.voice(for: "es") ?? member.voiceDescription
@@ -200,7 +200,7 @@ struct PerLanguagePromptTests {
     let member = CastMember(
       character: "NARRATOR",
       voiceDescription: base,
-      voices: ["es": localizedEs]
+      voices: ["es": [localizedEs]]
     )
 
     let selected = member.voice(for: "es") ?? member.voiceDescription
@@ -217,7 +217,7 @@ struct PerLanguagePromptTests {
     let member = CastMember(
       character: "NARRATOR",
       voiceDescription: nil,
-      voices: ["es": localizedEs]
+      voices: ["es": [localizedEs]]
     )
     #expect(localizedVoicePrompt(for: member, language: "es-MX") == localizedEs)
   }
@@ -229,7 +229,7 @@ struct PerLanguagePromptTests {
     let member = CastMember(
       character: "NARRATOR",
       voiceDescription: nil,
-      voices: ["es": localizedEs, "es-mx": localizedEsMX]
+      voices: ["es": [localizedEs], "es-mx": [localizedEsMX]]
     )
     #expect(localizedVoicePrompt(for: member, language: "es-MX") == localizedEsMX)
   }
@@ -240,7 +240,7 @@ struct PerLanguagePromptTests {
     let member = CastMember(
       character: "NARRATOR",
       voiceDescription: nil,
-      voices: ["es": "narrador cálido"]
+      voices: ["es": ["narrador cálido"]]
     )
     let result = castableLanguages(for: member, requestedLanguages: ["es-MX"])
     #expect(result == ["es-MX"])
@@ -255,7 +255,7 @@ struct PerLanguagePromptTests {
     let member = CastMember(
       character: "NARRATOR",
       voiceDescription: base,
-      voices: ["es": localizedEs]
+      voices: ["es": [localizedEs]]
     )
     let selected = localizedVoicePrompt(for: member, language: "es-MX") ?? member.voiceDescription
     #expect(selected == localizedEs)
@@ -267,7 +267,7 @@ struct PerLanguagePromptTests {
     let member = CastMember(
       character: "NARRATOR",
       voiceDescription: base,
-      voices: ["es": "narrador cálido"]
+      voices: ["es": ["narrador cálido"]]
     )
     #expect(localizedVoicePrompt(for: member, language: "fr-CA") == nil)
     let selected = localizedVoicePrompt(for: member, language: "fr-CA") ?? member.voiceDescription

@@ -344,7 +344,7 @@ struct CastVoiceGenerator {
         if member.voices["voxalta"] == nil {
           updatedCast[index].voices = {
             var v = member.voices
-            v["voxalta"] = voxPath
+            v["voxalta"] = [voxPath]
             return v
           }()
         }
@@ -527,7 +527,7 @@ struct CastVoiceGenerator {
 
         updatedCast[candidate.index].voices = {
           var v = candidate.member.voices
-          v["voxalta"] = candidate.voxPath
+          v["voxalta"] = [candidate.voxPath]
           return v
         }()
         generatedCount += 1

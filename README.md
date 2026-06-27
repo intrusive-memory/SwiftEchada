@@ -1,3 +1,7 @@
+---
+type: doc
+---
+
 <p align="center">
     <img src="icon.jpg" alt="SwiftEchada" width="200" />
 </p>
@@ -37,7 +41,7 @@ Add to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/intrusive-memory/SwiftEchada.git", from: "0.14.1"),
+    .package(url: "https://github.com/intrusive-memory/SwiftEchada.git", from: "0.15.0"),
 ]
 ```
 
