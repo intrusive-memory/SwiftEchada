@@ -1,3 +1,7 @@
+---
+type: reference
+---
+
 # Build, Test, and Release
 
 ---
@@ -94,6 +98,32 @@ Test fixture files live in `Fixtures/`:
 - **Command**: `xcodebuild test -scheme SwiftEchada-Package -destination 'platform=macOS'`
 - **Artifact**: `test-output.log` (30-day retention)
 - **Summary**: Pass/fail counts posted to Actions summary
+- **SwiftAcervo model cache (R-CI-2)**: before running tests, the job computes a
+  cache key from the live CDN manifests of the Qwen3-TTS weights `generate vox`
+  loads (Base 1.7B, Base 0.6B, VoiceDesign 1.7B), restores `ACERVO_MODELS_DIR`
+  via `actions/cache`, and primes any cache miss from the CDN using
+  `.github/scripts/acervo-ci-prime.sh` (credential-free curl+jq, no `acervo`
+  binary needed). The test step forwards `TEST_RUNNER_ACERVO_MODELS_DIR` and
+  `TEST_RUNNER_ACERVO_CDN_BASE_URL` into the xctest runner (xcodebuild strips
+  the `TEST_RUNNER_` prefix) so model-backed `.vox` tests find the weights
+  already on disk instead of re-downloading multi-GB checkpoints every run.
+  `TEST_RUNNER_ACERVO_OFFLINE` is forwarded as `"0"`, not `"1"` -- see the
+  comment block in `tests.yml` for why (SwiftVoxAlta registers its Qwen3-TTS
+  components as bare/auto-hydrating descriptors, so strict offline mode would
+  block the harmless manifest re-fetch that happens on every fresh test
+  process, defeating the cache).
+- **Apple Intelligence is NOT available on this runner (R-CI-1, UNMET)**:
+  GitHub-hosted `macos-26` reports `SystemLanguageModel.default.isAvailable ==
+  false` (no device opt-in, no signed-in Apple Account, no on-device model
+  download on ephemeral hosted runners). Every test gated with `.enabled(if:
+  SystemLanguageModel.default.isAvailable)` -- `FoundationModelSentenceTests`,
+  `generate prompt`, and the `voicePrompt` assertions of the full-pipeline test
+  -- **skips** on this workflow; that is accepted, expected coverage, not a
+  failure. Those paths are exercised locally on a developer Mac with Apple
+  Intelligence enabled, or would need a self-hosted Apple-Intelligence-
+  provisioned runner, which this workflow does not provide. Full CI coverage
+  of the Foundation-Model paths is a future item contingent on standing up
+  such a runner -- this workflow makes no claim to exercise them.
 
 #### `release.yml` -- Release Binary
 

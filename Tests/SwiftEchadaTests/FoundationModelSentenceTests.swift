@@ -10,15 +10,19 @@ import Testing
 /// path (no curated fallback pools), so these tests verify it produces an
 /// in-language sentence for each non-English language.
 ///
-/// **Availability gate.** Apple Intelligence is not provisioned on ephemeral CI
-/// runners (GitHub-hosted `macos-26` reports `SystemLanguageModel.isAvailable ==
-/// false` — it requires device opt-in, a signed-in Apple Account, and model
-/// downloads). The generation tests are therefore gated with
-/// `.enabled(if: SystemLanguageModel.default.isAvailable)`: they run end-to-end on
-/// a developer machine with Apple Intelligence enabled and are skipped (not
-/// failed) where the model is absent. The throwing-contract test below runs
-/// everywhere — it asserts a `FoundationModelSentenceError` is raised whether the
-/// failure is "AI unavailable" or "locale unsupported".
+/// **Availability gate.** Apple Intelligence is not provisioned on GitHub-hosted
+/// CI runners (`macos-26` reports `SystemLanguageModel.isAvailable == false` —
+/// it requires device opt-in, a signed-in Apple Account, and on-device model
+/// downloads that ephemeral hosted runners don't have). The generation tests
+/// are therefore gated with `.enabled(if: SystemLanguageModel.default.isAvailable)`:
+/// they **skip (not fail) on hosted CI** and run end-to-end only locally, on a
+/// developer machine with Apple Intelligence enabled, or on a self-hosted
+/// Apple-Intelligence-provisioned runner — this repo's `tests.yml` does not
+/// provision one, so hosted CI runs never exercise these assertions (accepted,
+/// per OPERATION GENERAL MUSTER's resolved OQ-4; see `Docs/build-and-test.md`).
+/// The throwing-contract test below runs everywhere — it asserts a
+/// `FoundationModelSentenceError` is raised whether the failure is "AI
+/// unavailable" or "locale unsupported".
 @Suite("FoundationModelSentence — on-device in-language generation")
 struct FoundationModelSentenceTests {
 

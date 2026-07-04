@@ -1,5 +1,27 @@
 name: Tests
 
+# --- R-CI-1 (OPERATION GENERAL MUSTER, Sortie 10, resolved OQ-4) ---------------
+# GitHub-hosted `macos-26` runners do NOT provision Apple Intelligence:
+# `SystemLanguageModel.default.isAvailable` reports `false` here (it requires
+# device opt-in, a signed-in Apple Account, and on-device model downloads that
+# are unavailable on ephemeral hosted runners). Every test gated with
+# `.enabled(if: SystemLanguageModel.default.isAvailable)` — the on-device
+# audition-sentence generation in FoundationModelSentenceTests, `generate
+# prompt`, and the `voicePrompt` assertions of the full-pipeline test — SKIPS
+# on this job. That is accepted, expected coverage, not a failure. Those paths
+# are exercised locally (on a developer Mac with Apple Intelligence enabled) or
+# on a self-hosted Apple-Intelligence-provisioned runner, neither of which this
+# workflow provides. Full model-path CI coverage for the Foundation Model is a
+# future item contingent on standing up such a self-hosted runner; this
+# workflow makes no claim to exercise it. R-CI-1 is treated as UNMET per the
+# resolved OQ-4 hosted-only decision in EXECUTION_PLAN.md.
+#
+# What THIS workflow does deliver (R-CI-2): the Qwen3-TTS 0.6B/1.7B weights
+# that `generate vox` (via SwiftVoxAlta's VoxAltaModelManager / SwiftAcervo)
+# loads are cached across runs with actions/cache and primed from the CDN on a
+# cache miss, so model-backed `.vox` tests find the weights already on disk
+# instead of re-downloading multi-GB checkpoints every run.
+
 on:
   push:
     branches: [main]
@@ -11,9 +33,47 @@ jobs:
     name: Unit Tests
     runs-on: macos-26
 
+    env:
+      # --- SwiftAcervo model cache (R-CI-2) ----------------------------------
+      # Single source of truth for where the Qwen3-TTS weights live in CI.
+      # Checked FIRST by Acervo.sharedModelsDirectory, overriding any App Group
+      # config. Kept inside the workspace so actions/cache can snapshot it.
+      ACERVO_MODELS_DIR: ${{ github.workspace }}/.acervo-ci-models
+      # NOTE: the acervo-integration-ci skill's vendored scripts default to a
+      # retired r2.dev public bucket (that endpoint was decommissioned
+      # 2026-06-30 — see the acervo-cdn-setup skill's deprecation note). The
+      # real CDN is cdn.intrusive-memory.productions; set it explicitly so the
+      # key/primer scripts below (and TEST_RUNNER_ACERVO_CDN_BASE_URL,
+      # forwarded to the test step) hit the live endpoint instead of the
+      # decommissioned one.
+      ACERVO_CDN_BASE: https://cdn.intrusive-memory.productions/models
+      # Qwen3-TTS variants CastVoiceGenerator/VoxAltaModelManager load for
+      # `generate vox`: Base 1.7B + 0.6B (cloning) and VoiceDesign 1.7B (Phase A
+      # candidate generation). Slug == slugify(modelId) == CDN directory name.
+      ACERVO_CI_MODELS: |
+        mlx-community_Qwen3-TTS-12Hz-1.7B-Base-bf16
+        mlx-community_Qwen3-TTS-12Hz-0.6B-Base-bf16
+        mlx-community_Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+
+      - name: Compute SwiftAcervo model cache key
+        id: modelkey
+        run: |
+          echo "value=$(bash .github/scripts/acervo-ci-cache-key.sh)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore SwiftAcervo model cache
+        id: modelcache
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.ACERVO_MODELS_DIR }}
+          key: acervo-models-${{ runner.os }}-${{ steps.modelkey.outputs.value }}
+
+      - name: Prime Qwen3-TTS models from CDN (cache miss)
+        if: steps.modelcache.outputs.cache-hit != 'true'
+        run: bash .github/scripts/acervo-ci-prime.sh
 
       - name: Select Xcode version
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
@@ -24,6 +84,29 @@ jobs:
       - name: Run unit tests
         env:
           GIT_LFS_SKIP_SMUDGE: "1"
+          # xcodebuild strips the TEST_RUNNER_ prefix and forwards these into
+          # the xctest runner process (see SwiftAcervo's
+          # Acervo+CDNConfiguration.swift / Acervo.swift env-var contract).
+          # Without the prefix the test process never sees them.
+          TEST_RUNNER_ACERVO_MODELS_DIR: ${{ env.ACERVO_MODELS_DIR }}
+          TEST_RUNNER_ACERVO_CDN_BASE_URL: ${{ env.ACERVO_CDN_BASE }}
+          # Deliberately "0", not "1". SwiftVoxAlta registers its
+          # Qwen3TTSModelRepo components as BARE descriptors (no `files:`
+          # declared), so SwiftAcervo's `ComponentDescriptor.needsHydration` is
+          # an in-memory flag that is true on every fresh process — meaning
+          # `ensureComponentReady` unconditionally re-fetches the small CDN
+          # manifest.json before it ever checks whether the actual multi-GB
+          # model files are already present locally. Strict offline mode
+          # (ACERVO_OFFLINE=1) makes that manifest fetch throw
+          # `AcervoError.offlineModeActive` immediately, which would defeat the
+          # cache primed above on every single run. Leaving this "0" lets the
+          # cheap, credential-free manifest GET succeed while the heavy files
+          # are served entirely from the actions/cache-restored
+          # ACERVO_MODELS_DIR (no re-download — they already match the
+          # manifest). Revisit and flip to "1" once SwiftVoxAlta pre-hydrates
+          # its Qwen3-TTS descriptors with explicit `files:` metadata (matching
+          # the SwiftAcervo CI standard's "fail loud on a miss" principle).
+          TEST_RUNNER_ACERVO_OFFLINE: "0"
         run: |
           set +e
           xcodebuild test \
@@ -40,14 +123,14 @@ jobs:
             echo "Tests failed"
             exit 1
           else
-            exit $TEST_EXIT_CODE
+            exit "$TEST_EXIT_CODE"
           fi
 
       - name: Extract test summary
         if: always()
         run: |
-          echo "## Unit Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Unit Test Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
 
           if [ -f test-output.log ]; then
             LAST_EXECUTION_LINE=$(grep "Executed.*test" test-output.log | tail -n 1)
@@ -63,16 +146,16 @@ jobs:
               PASSED=$((TOTAL_TESTS - FAILURES))
 
               if [ "$FAILURES" -eq 0 ]; then
-                echo "✅ **All tests passed:** $TOTAL_TESTS/$TOTAL_TESTS tests" >> $GITHUB_STEP_SUMMARY
+                echo "✅ **All tests passed:** $TOTAL_TESTS/$TOTAL_TESTS tests" >> "$GITHUB_STEP_SUMMARY"
               else
-                echo "❌ **Failed:** $FAILURES/$TOTAL_TESTS tests" >> $GITHUB_STEP_SUMMARY
-                echo "✅ **Passed:** $PASSED/$TOTAL_TESTS tests" >> $GITHUB_STEP_SUMMARY
+                echo "❌ **Failed:** $FAILURES/$TOTAL_TESTS tests" >> "$GITHUB_STEP_SUMMARY"
+                echo "✅ **Passed:** $PASSED/$TOTAL_TESTS tests" >> "$GITHUB_STEP_SUMMARY"
               fi
             else
-              echo "Tests completed. Check job logs for detailed results." >> $GITHUB_STEP_SUMMARY
+              echo "Tests completed. Check job logs for detailed results." >> "$GITHUB_STEP_SUMMARY"
             fi
           else
-            echo "No test output found" >> $GITHUB_STEP_SUMMARY
+            echo "No test output found" >> "$GITHUB_STEP_SUMMARY"
           fi
 
 
@@ -83,4 +166,3 @@ jobs:
           name: unit-test-results
           path: test-output.log
           retention-days: 30
-
