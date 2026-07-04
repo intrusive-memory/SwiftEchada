@@ -33,9 +33,12 @@ Full details: [Docs/build-and-test.md](Docs/build-and-test.md)
 
 | Command | Description |
 |---------|-------------|
-| `echada cast` (default) | Generate voices for all cast members from PROJECT.md |
-| `echada voice <prompt>` | Generate a single .vox from a text description |
-| `echada test-voice` (hidden) | Integration test helper |
+| `echada cast` (default) | Generate `.vox` voice identities for all cast members from their `voicePrompt` in PROJECT.md |
+| `echada prompt` | Examine the screenplay source material and write a `voicePrompt` for each cast member in PROJECT.md (inverse of `cast`) |
+| `echada voice <prompt>` | Generate a single `.vox` from a text description (no PROJECT.md required) |
+| `echada test-voice` (hidden) | Integration test helper — fixed NARRATOR profile |
+
+Typical flow: `echada prompt` (scripts → voice briefs) → `echada cast` (briefs → `.vox`).
 
 Full CLI reference: [Docs/api.md](Docs/api.md#cli-echada)
 

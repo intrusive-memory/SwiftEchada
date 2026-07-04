@@ -14,8 +14,9 @@ enum FoundationModelSentenceError: LocalizedError {
   case appleIntelligenceUnavailable
   /// Apple Intelligence is available but does not support the requested locale.
   case unsupportedLanguage(String)
-  /// The model ran but produced no usable sentence.
-  case generationFailed(String)
+  /// The model ran but produced no usable sentence. Carries the underlying
+  /// FoundationModels error (if any) so the real cause is never swallowed.
+  case generationFailed(language: String, underlying: Error?)
 
   var errorDescription: String? {
     switch self {
@@ -32,9 +33,16 @@ enum FoundationModelSentenceError: LocalizedError {
         language '\(language)' on this device. Choose a supported language, or \
         enable that language in System Settings ▸ Apple Intelligence & Siri.
         """
-    case .generationFailed(let language):
-      return
+    case .generationFailed(let language, let underlying):
+      let base =
         "Apple Intelligence returned no usable audition sentence for language '\(language)'."
+      guard let underlying else { return base }
+      // Surface the concrete FoundationModels failure (guardrail violation,
+      // unsupported guide, assets unavailable, context overflow, …) so the user
+      // can act on the real cause instead of a generic message.
+      let detail = (underlying as? LocalizedError)?.errorDescription
+        ?? String(describing: underlying)
+      return "\(base) Underlying FoundationModels error: \(detail)"
     }
   }
 }
@@ -115,10 +123,10 @@ enum FoundationModelSentence {
     do {
       content = try await LanguageModelSession().respond(to: prompt).content
     } catch {
-      throw FoundationModelSentenceError.generationFailed(rawLanguage)
+      throw FoundationModelSentenceError.generationFailed(language: rawLanguage, underlying: error)
     }
     guard let sentence = sanitize(content) else {
-      throw FoundationModelSentenceError.generationFailed(rawLanguage)
+      throw FoundationModelSentenceError.generationFailed(language: rawLanguage, underlying: nil)
     }
     return sentence
   }
