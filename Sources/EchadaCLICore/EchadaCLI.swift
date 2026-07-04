@@ -26,7 +26,7 @@ public struct EchadaCLI: AsyncParsableCommand {
       """,
     version: SwiftEchada.version,
     subcommands: [
-      VoiceCommand.self, CastCommand.self, PromptCommand.self, GenerateCommand.self,
+      VoiceCommand.self, CastCommand.self, GenerateCommand.self,
       TestVoiceCommand.self,
     ],
     defaultSubcommand: CastCommand.self
