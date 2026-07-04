@@ -45,11 +45,11 @@ struct NonEnglishPassthroughTests {
     #expect(voxLanguageTag(for: regional) == regional)
   }
 
-  // MARK: - CLI parsing passthrough (CastCommand.resolvedLanguages)
+  // MARK: - CLI parsing passthrough (GenerateVoxCommand.resolvedLanguages)
 
   @Test("resolvedLanguages preserves each non-English code in order")
   func resolvedLanguagesPreservesNonEnglish() throws {
-    let cmd = try CastCommand.parse([
+    let cmd = try GenerateVoxCommand.parse([
       "--language", "es", "--language", "pt", "--language", "it", "--language", "de",
     ])
     #expect(try cmd.resolvedLanguages() == ["es", "pt", "it", "de"])
@@ -57,7 +57,7 @@ struct NonEnglishPassthroughTests {
 
   @Test("resolvedLanguages lowercases non-English codes")
   func resolvedLanguagesLowercasesNonEnglish() throws {
-    let cmd = try CastCommand.parse([
+    let cmd = try GenerateVoxCommand.parse([
       "--language", "ES", "--language", "PT", "--language", "IT", "--language", "DE",
     ])
     #expect(try cmd.resolvedLanguages() == ["es", "pt", "it", "de"])
