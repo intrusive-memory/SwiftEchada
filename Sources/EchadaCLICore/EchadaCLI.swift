@@ -9,7 +9,10 @@ public struct EchadaCLI: AsyncParsableCommand {
     commandName: "echada",
     abstract: "On-device voice generation for screenplay projects.",
     version: SwiftEchada.version,
-    subcommands: [VoiceCommand.self, CastCommand.self, PromptCommand.self, TestVoiceCommand.self],
+    subcommands: [
+      VoiceCommand.self, CastCommand.self, PromptCommand.self, GenerateCommand.self,
+      TestVoiceCommand.self,
+    ],
     defaultSubcommand: CastCommand.self
   )
 
