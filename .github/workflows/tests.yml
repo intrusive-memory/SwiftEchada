@@ -122,10 +122,13 @@ jobs:
           TEST_RUNNER_ACERVO_OFFLINE: "0"
         run: |
           set +e
-          xcodebuild test \
-            -scheme SwiftEchada-Package \
-            -destination 'platform=macOS' \
-            2>&1 | tee test-output.log
+          # Delegate to `make test` so the xcodebuild invocation (scheme,
+          # destination, and the -skipPackagePluginValidation / -skipMacroValidation
+          # flags that unblock mlx-swift's CudaBuild build-tool plugin) has a single
+          # source of truth in the Makefile. The TEST_RUNNER_ACERVO_* env set on
+          # this step is inherited by the make sub-process. Output is tee'd so the
+          # summary/upload steps below can parse pass/fail counts.
+          make test 2>&1 | tee test-output.log
           TEST_EXIT_CODE=${PIPESTATUS[0]}
           set -e
 
