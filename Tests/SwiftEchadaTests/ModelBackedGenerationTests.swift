@@ -3,7 +3,6 @@ import Foundation
 import FoundationModels
 import SwiftProyecto
 import Testing
-
 @preconcurrency import VoxFormat
 
 @testable import EchadaCLICore
@@ -177,7 +176,9 @@ struct ModelBackedGenerationTests {
 
     // Two passes into the same PROJECT.md → one .vox with both model embeddings.
     for variant in ["0.6b", "1.7b"] {
-      let cmd = try GenerateVoxCommand.parse(["--project", projectFile.path, "--tts-model", variant])
+      let cmd = try GenerateVoxCommand.parse([
+        "--project", projectFile.path, "--tts-model", variant,
+      ])
       try await cmd.run()
     }
 

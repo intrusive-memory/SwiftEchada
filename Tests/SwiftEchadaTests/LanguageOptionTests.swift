@@ -32,7 +32,9 @@ struct LanguageOptionTests {
   }
 
   @Test func lowercasesAndDeduplicates() throws {
-    let cmd = try GenerateVoxCommand.parse(["--language", "ES", "--language", "es", "--language", "EN"])
+    let cmd = try GenerateVoxCommand.parse([
+      "--language", "ES", "--language", "es", "--language", "EN",
+    ])
     #expect(try cmd.resolvedLanguages() == ["es", "en"])
   }
 

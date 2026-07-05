@@ -35,7 +35,10 @@ struct CLIWiringTests {
 
   @Test("EchadaCLI.subcommands contains generate and voice")
   func rootSubcommandsContainGenerateAndVoice() {
-    let names = Set(EchadaCLI.configuration.subcommands.map { $0.configuration.commandName ?? String(describing: $0) })
+    let names = Set(
+      EchadaCLI.configuration.subcommands.map {
+        $0.configuration.commandName ?? String(describing: $0)
+      })
     #expect(names.contains("generate"))
     #expect(names.contains("voice"))
     // Also confirm by identity, not just by name string.
@@ -57,11 +60,12 @@ struct CLIWiringTests {
     #expect(names.count == 3)  // exactly three -- no stray duplicates
 
     let identifiers = Set(GenerateCommand.configuration.subcommands.map(ObjectIdentifier.init))
-    #expect(identifiers == [
-      ObjectIdentifier(GenerateCastCommand.self),
-      ObjectIdentifier(GeneratePromptCommand.self),
-      ObjectIdentifier(GenerateVoxCommand.self),
-    ])
+    #expect(
+      identifiers == [
+        ObjectIdentifier(GenerateCastCommand.self),
+        ObjectIdentifier(GeneratePromptCommand.self),
+        ObjectIdentifier(GenerateVoxCommand.self),
+      ])
   }
 
   // MARK: - Non-empty abstract/discussion, mentioning inputs/outputs
@@ -107,8 +111,12 @@ struct CLIWiringTests {
   func commandHasNonEmptyDocumentation(
     _ fixture: (name: String, abstract: String, discussion: String, mustMention: [String])
   ) {
-    #expect(!fixture.abstract.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, "\(fixture.name) abstract")
-    #expect(!fixture.discussion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, "\(fixture.name) discussion")
+    #expect(
+      !fixture.abstract.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+      "\(fixture.name) abstract")
+    #expect(
+      !fixture.discussion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+      "\(fixture.name) discussion")
     for token in fixture.mustMention {
       #expect(
         fixture.discussion.localizedCaseInsensitiveContains(token),
@@ -141,7 +149,8 @@ struct CLIWiringTests {
     #expect(!discussion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
     // ArgumentParser re-wraps discussion prose to the terminal width, so
     // compare a stable short phrase rather than the raw multi-line literal.
-    let firstDiscussionWords = discussion
+    let firstDiscussionWords =
+      discussion
       .split(whereSeparator: { $0.isWhitespace })
       .prefix(4)
       .joined(separator: " ")

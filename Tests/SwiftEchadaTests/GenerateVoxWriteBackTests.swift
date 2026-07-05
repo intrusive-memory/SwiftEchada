@@ -1,8 +1,8 @@
 import Foundation
+import SwiftProyecto
 import Testing
 
 @testable import EchadaCLICore
-import SwiftProyecto
 
 /// Regression coverage for issue #44 — `echada generate vox` must NOT destroy
 /// non-cast content in PROJECT.md when it writes back `voices.voxalta` paths.

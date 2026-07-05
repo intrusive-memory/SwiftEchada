@@ -102,7 +102,8 @@ public struct CastCommand: AsyncParsableCommand {
   @Flag(
     name: .long,
     help:
-      "Run the offline bootstrap + cast-discovery steps but stop before the model-backed prompt and vox stages.")
+      "Run the offline bootstrap + cast-discovery steps but stop before the model-backed prompt and vox stages."
+  )
   public var dryRun: Bool = false
 
   @Flag(name: .long, help: "Show verbose output for every stage.")

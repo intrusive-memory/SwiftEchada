@@ -147,7 +147,8 @@ struct CastPipelineTests {
     #expect(maya?.actor == "Existing Actor")
   }
 
-  @Test("CastCommand.parse maps a bare --force flag onto the `force` property forwarded to every stage")
+  @Test(
+    "CastCommand.parse maps a bare --force flag onto the `force` property forwarded to every stage")
   func castCommandParsesForceFlag() throws {
     let cmd = try CastCommand.parse(["--force"])
     #expect(cmd.force)

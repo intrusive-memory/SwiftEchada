@@ -26,7 +26,8 @@ enum VoicePromptSynthesizerError: LocalizedError {
       let base =
         "Apple Intelligence returned no usable voice prompt for character '\(character)'."
       guard let underlying else { return base }
-      let detail = (underlying as? LocalizedError)?.errorDescription
+      let detail =
+        (underlying as? LocalizedError)?.errorDescription
         ?? String(describing: underlying)
       return "\(base) Underlying FoundationModels error: \(detail)"
     }

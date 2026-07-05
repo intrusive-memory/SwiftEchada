@@ -115,7 +115,8 @@ struct GenerateCastCommandTests {
 
   // MARK: - Default merge: no clobbering of downstream fields
 
-  @Test("Default merge adds newly-discovered characters without touching existing downstream fields")
+  @Test(
+    "Default merge adds newly-discovered characters without touching existing downstream fields")
   func defaultMergePreservesExistingFields() async throws {
     let existing = [
       CastMember(
@@ -161,7 +162,9 @@ struct GenerateCastCommandTests {
 
   // MARK: - --force: re-sync to discovered set, keep fields for survivors, drop the rest
 
-  @Test("--force re-syncs to exactly the discovered characters, dropping missing ones but keeping fields for survivors")
+  @Test(
+    "--force re-syncs to exactly the discovered characters, dropping missing ones but keeping fields for survivors"
+  )
   func forceResyncsAndDropsMissingCharacters() async throws {
     let existing = [
       CastMember(
@@ -300,7 +303,8 @@ struct GenerateCastCommandTests {
 @Suite("CastCommand PROJECT.md bootstrap — offline")
 struct CastCommandBootstrapTests {
 
-  @Test("Bootstrap creates PROJECT.md with inferred title, episodesDir, and filePattern when absent")
+  @Test(
+    "Bootstrap creates PROJECT.md with inferred title, episodesDir, and filePattern when absent")
   func bootstrapCreatesProjectMarkdown() async throws {
     let base = FileManager.default.temporaryDirectory
       .appendingPathComponent("cast-bootstrap-\(UUID().uuidString)")
@@ -332,7 +336,9 @@ struct CastCommandBootstrapTests {
     #expect(frontMatter.cast?.map(\.character) == ["ALICE", "BOB"])
   }
 
-  @Test("Bootstrap infers *.txt filePattern for a non-fountain project so generate cast finds the scripts")
+  @Test(
+    "Bootstrap infers *.txt filePattern for a non-fountain project so generate cast finds the scripts"
+  )
   func bootstrapInfersFilePatternForNonFountainProject() async throws {
     let base = FileManager.default.temporaryDirectory
       .appendingPathComponent("cast-bootstrap-txt-\(UUID().uuidString)")

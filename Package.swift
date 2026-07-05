@@ -23,8 +23,10 @@ let package = Package(
     ),
   ],
   dependencies: [
-    .package(url: "https://github.com/intrusive-memory/SwiftProyecto.git", .upToNextMajor(from: "4.3.2")),
-    .package(url: "https://github.com/intrusive-memory/SwiftVoxAlta.git", .upToNextMajor(from: "0.14.0")),
+    .package(
+      url: "https://github.com/intrusive-memory/SwiftProyecto.git", .upToNextMajor(from: "4.3.2")),
+    .package(
+      url: "https://github.com/intrusive-memory/SwiftVoxAlta.git", .upToNextMajor(from: "0.14.0")),
     .package(url: "https://github.com/apple/swift-argument-parser", .upToNextMajor(from: "1.7.1")),
     .package(url: "https://github.com/ml-explore/mlx-swift", .upToNextMajor(from: "0.31.3")),
     .package(url: "https://github.com/ml-explore/mlx-swift-lm", .upToNextMajor(from: "3.31.3")),
@@ -32,8 +34,10 @@ let package = Package(
     // migration) is incompatible with the latest published SwiftVoxAlta (0.14.0),
     // which pins mlx-audio-swift to `.upToNextMinor(from: "0.8.6")` (< 0.9.0).
     // Bump this to 0.9.x only once SwiftVoxAlta ships a release that adopts it.
-    .package(url: "https://github.com/intrusive-memory/mlx-audio-swift.git", .upToNextMinor(from: "0.8.7")),
-    .package(url: "https://github.com/intrusive-memory/vox-format.git", .upToNextMajor(from: "0.4.1")),
+    .package(
+      url: "https://github.com/intrusive-memory/mlx-audio-swift.git", .upToNextMinor(from: "0.8.7")),
+    .package(
+      url: "https://github.com/intrusive-memory/vox-format.git", .upToNextMajor(from: "0.4.1")),
   ],
   targets: [
     .target(

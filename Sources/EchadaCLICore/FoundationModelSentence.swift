@@ -40,7 +40,8 @@ enum FoundationModelSentenceError: LocalizedError {
       // Surface the concrete FoundationModels failure (guardrail violation,
       // unsupported guide, assets unavailable, context overflow, …) so the user
       // can act on the real cause instead of a generic message.
-      let detail = (underlying as? LocalizedError)?.errorDescription
+      let detail =
+        (underlying as? LocalizedError)?.errorDescription
         ?? String(describing: underlying)
       return "\(base) Underlying FoundationModels error: \(detail)"
     }
