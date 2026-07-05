@@ -332,6 +332,32 @@ struct CastCommandBootstrapTests {
     #expect(frontMatter.cast?.map(\.character) == ["ALICE", "BOB"])
   }
 
+  @Test("Bootstrap infers *.txt filePattern for a non-fountain project so generate cast finds the scripts")
+  func bootstrapInfersFilePatternForNonFountainProject() async throws {
+    let base = FileManager.default.temporaryDirectory
+      .appendingPathComponent("cast-bootstrap-txt-\(UUID().uuidString)")
+    let projectDir = base.appendingPathComponent("txt-podcast")
+    let episodesDir = projectDir.appendingPathComponent("episodes")
+    try FileManager.default.createDirectory(at: episodesDir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: base) }
+
+    // Scripts are .txt, not .fountain -- the hard-coded default would filter them out.
+    try GenerateCastCommandTests.episodeOne.write(
+      to: episodesDir.appendingPathComponent("ep1.txt"), atomically: true, encoding: .utf8)
+
+    let projectFile = projectDir.appendingPathComponent("PROJECT.md")
+    let cmd = try CastCommand.parse(["--project", projectFile.path, "--dry-run"])
+    try await cmd.run()
+
+    let (frontMatter, _) = try ProjectMarkdownParser().parse(fileURL: projectFile)
+    // The inferred pattern must include *.txt so the immediately-following
+    // generate cast stage matches the scripts instead of aborting.
+    #expect(frontMatter.resolvedFilePatterns.contains("*.txt"))
+    // Proof the pattern is actually usable: cast discovery ran for real under
+    // --dry-run and merged the characters from the .txt script.
+    #expect(frontMatter.cast?.map(\.character) == ["ALICE", "BOB"])
+  }
+
   @Test("Bootstrap falls back to '.' for episodesDir when no episodes/ subdirectory exists")
   func bootstrapInfersDotEpisodesDirWhenNoEpisodesSubfolder() async throws {
     let base = FileManager.default.temporaryDirectory

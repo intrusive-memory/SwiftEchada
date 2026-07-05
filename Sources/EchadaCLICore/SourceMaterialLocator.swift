@@ -15,6 +15,14 @@ enum SourceMaterialLocator {
     "fountain", "txt", "text", "md", "markdown", "fic", "spmd",
   ]
 
+  /// Whether a `*.ext` glob (e.g. from `ProjectAnalysis.discoveredFiles`) targets
+  /// an extension the locator can actually parse as a screenplay. Used by the
+  /// `cast` bootstrap so it only ever writes a `filePattern` the pipeline can act
+  /// on, rather than pinning an inapplicable default.
+  static func isParseableScriptPattern(_ pattern: String) -> Bool {
+    textExtensions.contains((pattern as NSString).pathExtension.lowercased())
+  }
+
   /// Screenplay source files for the project, sorted by path for deterministic order.
   ///
   /// - Parameters:
