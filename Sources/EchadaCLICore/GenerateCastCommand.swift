@@ -137,11 +137,18 @@ public struct GenerateCastCommand: AsyncParsableCommand {
       // Re-sync to exactly what was discovered this run, dropping characters
       // that no longer appear — but keep every downstream field (actor,
       // voicePrompt, voices, language) for characters that persist.
+      //
+      // Fountain cues surface as uppercase (ALICE) while a curated PROJECT.md
+      // may store mixed case (Alice), so key both sides with the same
+      // case/whitespace normalization used for cue matching elsewhere.
+      // Otherwise a curated member would be treated as non-matching, dropped,
+      // and replaced with a bare discovered entry — losing its downstream fields.
       let existingByName = Dictionary(
-        existingCast.map { ($0.character, $0) }, uniquingKeysWith: { _, last in last })
+        existingCast.map { (Self.normalizeCharacter($0.character), $0) },
+        uniquingKeysWith: { _, last in last })
       mergedCast =
         discoveredMembers
-        .map { existingByName[$0.character] ?? $0 }
+        .map { existingByName[Self.normalizeCharacter($0.character)] ?? $0 }
         .sorted { $0.character < $1.character }
     } else {
       // Default: keep the existing cast untouched and only add newly-appearing
@@ -166,5 +173,15 @@ public struct GenerateCastCommand: AsyncParsableCommand {
     let updatedFrontMatter = frontMatter.withCast(mergedCast.isEmpty ? nil : mergedCast)
     try parser.write(frontMatter: updatedFrontMatter, body: body, to: fileURL)
     print("\nWritten to \(project)")
+  }
+
+  /// Case- and whitespace-insensitive key for matching a discovered cue name to
+  /// an existing cast member. Trims, collapses internal whitespace runs to a
+  /// single space, and uppercases — mirroring `DialogueExtractor.normalize` so
+  /// cue-to-cast matching stays consistent across the pipeline.
+  static func normalizeCharacter(_ name: String) -> String {
+    name.split(whereSeparator: { $0 == " " || $0 == "\t" })
+      .joined(separator: " ")
+      .uppercased()
   }
 }

@@ -201,6 +201,60 @@ struct GenerateCastCommandTests {
     #expect(dave.voices.isEmpty)
   }
 
+  @Test("--force matches curated mixed-case cast members to uppercase cues, keeping their downstream fields")
+  func forcePreservesFieldsAcrossCaseMismatch() async throws {
+    // Fountain cues surface as uppercase (ALICE / BOB), but a curated PROJECT.md
+    // commonly stores mixed case (Alice / Bob). --force must match them via
+    // case/whitespace-insensitive keys and keep the curated downstream fields,
+    // not treat the members as non-matching and replace them with bare entries.
+    let existing = [
+      CastMember(
+        character: "Alice",
+        actor: "Jane",
+        voiceDescription: "A warm, measured female narrator.",
+        voices: ["voxalta": ["alice.vox"]],
+        language: "en"
+      ),
+      CastMember(
+        character: "  Bob ",  // leading/trailing whitespace exercises the trim/collapse too.
+        actor: "John",
+        voices: ["voxalta": ["bob.vox"]],
+        language: "es"
+      ),
+    ]
+    let url = try makeProject(
+      cast: existing,
+      scripts: ["ep1.fountain": Self.episodeOne, "ep2.fountain": Self.episodeTwo])
+    defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+
+    let cmd = try GenerateCastCommand.parse(["--project", url.path, "--force"])
+    try await cmd.run()
+
+    let cast = try readCast(url)
+    let byName = Dictionary(uniqueKeysWithValues: cast.map { ($0.character, $0) })
+
+    // Curated members are preserved with their original casing; only DAVE is new.
+    #expect(cast.map(\.character) == ["  Bob ", "Alice", "DAVE"])
+
+    // Alice kept every downstream field despite the ALICE cue casing.
+    let alice = try #require(byName["Alice"])
+    #expect(alice.actor == "Jane")
+    #expect(alice.voiceDescription == "A warm, measured female narrator.")
+    #expect(alice.voices == ["voxalta": ["alice.vox"]])
+    #expect(alice.language == "en")
+
+    // Bob kept his fields despite both a case and whitespace mismatch to the cue.
+    let bob = try #require(byName["  Bob "])
+    #expect(bob.actor == "John")
+    #expect(bob.voices == ["voxalta": ["bob.vox"]])
+    #expect(bob.language == "es")
+
+    // DAVE is genuinely new -- empty downstream fields.
+    let dave = try #require(byName["DAVE"])
+    #expect(dave.actor == nil)
+    #expect(dave.voices.isEmpty)
+  }
+
   // MARK: - --dry-run writes nothing
 
   @Test("--dry-run previews discovered characters and writes nothing")
