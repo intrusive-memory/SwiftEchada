@@ -26,25 +26,25 @@ struct AccentOptionTests {
     #expect(result.contains("slow drawl"))
   }
 
-  // MARK: - CastCommand.resolvedAccent normalization
+  // MARK: - GenerateVoxCommand.resolvedAccent normalization
 
   @Test func noFlagReturnsNil() throws {
-    let cmd = try CastCommand.parse([])
+    let cmd = try GenerateVoxCommand.parse([])
     #expect(cmd.resolvedAccent() == nil)
   }
 
   @Test func whitespaceOnlyFlagReturnsNil() throws {
-    let cmd = try CastCommand.parse(["--accent", "   "])
+    let cmd = try GenerateVoxCommand.parse(["--accent", "   "])
     #expect(cmd.resolvedAccent() == nil)
   }
 
   @Test func paddedValueIsTrimmed() throws {
-    let cmd = try CastCommand.parse(["--accent", "  drawl "])
+    let cmd = try GenerateVoxCommand.parse(["--accent", "  drawl "])
     #expect(cmd.resolvedAccent() == "drawl")
   }
 
   @Test func accentFlagParsesAndReachesResolvedAccent() throws {
-    let cmd = try CastCommand.parse(["--accent", "slow southern drawl"])
+    let cmd = try GenerateVoxCommand.parse(["--accent", "slow southern drawl"])
     #expect(cmd.resolvedAccent() == "slow southern drawl")
   }
 }

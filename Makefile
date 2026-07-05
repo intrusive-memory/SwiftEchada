@@ -8,6 +8,11 @@ BIN_DIR = ./bin
 DESTINATION = platform=macOS,arch=arm64
 DERIVED_DATA = $(HOME)/Library/Developer/Xcode/DerivedData
 
+# mlx-swift ships a CudaBuild build-tool plugin and the dependency graph pulls in
+# swift-syntax macros; skip their interactive trust prompts so headless/CI builds
+# don't stall waiting on a "Validate plug-in" / "trust macro" dialog.
+XCODE_FLAGS = -skipPackagePluginValidation -skipMacroValidation
+
 export GIT_LFS_SKIP_SMUDGE = 1
 
 .PHONY: all build release install clean test resolve help integration-test lint codesign-cli
@@ -21,11 +26,11 @@ resolve:
 
 # Development build with xcodebuild (Debug)
 build: resolve
-	xcodebuild -scheme $(SCHEME) -destination '$(DESTINATION)' build
+	xcodebuild -scheme $(SCHEME) -destination '$(DESTINATION)' $(XCODE_FLAGS) build
 
 # Release build with xcodebuild + copy to bin
 release: resolve
-	xcodebuild -scheme $(SCHEME) -destination '$(DESTINATION)' -configuration Release build
+	xcodebuild -scheme $(SCHEME) -destination '$(DESTINATION)' -configuration Release $(XCODE_FLAGS) build
 	@mkdir -p $(BIN_DIR)
 	@PRODUCT_DIR=$$(find $(DERIVED_DATA)/SwiftEchada-*/Build/Products/Release -name $(BINARY) -type f -not -path '*.dSYM*' 2>/dev/null | head -1 | xargs dirname); \
 	if [ -n "$$PRODUCT_DIR" ]; then \
@@ -46,7 +51,7 @@ release: resolve
 
 # Debug build with xcodebuild + copy to bin (default)
 install: resolve
-	xcodebuild -scheme $(SCHEME) -destination '$(DESTINATION)' build
+	xcodebuild -scheme $(SCHEME) -destination '$(DESTINATION)' $(XCODE_FLAGS) build
 	@mkdir -p $(BIN_DIR)
 	@PRODUCT_DIR=$$(find $(DERIVED_DATA)/SwiftEchada-*/Build/Products/Debug -name $(BINARY) -type f -not -path '*.dSYM*' 2>/dev/null | head -1 | xargs dirname); \
 	if [ -n "$$PRODUCT_DIR" ]; then \
@@ -66,7 +71,7 @@ install: resolve
 
 # Run tests via xcodebuild
 test: resolve
-	xcodebuild test -scheme $(TEST_SCHEME) -destination '$(DESTINATION)' -only-testing:SwiftEchadaTests
+	xcodebuild test -scheme $(TEST_SCHEME) -destination '$(DESTINATION)' $(XCODE_FLAGS) -only-testing:SwiftEchadaTests
 
 # Format Swift source files with swift-format
 lint:

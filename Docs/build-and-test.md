@@ -1,3 +1,7 @@
+---
+type: reference
+---
+
 # Build, Test, and Release
 
 ---
@@ -94,6 +98,46 @@ Test fixture files live in `Fixtures/`:
 - **Command**: `xcodebuild test -scheme SwiftEchada-Package -destination 'platform=macOS'`
 - **Artifact**: `test-output.log` (30-day retention)
 - **Summary**: Pass/fail counts posted to Actions summary
+- **SwiftAcervo model cache (R-CI-2)**: before running tests, the job computes a
+  cache key from the live CDN manifests of the Qwen3-TTS weights `generate vox`
+  loads (Base 1.7B, Base 0.6B, VoiceDesign 1.7B), restores `ACERVO_MODELS_DIR`
+  via `actions/cache`, and primes any cache miss from the CDN using
+  `.github/scripts/acervo-ci-prime.sh` (credential-free curl+jq, no `acervo`
+  binary needed). The test step forwards `TEST_RUNNER_ACERVO_MODELS_DIR` and
+  `TEST_RUNNER_ACERVO_CDN_BASE_URL` into the xctest runner (xcodebuild strips
+  the `TEST_RUNNER_` prefix) so that, on a machine that also has Apple
+  Intelligence available (see below), model-backed `.vox` tests would find the
+  weights already on disk instead of re-downloading multi-GB checkpoints every
+  run. This caching is correct, valuable infrastructure on its own, but **it
+  does not by itself make the `.vox` tests run on hosted CI** -- see the next
+  bullet. `TEST_RUNNER_ACERVO_OFFLINE` is forwarded as `"0"`, not `"1"` -- see
+  the comment block in `tests.yml` for why (SwiftVoxAlta registers its
+  Qwen3-TTS components as bare/auto-hydrating descriptors, so strict offline
+  mode would block the harmless manifest re-fetch that happens on every fresh
+  test process, defeating the cache).
+- **Apple Intelligence is NOT available on this runner (R-CI-1, UNMET)**:
+  GitHub-hosted `macos-26` reports `SystemLanguageModel.default.isAvailable ==
+  false` (no device opt-in, no signed-in Apple Account, no on-device model
+  download on ephemeral hosted runners). Every test gated with `.enabled(if:
+  SystemLanguageModel.default.isAvailable)` -- `FoundationModelSentenceTests`,
+  `generate prompt` -- **skips** on this workflow; that is accepted, expected
+  coverage, not a failure.
+  **This also includes the `generate vox` and full-pipeline `.vox` tests**
+  (`ModelBackedGenerationTests`), even though the TTS weights are cached and
+  present: `CastVoiceGenerator.generate()` sources every audition sentence
+  exclusively from the on-device Foundation Model
+  (`FoundationModelSentence.requireAvailable()`), so those tests are gated on
+  the **conjunction** of both Apple Intelligence availability *and* TTS-weight
+  presence. Since Apple Intelligence is unavailable on hosted `macos-26`, the
+  model-backed `.vox` and full-pipeline `voicePrompt`/`.vox` assertions skip
+  here too -- the weight cache keeps the infrastructure ready, but does not by
+  itself unlock coverage. All of these paths are exercised locally on a
+  developer Mac with Apple Intelligence enabled, or would need a self-hosted
+  Apple-Intelligence-provisioned runner, which this workflow does not provide.
+  Full CI coverage of both the Foundation-Model paths (`generate prompt`) and
+  the transitively-gated model-backed `.vox` paths (`generate vox`,
+  full-pipeline `echada cast`) is a future item contingent on standing up such
+  a self-hosted runner -- this workflow makes no claim to exercise them today.
 
 #### `release.yml` -- Release Binary
 

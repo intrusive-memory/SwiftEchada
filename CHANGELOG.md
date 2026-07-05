@@ -11,6 +11,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-07-04
+
+### Changed — Breaking
+
+**`echada cast` is repurposed into the full pipeline orchestrator** (OPERATION
+GENERAL MUSTER). This is a hard-cut breaking change to the CLI surface — there
+is no back-compat alias, and for the removed `echada prompt` command there is
+no runtime breadcrumb pointing at the replacement (it fails with
+ArgumentParser's generic "unknown subcommand" error). Update any scripts or CI
+jobs that call `echada cast` or `echada prompt` directly.
+
+All generative steps now live under a new `echada generate` namespace:
+
+- `echada generate cast` — **(new)** heuristically discovers cast members from
+  the screenplay source (no LLM/ML) and merges them into PROJECT.md's `cast:`
+  list.
+- `echada generate prompt` — **was `echada prompt`.** Same
+  `VoicePromptSynthesizer`/`DialogueExtractor` logic, moved verbatim. Old
+  invocations of `echada prompt ...` now fail with a generic argument error;
+  use `echada generate prompt ...` instead.
+- `echada generate vox` — **was `echada cast`'s old `.vox`-only behavior.**
+  Same `CastVoiceGenerator` logic, moved verbatim (same flags: `--project`,
+  `--force-regenerate`, `--dry-run`, `--verbose`, `--tts-model`, `--character`,
+  `--language`, `--accent`). If you previously ran `echada cast ...` to
+  generate `.vox` files from existing `voicePrompt`s, use
+  `echada generate vox ...` instead — the exact same flags apply.
+
+**`echada cast` (bare or explicit, still the default subcommand) now runs the
+full production pipeline end to end**: bootstrap `PROJECT.md` (scaffolded
+automatically, no LLM, when absent) → `generate cast` → `generate prompt` →
+`generate vox`. Every stage is idempotent, so re-running only fills the gaps.
+It takes a superset flag surface (`--project`, `--character`, `--tts-model`,
+`--language`, `--accent`, `--dry-run`, `--verbose`) plus a single cascading
+`--force` that fans out to each stage's own force flag; per-stage control
+remains available via the standalone `echada generate <stage>` subcommands.
+
+**Migration summary:**
+
+| Old | New |
+|-----|-----|
+| `echada cast` (produced `.vox` only) | `echada generate vox` |
+| `echada prompt` | `echada generate prompt` |
+| — | `echada generate cast` (new) |
+| `echada cast` (bare, one-shot pipeline) | `echada cast` now runs the **full pipeline** (bootstrap → cast → prompt → vox), not just `.vox` generation |
+| `echada voice`, `echada test-voice` | Unchanged |
+
+### Added
+- `echada generate` command container (no default subcommand — `echada
+  generate --help` lists `cast`/`prompt`/`vox`).
+- CI: SwiftAcervo model-cache wiring in `tests.yml` so the Qwen3-TTS weights
+  `generate vox` needs are cached across hosted-CI runs (see
+  [Docs/build-and-test.md](Docs/build-and-test.md) for the important caveat
+  that this caching does not by itself unlock `.vox` test coverage on hosted
+  CI — those tests are also gated on Apple Intelligence availability, which
+  hosted `macos-26` does not provide).
+
 ## [0.15.0] - 2026-06-26
 
 ### Changed

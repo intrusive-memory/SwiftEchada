@@ -18,26 +18,28 @@ struct LanguageOptionTests {
     #expect(voxLanguageTag(for: "fr") == "fr")
   }
 
-  // MARK: - CastCommand.resolvedLanguages normalization
+  // MARK: - GenerateVoxCommand.resolvedLanguages normalization
 
   @Test func noFlagYieldsEmptyOverride() throws {
     // Empty == "no global override" → each member cast in its own member.language.
-    let cmd = try CastCommand.parse([])
+    let cmd = try GenerateVoxCommand.parse([])
     #expect(try cmd.resolvedLanguages() == [])
   }
 
   @Test func repeatedFlagPreservesOrder() throws {
-    let cmd = try CastCommand.parse(["--language", "es", "--language", "en"])
+    let cmd = try GenerateVoxCommand.parse(["--language", "es", "--language", "en"])
     #expect(try cmd.resolvedLanguages() == ["es", "en"])
   }
 
   @Test func lowercasesAndDeduplicates() throws {
-    let cmd = try CastCommand.parse(["--language", "ES", "--language", "es", "--language", "EN"])
+    let cmd = try GenerateVoxCommand.parse([
+      "--language", "ES", "--language", "es", "--language", "EN",
+    ])
     #expect(try cmd.resolvedLanguages() == ["es", "en"])
   }
 
   @Test func emptyValueIsRejected() throws {
-    let cmd = try CastCommand.parse(["--language", "  "])
+    let cmd = try GenerateVoxCommand.parse(["--language", "  "])
     #expect(throws: (any Error).self) { try cmd.resolvedLanguages() }
   }
 }

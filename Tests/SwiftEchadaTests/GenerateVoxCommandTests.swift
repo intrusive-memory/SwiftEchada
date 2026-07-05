@@ -4,13 +4,13 @@ import Testing
 
 @testable import EchadaCLICore
 
-/// Covers the model-free branches of `CastCommand.run()` — the validation gates
-/// and the `--dry-run` path, all of which execute and return before the command
-/// ever constructs a `CastVoiceGenerator` or loads a TTS model. These run
-/// anywhere (no Apple Intelligence, no model downloads) and exercise the `cast`
+/// Covers the model-free branches of `GenerateVoxCommand.run()` — the validation
+/// gates and the `--dry-run` path, all of which execute and return before the
+/// command ever constructs a `CastVoiceGenerator` or loads a TTS model. These run
+/// anywhere (no Apple Intelligence, no model downloads) and exercise the `vox`
 /// entry point that was otherwise only reachable via `make integration-test`.
-@Suite("CastCommand.run — model-free branches")
-struct CastCommandTests {
+@Suite("GenerateVoxCommand.run — model-free branches")
+struct GenerateVoxCommandTests {
 
   static let twoMemberProject = """
     ---
@@ -57,7 +57,7 @@ struct CastCommandTests {
     let missing = FileManager.default.temporaryDirectory
       .appendingPathComponent("does-not-exist-\(UUID().uuidString)")
       .appendingPathComponent("PROJECT.md")
-    let cmd = try CastCommand.parse(["--project", missing.path])
+    let cmd = try GenerateVoxCommand.parse(["--project", missing.path])
     await #expect(throws: ValidationError.self) { try await cmd.run() }
   }
 
@@ -65,7 +65,7 @@ struct CastCommandTests {
   func noCastMembersThrows() async throws {
     let url = try writeProject(Self.noCastProject)
     defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
-    let cmd = try CastCommand.parse(["--project", url.path])
+    let cmd = try GenerateVoxCommand.parse(["--project", url.path])
     await #expect(throws: ValidationError.self) { try await cmd.run() }
   }
 
@@ -73,7 +73,7 @@ struct CastCommandTests {
   func unsupportedTTSModelThrows() async throws {
     let url = try writeProject(Self.twoMemberProject)
     defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
-    let cmd = try CastCommand.parse(["--project", url.path, "--tts-model", "9.9b"])
+    let cmd = try GenerateVoxCommand.parse(["--project", url.path, "--tts-model", "9.9b"])
     await #expect(throws: ValidationError.self) { try await cmd.run() }
   }
 
@@ -82,7 +82,7 @@ struct CastCommandTests {
     let url = try writeProject(Self.twoMemberProject)
     defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
     // --dry-run is set too, so even if the guard were reordered this never loads a model.
-    let cmd = try CastCommand.parse([
+    let cmd = try GenerateVoxCommand.parse([
       "--project", url.path, "--character", "NOBODY", "--dry-run",
     ])
     await #expect(throws: ValidationError.self) { try await cmd.run() }
@@ -96,7 +96,7 @@ struct CastCommandTests {
     defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
     let before = try String(contentsOf: url, encoding: .utf8)
 
-    let cmd = try CastCommand.parse(["--project", url.path, "--dry-run"])
+    let cmd = try GenerateVoxCommand.parse(["--project", url.path, "--dry-run"])
     try await cmd.run()
 
     // The generator is never constructed: no voices/ directory, PROJECT.md untouched.
@@ -110,7 +110,7 @@ struct CastCommandTests {
   func dryRunWithCharacterFilterSucceeds() async throws {
     let url = try writeProject(Self.twoMemberProject)
     defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
-    let cmd = try CastCommand.parse([
+    let cmd = try GenerateVoxCommand.parse([
       "--project", url.path, "--character", "ALICE", "--dry-run",
     ])
     try await cmd.run()
@@ -123,7 +123,7 @@ struct CastCommandTests {
     let url = try writeProject(Self.twoMemberProject)
     defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
     // Lowercase "alice" must resolve to the "ALICE" cast member (no throw).
-    let cmd = try CastCommand.parse([
+    let cmd = try GenerateVoxCommand.parse([
       "--project", url.path, "--character", "alice", "--dry-run",
     ])
     try await cmd.run()

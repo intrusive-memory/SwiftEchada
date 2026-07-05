@@ -1,3 +1,7 @@
+---
+type: doc
+---
+
 # Gotchas and Sharp Edges
 
 Things that will trip you up if you don't know about them.
@@ -81,6 +85,17 @@ try vox.write(to: url)
 ## Default Subcommand
 
 `echada` with no subcommand runs `cast`, not `voice`. The `extract` and `download` commands were removed in v0.9.2.
+
+**As of v0.16.0, `cast` means the full pipeline, not just `.vox` generation.**
+Bare `echada` / `echada cast` bootstraps `PROJECT.md` (if absent) and then runs
+`generate cast` → `generate prompt` → `generate vox` in order — every stage
+idempotent, so re-running only fills gaps. This is a breaking change: what
+`echada cast` used to do (produce `.vox` files from existing `voicePrompt`s
+only) is now `echada generate vox`, and the old standalone `echada prompt` is
+now `echada generate prompt`. There is no back-compat alias and no runtime
+breadcrumb for the old `echada prompt` invocation (it just fails with
+ArgumentParser's generic unknown-subcommand error) — see
+[CHANGELOG.md](../CHANGELOG.md) for the full migration table.
 
 ---
 
