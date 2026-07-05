@@ -122,9 +122,16 @@ jobs:
           TEST_RUNNER_ACERVO_OFFLINE: "0"
         run: |
           set +e
+          # -skipPackagePluginValidation: mlx-swift (>= 0.31.5) ships a
+          # `CudaBuild` build-tool plugin. On a fresh hosted runner xcodebuild
+          # refuses to run an un-trusted package plugin ("Plugin 'CudaBuild'
+          # ... must be enabled before it can be used"), which fails the build
+          # before any test runs. The plugin is a no-op on macOS (CUDA is
+          # Linux-only), so skipping its trust-validation is safe here.
           xcodebuild test \
             -scheme SwiftEchada-Package \
             -destination 'platform=macOS' \
+            -skipPackagePluginValidation \
             2>&1 | tee test-output.log
           TEST_EXIT_CODE=${PIPESTATUS[0]}
           set -e
