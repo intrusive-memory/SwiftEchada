@@ -268,6 +268,25 @@ struct GenerateCastCommandTests {
     let after = try String(contentsOf: url, encoding: .utf8)
     #expect(before == after)
   }
+
+  @Test("--force with zero discovered characters clears a now-fully-stale cast")
+  func forceWithZeroCharactersClearsStaleCast() async throws {
+    // Existing cast is entirely stale: the only script has no character cues,
+    // so a --force re-sync ("exactly the characters found" = none) must empty
+    // the cast rather than leaving the old entries in place.
+    let existing = [
+      CastMember(character: "ALICE", actor: "Jane"),
+      CastMember(character: "EVE", actor: "Existing Actor"),
+    ]
+    let url = try makeProject(
+      cast: existing, scripts: ["empty.fountain": Self.noCharactersScript])
+    defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+
+    let cmd = try GenerateCastCommand.parse(["--project", url.path, "--force"])
+    try await cmd.run()
+
+    #expect(try readCast(url).isEmpty)
+  }
 }
 
 // MARK: - PROJECT.md bootstrap (R-TEST-2), via the `cast` orchestrator
