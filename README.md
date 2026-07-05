@@ -49,21 +49,61 @@ The library target depends only on [SwiftProyecto](https://github.com/intrusive-
 
 ## CLI Usage
 
-The `echada` CLI has three commands:
+The `echada` CLI has four top-level commands: `cast` (default), `generate`, `voice`,
+and the hidden `test-voice`.
 
-### Cast Voices (default)
+### `echada cast` (default) — the full pipeline
 
-Generate on-device custom voices for cast members using Qwen3-TTS. Reads voice description prompts from PROJECT.md and generates `.vox` voice files.
+Bare `echada` (or `echada cast`) runs the whole production pipeline end to end:
 
-```bash
-echada cast --project PROJECT.md [--tts-model <0.6b|1.7b>] [--character <name>] [--language <bcp-47>]... [--accent <directive>] [--force-regenerate] [--dry-run] [--verbose]
+```
+PROJECT.md  →  generate cast  →  generate prompt  →  generate vox
 ```
 
-Uses a two-phase pipeline:
-1. **Phase A** — VoiceDesign 1.7B model generates candidate WAVs from voice prompts
-2. **Phase B** — Base model creates voice locks (speaker embeddings) and exports `.vox` bundles
+If `--project` (default `PROJECT.md`) is absent, it is scaffolded automatically
+from the surrounding directory (inferred title, author, `episodesDir`,
+`filePattern`) with no LLM involved. Then it runs, in order: `generate cast`
+(discover cast members from the screenplay source), `generate prompt` (write a
+`voicePrompt` per member via the on-device Foundation Model), and `generate
+vox` (synthesize an on-device `.vox` voice per member). Every stage is
+idempotent, so re-running only fills the gaps.
 
-Use `--tts-model` to select the TTS model variant (default: `1.7b`). Use `--character` to regenerate a single character's voice without affecting others. Pass `--language` one or more BCP-47 codes (default `en`) to cast multiple languages into a single `.vox` — the per-language voice prompt drives the accent for each (e.g. `--language es --language en`). Use `--accent` to apply a delivery directive (e.g. `"slow southern drawl"`) to every character's voice prompt; omit for neutral delivery.
+```bash
+echada cast [--project <path>] [--character <name>] [--tts-model <0.6b|1.7b>] [--language <bcp-47>]... [--accent <directive>] [--force] [--dry-run] [--verbose]
+```
+
+`--force` cascades to every stage's own force flag (cast re-sync, prompt
+overwrite, vox regenerate). `--tts-model`, `--language`, and `--accent`
+forward to the vox stage; `--character` forwards to the prompt and vox stages.
+`--dry-run` runs the offline bootstrap + cast-discovery steps but stops before
+the model-backed prompt and vox stages.
+
+### `echada generate` — run a single stage
+
+For fine-grained, per-stage control, each pipeline step is also available
+standalone under the `generate` namespace:
+
+```bash
+echada generate cast [--project <path>] [--force] [--dry-run] [--verbose]
+echada generate prompt [--project <path>] [--character <name>] [--force] [--dry-run] [--verbose]
+echada generate vox [--project <path>] [--character <name>] [--tts-model <0.6b|1.7b>] [--language <bcp-47>]... [--accent <directive>] [--force-regenerate] [--dry-run] [--verbose]
+```
+
+- **`generate cast`** — heuristically discovers character names from the
+  screenplay source (no LLM/ML) and merges them into PROJECT.md's `cast:`
+  list, without clobbering existing `actor`/`voicePrompt`/`voices`/`language`
+  fields unless `--force`.
+- **`generate prompt`** — examines each cast member's dialogue and writes a
+  `voicePrompt` via the on-device Foundation Model. Fills empty prompts only
+  unless `--force`.
+- **`generate vox`** — synthesizes an on-device `.vox` voice from each
+  member's `voicePrompt` using Qwen3-TTS. This is what `echada cast` used to
+  do on its own before this restructure. Uses a two-phase pipeline: **Phase
+  A** — VoiceDesign 1.7B generates candidate WAVs from voice prompts; **Phase
+  B** — Base model creates voice locks (speaker embeddings) and exports `.vox`
+  bundles. `--language` may be repeated to cast multiple languages into one
+  `.vox` (e.g. `--language es --language en`); `--accent` applies a delivery
+  directive (e.g. `"slow southern drawl"`) to every character's voice.
 
 ### Generate a Voice
 
@@ -74,6 +114,24 @@ echada voice "A warm female voice with a slight southern accent" --output my-voi
 ```
 
 Appends to existing `.vox` files for multi-model support.
+
+### Migrating from pre-0.16 `echada`
+
+This is a **breaking change** to the CLI surface (hard cut, no back-compat
+alias):
+
+| Old (pre-0.16) | New |
+|-----------------|-----|
+| `echada cast` (produced `.vox` only) | `echada generate vox` |
+| `echada prompt` | `echada generate prompt` |
+| `echada cast` (bare, no project) | `echada cast` now runs the **full pipeline** (bootstrap → cast → prompt → vox), not just `.vox` generation |
+
+There is no runtime breadcrumb pointing you here: `echada prompt ...` now
+fails with ArgumentParser's generic "unknown subcommand" error, and the old
+`.vox`-only `cast` flag usage silently runs the full pipeline instead (since
+`cast` was repurposed) rather than erroring. If a script or CI job invokes
+`echada prompt` or expects `echada cast` to only touch `.vox` files, update it
+to the table above.
 
 ## Library Usage
 

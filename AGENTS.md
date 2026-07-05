@@ -6,7 +6,7 @@ type: project
 
 Universal project documentation for AI agents. Agent-specific files: [CLAUDE.md](CLAUDE.md), [GEMINI.md](GEMINI.md).
 
-**Version**: 0.15.0-dev | **Swift**: 6.2 | **Platforms**: macOS 26+, iOS 26+
+**Version**: 0.16.0-dev | **Swift**: 6.2 | **Platforms**: macOS 26+, iOS 26+
 
 ---
 
@@ -33,12 +33,22 @@ Full details: [Docs/build-and-test.md](Docs/build-and-test.md)
 
 | Command | Description |
 |---------|-------------|
-| `echada cast` (default) | Generate `.vox` voice identities for all cast members from their `voicePrompt` in PROJECT.md |
-| `echada prompt` | Examine the screenplay source material and write a `voicePrompt` for each cast member in PROJECT.md (inverse of `cast`) |
+| `echada cast` (default) | Full pipeline: bootstrap PROJECT.md (if absent) → `generate cast` → `generate prompt` → `generate vox`. Idempotent; single cascading `--force`. |
+| `echada generate cast` | Heuristically discover cast members from the screenplay source (no LLM) and merge into PROJECT.md's `cast:` list |
+| `echada generate prompt` | Examine the screenplay source material and write a `voicePrompt` for each cast member in PROJECT.md, via the on-device Foundation Model |
+| `echada generate vox` | Generate `.vox` voice identities for all cast members from their `voicePrompt` in PROJECT.md — this is what `echada cast` used to do before the restructure |
 | `echada voice <prompt>` | Generate a single `.vox` from a text description (no PROJECT.md required) |
 | `echada test-voice` (hidden) | Integration test helper — fixed NARRATOR profile |
 
-Typical flow: `echada prompt` (scripts → voice briefs) → `echada cast` (briefs → `.vox`).
+Typical flow: `echada cast` runs the whole pipeline in one step, or run each
+stage standalone in order — `echada generate cast` (scripts → cast list) →
+`echada generate prompt` (cast list → voice briefs) → `echada generate vox`
+(briefs → `.vox`).
+
+**Breaking change (v0.16.0):** the old standalone `echada prompt` was removed
+(use `echada generate prompt`); the old `.vox`-only `echada cast` is now
+`echada generate vox`; bare `echada cast` is repurposed to run the full
+pipeline. No back-compat alias — see [CHANGELOG.md](CHANGELOG.md).
 
 Full CLI reference: [Docs/api.md](Docs/api.md#cli-echada)
 

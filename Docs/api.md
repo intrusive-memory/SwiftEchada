@@ -1,6 +1,10 @@
+---
+type: doc
+---
+
 # API Reference
 
-**Version**: 0.12.0-dev | **Platforms**: iOS 26.0+, macOS 26.0+
+**Version**: 0.16.0-dev | **Platforms**: iOS 26.0+, macOS 26.0+
 **Swift**: 6.2 | **Language Mode**: v6 (strict concurrency)
 
 ---
@@ -108,21 +112,99 @@ public struct CharacterMerger: Sendable {
 
 ## CLI (`echada`)
 
-The CLI executable depends on SwiftEchada, SwiftVoxAlta, MLX, MLXAudioTTS, MLXLMCommon, VoxFormat, and ArgumentParser.
+The CLI executable depends on SwiftEchada, SwiftProyecto, SwiftVoxAlta, MLX, MLXAudioTTS, MLXLMCommon, VoxFormat, and ArgumentParser.
 
 ### Commands
 
 | Command | Default? | Description |
 |---------|----------|-------------|
-| `cast` | Yes | Generate on-device voices for cast members from PROJECT.md |
+| `cast` | Yes | Meta / orchestrator: bootstrap PROJECT.md, then run `generate cast` → `generate prompt` → `generate vox` |
+| `generate` | No | Container for the three individual pipeline stages (`cast`, `prompt`, `vox`); no default subcommand |
 | `voice` | No | Generate a single .vox voice file from a text prompt |
 | `test-voice` | Hidden | Generate a test .vox file for integration testing |
 
-### `echada cast` (default subcommand)
+### `echada cast` (default subcommand — full pipeline)
+
+The default command. Bootstraps `PROJECT.md` when absent (no LLM — inferred
+title/author/`episodesDir`/`filePattern` from the surrounding directory via
+`ProjectService.analyzeForGeneration(at:)`), then runs `generate cast` →
+`generate prompt` → `generate vox` in order. Every stage is idempotent, so
+re-running only fills the gaps.
 
 ```
-echada cast [--project <path>] [--force-regenerate] [--dry-run] [--verbose]
-            [--tts-model <variant>] [--character <name>]
+echada cast [--project <path>] [--character <name>] [--tts-model <variant>]
+            [--language <bcp-47>]... [--accent <directive>]
+            [--force] [--dry-run] [--verbose]
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--project` | `PROJECT.md` | Path to PROJECT.md file (created if absent) |
+| `--character` | all | Limit the prompt and vox stages to a single character |
+| `--tts-model` | from PROJECT.md or `1.7b` | TTS model variant for the vox stage (`0.6b`, `1.7b`); forwarded to `generate vox` |
+| `--language` | `en` (repeatable) | BCP-47 code(s) for the vox stage's reference sample; forwarded to `generate vox` |
+| `--accent` | none | Accent/delivery directive applied to every character's voice in the vox stage; forwarded to `generate vox` |
+| `--force` | false | Cascading force: re-syncs the cast list, overwrites existing voice prompts, and regenerates existing `.vox` files (fans out to each stage's own force flag) |
+| `--dry-run` | false | Run the offline bootstrap + cast-discovery steps, but stop before the model-backed prompt and vox stages |
+| `--verbose` | false | Verbose output for every stage |
+
+### `echada generate` (container, no default subcommand)
+
+Container for the three generative pipeline stages, each runnable standalone
+for per-stage control. Running `echada generate` with no subcommand prints
+help rather than defaulting to a stage.
+
+```
+echada generate <cast|prompt|vox>
+```
+
+#### `echada generate cast`
+
+Discovers cast members from the screenplay source (heuristic only, no
+LLM/ML) and merges them into PROJECT.md's `cast:` list. Only newly-appearing
+characters are added by default; `--force` re-syncs to exactly the characters
+found now (matching characters keep their existing downstream fields).
+
+```
+echada generate cast [--project <path>] [--force] [--dry-run] [--verbose]
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--project` | `PROJECT.md` | Path to PROJECT.md file |
+| `--force` | false | Re-sync the cast list to exactly the characters found in the source now |
+| `--dry-run` | false | Preview discovered characters without writing |
+| `--verbose` | false | Verbose output |
+
+#### `echada generate prompt`
+
+Examines each cast member's dialogue in the screenplay source and writes a
+`voicePrompt` via the on-device Foundation Model. This is the command
+formerly known as the standalone `echada prompt` (removed in v0.16.0).
+
+```
+echada generate prompt [--project <path>] [--character <name>] [--force] [--dry-run] [--verbose]
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--project` | `PROJECT.md` | Path to PROJECT.md file |
+| `--character` | all | Generate a voice prompt for a single character |
+| `--force` | false | Overwrite voice prompts for members that already have one (default: fill empty only) |
+| `--dry-run` | false | Preview gathered source material without calling the model or writing |
+| `--verbose` | false | Verbose output |
+
+#### `echada generate vox`
+
+Synthesizes an on-device `.vox` voice for each cast member from their
+`voicePrompt`, recorded under `voices.voxalta` in PROJECT.md. This is the
+command formerly known as `echada cast` before it was repurposed into the
+pipeline orchestrator in v0.16.0.
+
+```
+echada generate vox [--project <path>] [--force-regenerate] [--dry-run] [--verbose]
+                    [--tts-model <variant>] [--character <name>]
+                    [--language <bcp-47>]... [--accent <directive>]
 ```
 
 | Flag | Default | Description |
@@ -133,6 +215,8 @@ echada cast [--project <path>] [--force-regenerate] [--dry-run] [--verbose]
 | `--verbose` | false | Verbose output |
 | `--tts-model` | from PROJECT.md or `1.7b` | TTS model variant (`0.6b`, `1.7b`) |
 | `--character` | all | Generate for single character by name |
+| `--language` | `en` (repeatable) | BCP-47 code(s) for the reference sample; repeat to cast multiple languages into one `.vox` |
+| `--accent` | none | Accent/delivery directive applied to every character's voice prompt |
 
 ### `echada voice`
 

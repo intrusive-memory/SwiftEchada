@@ -6,21 +6,34 @@ name: Tests
 # device opt-in, a signed-in Apple Account, and on-device model downloads that
 # are unavailable on ephemeral hosted runners). Every test gated with
 # `.enabled(if: SystemLanguageModel.default.isAvailable)` — the on-device
-# audition-sentence generation in FoundationModelSentenceTests, `generate
-# prompt`, and the `voicePrompt` assertions of the full-pipeline test — SKIPS
-# on this job. That is accepted, expected coverage, not a failure. Those paths
-# are exercised locally (on a developer Mac with Apple Intelligence enabled) or
-# on a self-hosted Apple-Intelligence-provisioned runner, neither of which this
-# workflow provides. Full model-path CI coverage for the Foundation Model is a
-# future item contingent on standing up such a self-hosted runner; this
-# workflow makes no claim to exercise it. R-CI-1 is treated as UNMET per the
-# resolved OQ-4 hosted-only decision in EXECUTION_PLAN.md.
+# audition-sentence generation in FoundationModelSentenceTests and `generate
+# prompt` — SKIPS on this job. That is accepted, expected coverage, not a
+# failure.
+#
+# This ALSO includes the `generate vox` and full-pipeline `.vox` tests
+# (Sortie 9's ModelBackedGenerationTests), even though R-CI-2 below caches the
+# TTS weights they need: `CastVoiceGenerator.generate()` sources every
+# audition sentence exclusively from the on-device Foundation Model, so those
+# tests are gated on the CONJUNCTION of Apple-Intelligence availability *and*
+# TTS-weight presence. With Apple Intelligence unavailable here, they skip too
+# — the weight cache keeps the infra ready but does not by itself unlock that
+# coverage. All of these paths are exercised locally (on a developer Mac with
+# Apple Intelligence enabled) or on a self-hosted Apple-Intelligence-
+# provisioned runner, neither of which this workflow provides. Full model-path
+# CI coverage — both `generate prompt` and the transitively-gated `generate
+# vox` / full-pipeline paths — is a future item contingent on standing up such
+# a self-hosted runner; this workflow makes no claim to exercise them today.
+# R-CI-1 is treated as UNMET per the resolved OQ-4 hosted-only decision in
+# EXECUTION_PLAN.md.
 #
 # What THIS workflow does deliver (R-CI-2): the Qwen3-TTS 0.6B/1.7B weights
 # that `generate vox` (via SwiftVoxAlta's VoxAltaModelManager / SwiftAcervo)
 # loads are cached across runs with actions/cache and primed from the CDN on a
-# cache miss, so model-backed `.vox` tests find the weights already on disk
-# instead of re-downloading multi-GB checkpoints every run.
+# cache miss, so that on a machine which ALSO has Apple Intelligence available,
+# model-backed `.vox` tests would find the weights already on disk instead of
+# re-downloading multi-GB checkpoints every run. On this hosted runner that
+# infrastructure is correct and in place, but the tests it enables still skip
+# per the Apple-Intelligence gate above.
 
 on:
   push:
