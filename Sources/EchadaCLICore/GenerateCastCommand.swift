@@ -124,7 +124,11 @@ public struct GenerateCastCommand: AsyncParsableCommand {
       return
     }
 
-    guard !sortedNames.isEmpty else {
+    // When nothing was discovered, a default (additive) run has nothing to do,
+    // so leave the existing cast untouched. But a `--force` run must still
+    // re-sync to "exactly the characters found" (i.e. none), which means
+    // clearing the now-fully-stale cast — so fall through to the force branch.
+    guard !sortedNames.isEmpty || force else {
       print("\nNo characters discovered — \(project) left unchanged.")
       return
     }
