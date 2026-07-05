@@ -87,6 +87,20 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
     return result
   }
 
+  /// Builds the PROJECT.md front matter to write back after voice generation,
+  /// updating only the cast list while preserving **all** other content.
+  ///
+  /// Delegates to ``ProjectFrontMatter/withCast(_:)``, which carries every
+  /// non-cast field — including `appSections`, the catch-all for unknown
+  /// top-level keys such as `episodes_index` that the user maintains by hand.
+  /// Extracted so the round-trip (parse → update cast → re-serialize) can be
+  /// regression-tested offline without running voice generation (issue #44).
+  static func updatedFrontMatter(
+    preserving frontMatter: ProjectFrontMatter, cast: [CastMember]
+  ) -> ProjectFrontMatter {
+    frontMatter.withCast(cast)
+  }
+
   public func run() async throws {
     let fileURL = URL(fileURLWithPath: project)
     guard FileManager.default.fileExists(atPath: fileURL.path) else {
@@ -201,26 +215,16 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
       finalCast = genResult.updatedCast
     }
 
-    // Write updated PROJECT.md
-    let updatedFrontMatter = ProjectFrontMatter(
-      type: frontMatter.type,
-      title: frontMatter.title,
-      author: frontMatter.author,
-      created: frontMatter.created,
-      description: frontMatter.description,
-      season: frontMatter.season,
-      episodes: frontMatter.episodes,
-      genre: frontMatter.genre,
-      tags: frontMatter.tags,
-      episodesDir: frontMatter.episodesDir,
-      audioDir: frontMatter.audioDir,
-      filePattern: frontMatter.filePattern,
-      exportFormat: frontMatter.exportFormat,
-      cast: finalCast,
-      preGenerateHook: frontMatter.preGenerateHook,
-      postGenerateHook: frontMatter.postGenerateHook,
-      tts: frontMatter.tts
-    )
+    // Write updated PROJECT.md.
+    //
+    // Route the write-back through `withCast(_:)` rather than reconstructing the
+    // front matter field-by-field. The manual rebuild dropped every field it did
+    // not explicitly copy — most damagingly `appSections`, the catch-all that
+    // holds unknown top-level keys the user hand-maintains (e.g. `episodes_index`).
+    // That silently deleted that content on every voice write-back (issue #44).
+    // `withCast` preserves all non-cast fields verbatim, including `appSections`.
+    let updatedFrontMatter = GenerateVoxCommand.updatedFrontMatter(
+      preserving: frontMatter, cast: finalCast)
 
     let output = parser.generate(frontMatter: updatedFrontMatter, body: body)
     try output.write(to: fileURL, atomically: true, encoding: .utf8)
