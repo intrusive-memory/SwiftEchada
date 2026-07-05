@@ -4,6 +4,7 @@ feature_name: OPERATION GENERAL MUSTER
 starting_point_commit: d514db085be549c554b7f2fa3597044cbbd92e42
 mission_branch: mission/general-muster/01
 iteration: 1
+state: completed
 ---
 
 # EXECUTION_PLAN.md — `echada` CLI restructure: `generate` subcommands + `cast` meta-pipeline

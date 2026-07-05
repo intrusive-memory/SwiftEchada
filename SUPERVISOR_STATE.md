@@ -1,6 +1,6 @@
 ---
 type: supervisor-state
-state: in-progress
+state: completed
 ---
 
 # SUPERVISOR_STATE.md — OPERATION GENERAL MUSTER

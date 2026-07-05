@@ -1,5 +1,6 @@
 ---
 type: mission-completion
+state: completed
 ---
 
 # Test Cleanup Report — OPERATION GENERAL MUSTER

@@ -1,6 +1,6 @@
 ---
 type: mission-completion
-state: in-progress
+state: completed
 ---
 
 # Completed Work — SwiftEchada (OPERATION GENERAL MUSTER)
