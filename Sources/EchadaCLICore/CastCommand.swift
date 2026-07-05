@@ -190,6 +190,7 @@ public struct CastCommand: AsyncParsableCommand {
       analysis?.inferredTitle
       ?? (folderName.isEmpty ? "Untitled Project" : folderName)
     let episodesDir = Self.inferEpisodesDir(projectDir: projectDir)
+    let filePattern = Self.inferFilePattern(from: analysis)
 
     let frontMatter = ProjectFrontMatter(
       type: "project",
@@ -197,7 +198,7 @@ public struct CastCommand: AsyncParsableCommand {
       author: NSFullUserName(),
       created: Date(),
       episodesDir: episodesDir,
-      filePattern: FilePattern("*.fountain")
+      filePattern: filePattern
     )
 
     try ProjectMarkdownParser().write(frontMatter: frontMatter, body: "", to: fileURL)
@@ -229,5 +230,18 @@ public struct CastCommand: AsyncParsableCommand {
       return "episodes"
     }
     return "."
+  }
+
+  /// Derives the screenplay `filePattern` for a scaffolded project from the
+  /// directory analysis, keeping only globs whose extension the pipeline can
+  /// actually parse as a screenplay (so a `.txt`/`.md` project is bootstrapped
+  /// with a pattern the immediately-following `generate cast` will match).
+  /// Falls back to `*.fountain` when the analysis surfaces no parseable scripts.
+  private static func inferFilePattern(from analysis: ProjectAnalysis?) -> FilePattern {
+    let scriptPatterns = (analysis?.discoveredFiles ?? [])
+      .filter { SourceMaterialLocator.isParseableScriptPattern($0) }
+      .sorted()
+    guard !scriptPatterns.isEmpty else { return FilePattern("*.fountain") }
+    return FilePattern(scriptPatterns)
   }
 }
