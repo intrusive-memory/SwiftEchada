@@ -109,4 +109,4 @@ ArgumentParser's generic unknown-subcommand error) — see
 
 ## Integration Test Dependencies
 
-`make integration-test` expects sibling repos at `../vox-format` and `../SwiftVoxAlta`. Without them, it will attempt to build them and fail if not present.
+`make integration-test` expects `vox-format` at `../../../vox-format` (`~/Projects/vox-format`) and `SwiftVoxAlta` at `../SwiftVoxAlta`. Without them, it will attempt to build them and fail if not present.

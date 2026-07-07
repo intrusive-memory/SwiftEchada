@@ -1,3 +1,7 @@
+---
+type: reference
+---
+
 # Dependencies
 
 ---
@@ -63,7 +67,7 @@ For integration tests and cross-repo development:
 
 | Repo | Expected Path | Used By |
 |------|--------------|---------|
-| vox-format | `../vox-format` | `make integration-test` (vox CLI validator) |
+| vox-format | `../../../vox-format` (`~/Projects/vox-format`) | `make integration-test` (vox CLI validator) |
 | SwiftVoxAlta | `../SwiftVoxAlta` | `make integration-test` (diga CLI synthesizer) |
 
 ---

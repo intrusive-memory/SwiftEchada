@@ -84,7 +84,7 @@ clean:
 	rm -rf $(BIN_DIR)
 	rm -rf $(DERIVED_DATA)/SwiftEchada-*
 
-VOX_CLI = ../vox-format/bin/vox
+VOX_CLI = ../../../vox-format/bin/vox
 DIGA_CLI = ../SwiftVoxAlta/bin/diga
 
 # Integration test: multi-model voice creation → .vox validation → diga synthesis
@@ -92,7 +92,7 @@ integration-test: install
 	@echo "=== Integration Test: Multi-Model Voice + Synthesis ==="
 	@mkdir -p /tmp/echada-integration-test
 	@# Build vox validator if needed
-	@test -x $(VOX_CLI) || make -C ../vox-format install
+	@test -x $(VOX_CLI) || make -C ../../../vox-format install
 	@# Step 1: Generate .vox with 0.6b embeddings
 	$(BIN_DIR)/echada test-voice --output /tmp/echada-integration-test/narrator.vox --tts-model 0.6b
 	@# Step 2: Append 1.7b embeddings to the same .vox
