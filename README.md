@@ -49,12 +49,13 @@ The library target depends only on [SwiftProyecto](https://github.com/intrusive-
 
 ## CLI Usage
 
-The `echada` CLI has four top-level commands: `cast` (default), `generate`, `voice`,
-and the hidden `test-voice`.
+The `echada` CLI has four top-level commands: `cast`, `generate`, `voice`,
+and the hidden `test-voice`. There is no default subcommand — running bare
+`echada` prints help; invoke a command explicitly.
 
-### `echada cast` (default) — the full pipeline
+### `echada cast` — the full pipeline
 
-Bare `echada` (or `echada cast`) runs the whole production pipeline end to end:
+`echada cast` runs the whole production pipeline end to end:
 
 ```
 PROJECT.md  →  generate cast  →  generate prompt  →  generate vox

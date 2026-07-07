@@ -2,9 +2,9 @@ import ArgumentParser
 import Foundation
 import SwiftProyecto
 
-/// `echada cast` — the meta-orchestrator and default subcommand.
+/// `echada cast` — the meta-orchestrator.
 ///
-/// Running bare `echada` (or `echada cast`) executes the whole production
+/// Running `echada cast` executes the whole production
 /// pipeline end to end:
 ///
 ///     PROJECT.md  →  generate cast  →  generate prompt  →  generate vox
@@ -26,7 +26,7 @@ public struct CastCommand: AsyncParsableCommand {
     abstract:
       "Run the full production pipeline: bootstrap PROJECT.md, then cast → prompt → vox.",
     discussion: """
-      The default command. Bare `echada` runs this. It drives the whole \
+      Drives the whole \
       pipeline end to end:
 
           PROJECT.md  →  generate cast  →  generate prompt  →  generate vox
@@ -173,11 +173,18 @@ public struct CastCommand: AsyncParsableCommand {
       return
     }
 
-    // A project already exists nearby (e.g. in the parent directory) — leave it
-    // in place rather than scaffolding a competing one (OQ-3).
-    if let existing = ProjectDiscovery().findProjectMd(from: projectDir) {
+    // Stay captive to the project's own directory: if a PROJECT.md already lives
+    // here (e.g. `--project` pointed at a non-`PROJECT.md` filename), leave it in
+    // place rather than scaffolding a competing one. Crucially, do NOT ascend to
+    // parent directories — an unrelated PROJECT.md one level up (a sibling
+    // fixture, a monorepo root) must not suppress bootstrapping the project the
+    // caller explicitly asked for here.
+    let siblingProjectMd = projectDir.appending(path: "PROJECT.md", directoryHint: .notDirectory)
+    if siblingProjectMd.path != fileURL.path,
+      FileManager.default.fileExists(atPath: siblingProjectMd.path)
+    {
       if verbose {
-        print("Detected existing project at \(existing.path) — leaving it in place.")
+        print("Detected existing project at \(siblingProjectMd.path) — leaving it in place.")
       }
       return
     }

@@ -82,12 +82,14 @@ try vox.write(to: url)
 
 ---
 
-## Default Subcommand
+## No Default Subcommand
 
-`echada` with no subcommand runs `cast`, not `voice`. The `extract` and `download` commands were removed in v0.9.2.
+`echada` with no subcommand prints help — there is no default subcommand, so a
+bare `echada` does **not** run `cast` (or `voice`). Invoke a command
+explicitly. The `extract` and `download` commands were removed in v0.9.2.
 
 **As of v0.16.0, `cast` means the full pipeline, not just `.vox` generation.**
-Bare `echada` / `echada cast` bootstraps `PROJECT.md` (if absent) and then runs
+`echada cast` bootstraps `PROJECT.md` (if absent) and then runs
 `generate cast` → `generate prompt` → `generate vox` in order — every stage
 idempotent, so re-running only fills gaps. This is a breaking change: what
 `echada cast` used to do (produce `.vox` files from existing `voicePrompt`s

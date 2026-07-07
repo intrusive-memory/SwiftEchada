@@ -14,7 +14,7 @@ type: project
 2. **Test scheme is `SwiftEchada-Package`**, not `SwiftEchada`.
 3. **Targeted imports in CLI files**: `import struct SwiftEchada.CharacterProfile` -- not `import SwiftEchada`. See [Docs/gotchas.md](Docs/gotchas.md#moduletype-name-collision).
 4. **Library depends only on SwiftProyecto**. All ML/voice deps are CLI-only.
-5. **Default subcommand is `cast`, and `cast` is now the full pipeline** (bootstrap PROJECT.md → `generate cast` → `generate prompt` → `generate vox`), not just `.vox` generation. Individual stages live under `echada generate {cast,prompt,vox}`. `extract` and the standalone `prompt` command were removed (hard-cut, v0.16.0).
+5. **No default subcommand** — bare `echada` prints help. `echada cast` runs the full pipeline (bootstrap PROJECT.md → `generate cast` → `generate prompt` → `generate vox`), not just `.vox` generation. Individual stages live under `echada generate {cast,prompt,vox}`. `extract` and the standalone `prompt` command were removed (hard-cut, v0.16.0).
 
 ## MCP Servers
 

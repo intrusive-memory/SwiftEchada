@@ -384,14 +384,60 @@ struct CastCommandBootstrapTests {
     #expect(frontMatter.episodesDir == ".")
   }
 
-  @Test("An existing PROJECT.md discovered nearby is left in place, not overwritten by bootstrap")
-  func bootstrapLeavesExistingProjectInPlace() async throws {
+  @Test("Bootstrap does NOT ascend to an ancestor PROJECT.md; it scaffolds the project asked for")
+  func bootstrapDoesNotAscendToAncestorProject() async throws {
     let base = FileManager.default.temporaryDirectory
-      .appendingPathComponent("cast-bootstrap-existing-\(UUID().uuidString)")
+      .appendingPathComponent("cast-bootstrap-ancestor-\(UUID().uuidString)")
     try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: base) }
 
-    // An existing project already lives at the root of `base`.
+    // An UNRELATED project lives one level up (a sibling fixture / monorepo root).
+    let ancestorFrontMatter = ProjectFrontMatter(
+      type: "project",
+      title: "Already Bootstrapped",
+      author: "Somebody",
+      created: Date(timeIntervalSince1970: 0),
+      episodesDir: "episodes",
+      filePattern: FilePattern("*.fountain")
+    )
+    let ancestorProjectFile = base.appendingPathComponent("PROJECT.md")
+    try ProjectMarkdownParser().write(
+      frontMatter: ancestorFrontMatter, body: "", to: ancestorProjectFile)
+    let ancestorOriginal = try String(contentsOf: ancestorProjectFile, encoding: .utf8)
+
+    // The caller explicitly targets a fresh project in a nested subdirectory that
+    // has its own script but no PROJECT.md yet.
+    let nestedDir = base.appendingPathComponent("nested")
+    try FileManager.default.createDirectory(at: nestedDir, withIntermediateDirectories: true)
+    try GenerateCastCommandTests.episodeOne.write(
+      to: nestedDir.appendingPathComponent("ep1.fountain"), atomically: true, encoding: .utf8)
+    let requestedProjectFile = nestedDir.appendingPathComponent("PROJECT.md")
+    #expect(!FileManager.default.fileExists(atPath: requestedProjectFile.path))
+
+    let cmd = try CastCommand.parse(["--project", requestedProjectFile.path, "--dry-run"])
+    // Bootstrap stays captive to the requested directory: the ancestor PROJECT.md
+    // must NOT suppress scaffolding the project the caller asked for here.
+    try await cmd.run()
+
+    // The requested project was scaffolded (and its offline cast discovered).
+    #expect(FileManager.default.fileExists(atPath: requestedProjectFile.path))
+    let (frontMatter, _) = try ProjectMarkdownParser().parse(fileURL: requestedProjectFile)
+    #expect(frontMatter.title == "Nested")
+    #expect(frontMatter.cast?.map(\.character) == ["ALICE", "BOB"])
+
+    // The unrelated ancestor is left byte-for-byte untouched.
+    let ancestorAfter = try String(contentsOf: ancestorProjectFile, encoding: .utf8)
+    #expect(ancestorAfter == ancestorOriginal)
+  }
+
+  @Test("An existing PROJECT.md in the project's own directory is left in place, not overwritten")
+  func bootstrapLeavesSameDirectoryProjectInPlace() async throws {
+    let base = FileManager.default.temporaryDirectory
+      .appendingPathComponent("cast-bootstrap-sibling-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: base) }
+
+    // A canonical PROJECT.md already lives in this very directory.
     let existingFrontMatter = ProjectFrontMatter(
       type: "project",
       title: "Already Bootstrapped",
@@ -405,22 +451,14 @@ struct CastCommandBootstrapTests {
       frontMatter: existingFrontMatter, body: "", to: existingProjectFile)
     let originalContents = try String(contentsOf: existingProjectFile, encoding: .utf8)
 
-    // Request a PROJECT.md that doesn't exist, in a nested subdirectory --
-    // ProjectDiscovery.findProjectMd walks up to `base` and finds the existing file.
-    let nestedDir = base.appendingPathComponent("nested")
-    try FileManager.default.createDirectory(at: nestedDir, withIntermediateDirectories: true)
-    let requestedProjectFile = nestedDir.appendingPathComponent("PROJECT.md")
-
-    // Sanity-check the discovery this test relies on, independent of CastCommand.
-    #expect(ProjectDiscovery().findProjectMd(from: nestedDir) == existingProjectFile)
+    // The caller points `--project` at a DIFFERENT filename in the same directory.
+    let requestedProjectFile = base.appendingPathComponent("custom.md")
 
     let cmd = try CastCommand.parse(["--project", requestedProjectFile.path, "--dry-run"])
-    // The bootstrap step detects the existing project via ProjectDiscovery and
-    // leaves it in place, so it does NOT scaffold a competing PROJECT.md at the
-    // requested nested path. The subsequent `generate cast` stage then looks for
-    // a PROJECT.md at the exact requested path (which still doesn't exist there)
-    // and fails cleanly -- it does not silently redirect to the discovered
-    // ancestor file.
+    // Bootstrap sees the sibling PROJECT.md in this directory and leaves it in
+    // place, so it does NOT scaffold a competing `custom.md`. The subsequent
+    // `generate cast` stage then looks for `custom.md` (which still doesn't
+    // exist) and fails cleanly.
     await #expect(throws: ValidationError.self) { try await cmd.run() }
 
     #expect(!FileManager.default.fileExists(atPath: requestedProjectFile.path))
