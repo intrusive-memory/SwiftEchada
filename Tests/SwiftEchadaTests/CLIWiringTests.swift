@@ -11,12 +11,13 @@ import Testing
 ///     │   ├── cast
 ///     │   ├── prompt
 ///     │   └── vox
-///     ├── cast      (also the default subcommand)
+///     ├── cast      (pipeline orchestrator)
 ///     ├── voice
 ///     └── test-voice (hidden)
 ///
-/// These tests guard against silent doc/wiring drift: the root's default
-/// subcommand, the shape of `.subcommands` at both the root and the
+/// These tests guard against silent doc/wiring drift: the root has no default
+/// subcommand (bare `echada` prints help), the shape of `.subcommands` at both
+/// the root and the
 /// `generate` container, and every restructure-related command's non-empty
 /// `abstract`/`discussion` (each of which must actually describe that
 /// command's inputs/outputs, not just be present). Everything here is a pure
@@ -26,11 +27,15 @@ struct CLIWiringTests {
 
   // MARK: - Root wiring
 
-  @Test("EchadaCLI's default subcommand is CastCommand")
-  func rootDefaultSubcommandIsCast() {
-    let defaultSubcommand = EchadaCLI.configuration.defaultSubcommand
-    #expect(defaultSubcommand != nil)
-    #expect(defaultSubcommand.map(ObjectIdentifier.init) == ObjectIdentifier(CastCommand.self))
+  @Test("EchadaCLI has no default subcommand, so bare `echada` prints help")
+  func rootHasNoDefaultSubcommand() {
+    #expect(EchadaCLI.configuration.defaultSubcommand == nil)
+  }
+
+  @Test("EchadaCLI.subcommands still contains cast (invoked explicitly, not as default)")
+  func rootSubcommandsContainCast() {
+    let identifiers = Set(EchadaCLI.configuration.subcommands.map(ObjectIdentifier.init))
+    #expect(identifiers.contains(ObjectIdentifier(CastCommand.self)))
   }
 
   @Test("EchadaCLI.subcommands contains generate and voice")

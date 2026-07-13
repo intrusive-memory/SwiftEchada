@@ -76,14 +76,14 @@ Test fixture files live in `Fixtures/`:
 
 `make integration-test` runs the full pipeline:
 
-1. Build `vox` validator (from `../vox-format`)
+1. Build `vox` validator (from `../../../vox-format`)
 2. Generate `.vox` with 0.6b embeddings (`echada test-voice`)
 3. Append 1.7b embeddings to same `.vox`
 4. Validate `.vox` structure with strict mode (`vox validate --strict`)
 5. Synthesize speech with both models (`diga` from `../SwiftVoxAlta`)
 6. Clean up temp files
 
-**Requirements**: Local clones of `vox-format` and `SwiftVoxAlta` at `../vox-format` and `../SwiftVoxAlta`.
+**Requirements**: Local clones of `vox-format` and `SwiftVoxAlta` at `../../../vox-format` (i.e. `~/Projects/vox-format`) and `../SwiftVoxAlta`.
 
 ---
 

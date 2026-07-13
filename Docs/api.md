@@ -116,16 +116,19 @@ The CLI executable depends on SwiftEchada, SwiftProyecto, SwiftVoxAlta, MLX, MLX
 
 ### Commands
 
-| Command | Default? | Description |
-|---------|----------|-------------|
-| `cast` | Yes | Meta / orchestrator: bootstrap PROJECT.md, then run `generate cast` → `generate prompt` → `generate vox` |
-| `generate` | No | Container for the three individual pipeline stages (`cast`, `prompt`, `vox`); no default subcommand |
-| `voice` | No | Generate a single .vox voice file from a text prompt |
-| `test-voice` | Hidden | Generate a test .vox file for integration testing |
+There is **no** default subcommand: running bare `echada` prints help. Invoke
+a command explicitly.
 
-### `echada cast` (default subcommand — full pipeline)
+| Command | Description |
+|---------|-------------|
+| `cast` | Meta / orchestrator: bootstrap PROJECT.md, then run `generate cast` → `generate prompt` → `generate vox` |
+| `generate` | Container for the three individual pipeline stages (`cast`, `prompt`, `vox`); no default subcommand |
+| `voice` | Generate a single .vox voice file from a text prompt |
+| `test-voice` | Hidden — generate a test .vox file for integration testing |
 
-The default command. Bootstraps `PROJECT.md` when absent (no LLM — inferred
+### `echada cast` — full pipeline
+
+Bootstraps `PROJECT.md` when absent (no LLM — inferred
 title/author/`episodesDir`/`filePattern` from the surrounding directory via
 `ProjectService.analyzeForGeneration(at:)`), then runs `generate cast` →
 `generate prompt` → `generate vox` in order. Every stage is idempotent, so

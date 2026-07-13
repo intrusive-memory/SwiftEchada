@@ -6,7 +6,7 @@ type: project
 
 Universal project documentation for AI agents. Agent-specific files: [CLAUDE.md](CLAUDE.md), [GEMINI.md](GEMINI.md).
 
-**Version**: 0.16.0 | **Swift**: 6.2 | **Platforms**: macOS 26+, iOS 26+
+**Version**: 0.16.1 | **Swift**: 6.2 | **Platforms**: macOS 26+, iOS 26+
 
 ---
 
@@ -21,7 +21,7 @@ SwiftEchada generates on-device custom voices from text prompts and manages cast
 
 ```bash
 make build   # Debug build
-make test    # Unit tests (32 tests)
+make test    # Unit tests (138 tests)
 make clean   # Clean artifacts
 ```
 
@@ -33,7 +33,8 @@ Full details: [Docs/build-and-test.md](Docs/build-and-test.md)
 
 | Command | Description |
 |---------|-------------|
-| `echada cast` (default) | Full pipeline: bootstrap PROJECT.md (if absent) → `generate cast` → `generate prompt` → `generate vox`. Idempotent; single cascading `--force`. |
+| `echada` (no subcommand) | Prints help. There is **no** default subcommand — invoke a command explicitly. |
+| `echada cast` | Full pipeline: bootstrap PROJECT.md (if absent) → `generate cast` → `generate prompt` → `generate vox`. Idempotent; single cascading `--force`. |
 | `echada generate cast` | Heuristically discover cast members from the screenplay source (no LLM) and merge into PROJECT.md's `cast:` list |
 | `echada generate prompt` | Examine the screenplay source material and write a `voicePrompt` for each cast member in PROJECT.md, via the on-device Foundation Model |
 | `echada generate vox` | Generate `.vox` voice identities for all cast members from their `voicePrompt` in PROJECT.md — this is what `echada cast` used to do before the restructure |
@@ -47,8 +48,9 @@ stage standalone in order — `echada generate cast` (scripts → cast list) →
 
 **Breaking change (v0.16.0):** the old standalone `echada prompt` was removed
 (use `echada generate prompt`); the old `.vox`-only `echada cast` is now
-`echada generate vox`; bare `echada cast` is repurposed to run the full
-pipeline. No back-compat alias — see [CHANGELOG.md](CHANGELOG.md).
+`echada generate vox`; `echada cast` is repurposed to run the full pipeline.
+No back-compat alias — see [CHANGELOG.md](CHANGELOG.md). Bare `echada` (no
+subcommand) prints help rather than running a command.
 
 Full CLI reference: [Docs/api.md](Docs/api.md#cli-echada)
 
@@ -101,6 +103,6 @@ graphify explain "decideVoxGeneration"     # plain-language node explanation
 2. **Test scheme is `SwiftEchada-Package`** -- not `SwiftEchada`
 3. **Targeted imports in CLI** -- `import struct SwiftEchada.CharacterProfile` (module/type name collision)
 4. **Library has no ML deps** -- all voice generation is CLI-only
-5. **Default subcommand is `cast`** -- `extract` and `download` were removed
+5. **No default subcommand** -- bare `echada` prints help; run `echada cast` for the full pipeline. `extract` and `download` were removed
 
 More: [Docs/gotchas.md](Docs/gotchas.md)

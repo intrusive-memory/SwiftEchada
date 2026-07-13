@@ -171,12 +171,20 @@ enum VoicePromptSynthesizer {
 
       \(context.joined(separator: "\n"))\(dialogueBlock)\(notesBlock)
 
-      Write exactly ONE vivid description of 20 to 45 words for this character's \
-      speaking voice, grounded in how they talk in the lines above. Capture \
-      timbre, pitch, pace, texture, apparent age, and emotional quality.\(accentClause) \
-      Do not mention the character's name, the project, the plot, or any quotation. \
-      Output only the description itself — no preamble, no label, no quotation marks, \
-      and no list.
+      The lines are provided ONLY so you can sense this character's emotional \
+      register and rhythm of speech. Do not describe or restate what the lines \
+      are about.
+
+      Write exactly ONE vivid description of 20 to 45 words of how this \
+      character's speaking voice SOUNDS. Capture timbre, pitch, pace, texture, \
+      apparent age, and emotional quality.\(accentClause)
+
+      Describe only the sound of the voice. Do NOT reference the character's \
+      name, the project, the plot, their job, or any subject, topic, profession, \
+      technology, object, or activity drawn from the lines. Every comparison must \
+      be to a physical texture or natural sound (gravel, smoke, velvet, rust, \
+      wind, glass) — never to the character's world or work. Output only the \
+      description itself — no preamble, no label, no quotation marks, and no list.
       """
   }
 
