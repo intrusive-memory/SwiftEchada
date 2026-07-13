@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-07-12
+
+### Fixed
+
+- **Cast lists no longer include emphasis-wrapped scene markers** - Bumped the `SwiftProyecto` dependency floor to 4.3.3, which pulls in the upstream Fountain parser fix ([SwiftCompartido#71](https://github.com/intrusive-memory/SwiftCompartido/issues/71)). Emphasis-wrapped direction lines like `**END OF SCENE.**` are no longer mis-detected as characters by `echada generate cast`.
+
 ## [0.16.0] - 2026-07-04
 
 ### Changed — Breaking

@@ -70,7 +70,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Compute SwiftAcervo model cache key
         id: modelkey
@@ -79,7 +79,7 @@ jobs:
 
       - name: Restore SwiftAcervo model cache
         id: modelcache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ${{ env.ACERVO_MODELS_DIR }}
           key: acervo-models-${{ runner.os }}-${{ steps.modelkey.outputs.value }}
