@@ -67,7 +67,10 @@ public struct GenerateCastCommand: AsyncParsableCommand {
     }
     let projectDir = fileURL.deletingLastPathComponent()
     let parser = ProjectMarkdownParser()
-    let (frontMatter, body) = try parser.parse(fileURL: fileURL)
+    // Keep the ORIGINAL text so the write-back only splices the `cast:` block and
+    // preserves every other byte (issue intrusive-memory/SwiftEchada#55, #44).
+    let originalText = try String(contentsOf: fileURL, encoding: .utf8)
+    let (frontMatter, _) = try parser.parse(fileURL: fileURL)
 
     let episodeURLs = SourceMaterialLocator.episodeFiles(
       projectDirectory: projectDir, frontMatter: frontMatter)
@@ -167,8 +170,8 @@ public struct GenerateCastCommand: AsyncParsableCommand {
     print("  Total cast: \(mergedCast.count)")
     if addedCount > 0 { print("  Added: \(addedCount)") }
 
-    let updatedFrontMatter = frontMatter.withCast(mergedCast.isEmpty ? nil : mergedCast)
-    try parser.write(frontMatter: updatedFrontMatter, body: body, to: fileURL)
+    let output = try parser.replacingCastBlock(in: originalText, with: mergedCast)
+    try output.write(to: fileURL, atomically: true, encoding: .utf8)
     print("\nWritten to \(project)")
   }
 }
