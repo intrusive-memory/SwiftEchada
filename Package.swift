@@ -24,7 +24,7 @@ let package = Package(
   ],
   dependencies: [
     .package(
-      url: "https://github.com/intrusive-memory/SwiftProyecto.git", .upToNextMajor(from: "4.3.3")),
+      url: "https://github.com/intrusive-memory/SwiftProyecto.git", .upToNextMajor(from: "4.6.1")),
     .package(
       url: "https://github.com/intrusive-memory/SwiftVoxAlta.git", .upToNextMajor(from: "0.14.1")),
     .package(url: "https://github.com/apple/swift-argument-parser", .upToNextMajor(from: "1.7.1")),

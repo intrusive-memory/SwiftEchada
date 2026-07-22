@@ -6,7 +6,7 @@ type: project
 
 Universal project documentation for AI agents. Agent-specific files: [CLAUDE.md](CLAUDE.md), [GEMINI.md](GEMINI.md).
 
-**Version**: 0.16.1 | **Swift**: 6.2 | **Platforms**: macOS 26+, iOS 26+
+**Version**: 0.16.2 | **Swift**: 6.2 | **Platforms**: macOS 26+, iOS 26+
 
 ---
 

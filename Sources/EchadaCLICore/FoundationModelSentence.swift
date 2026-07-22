@@ -120,14 +120,14 @@ enum FoundationModelSentence {
       the sentence itself — no preamble, no translation, and no commentary.
       """
 
-    let content: String
-    do {
-      content = try await LanguageModelSession().respond(to: prompt).content
-    } catch {
-      throw FoundationModelSentenceError.generationFailed(language: rawLanguage, underlying: error)
-    }
-    guard let sentence = sanitize(content) else {
-      throw FoundationModelSentenceError.generationFailed(language: rawLanguage, underlying: nil)
+    // The system model occasionally fails a single request transiently (e.g.
+    // "Failed to deserialize a Generable type from model output"); retry with a
+    // fresh session so one flaky call doesn't abort the whole cast run.
+    let (sentence, lastError) = await FoundationModelRetry.sanitizedResponse(
+      to: prompt, sanitize: sanitize)
+    guard let sentence else {
+      throw FoundationModelSentenceError.generationFailed(
+        language: rawLanguage, underlying: lastError)
     }
     return sentence
   }

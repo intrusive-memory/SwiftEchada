@@ -97,15 +97,13 @@ enum VoicePromptSynthesizer {
       evidence: evidence
     )
 
-    let content: String
-    do {
-      content = try await LanguageModelSession().respond(to: prompt).content
-    } catch {
-      throw VoicePromptSynthesizerError.generationFailed(character: character, underlying: error)
-    }
-
-    guard let result = sanitize(content) else {
-      throw VoicePromptSynthesizerError.generationFailed(character: character, underlying: nil)
+    // Retry transient FoundationModels failures with a fresh session so one
+    // flaky character doesn't abort prompt synthesis for the whole cast.
+    let (result, lastError) = await FoundationModelRetry.sanitizedResponse(
+      to: prompt, sanitize: sanitize)
+    guard let result else {
+      throw VoicePromptSynthesizerError.generationFailed(
+        character: character, underlying: lastError)
     }
     return result
   }
