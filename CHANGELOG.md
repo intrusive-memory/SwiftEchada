@@ -11,6 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Voice-audition sentences are now curated data instead of Foundation Model output**, removing Apple Intelligence from the `generate vox` path entirely. `FoundationModelSentence` is replaced by `AuditionSentence`, which supplies a deterministic, in-language sentence for every language the TTS model supports (zh, en, de, it, pt, es, ja, ko, fr, ru) — total coverage of what can actually be synthesized, so no language regressed.
+
+  Generation was the wrong tool for this job on three counts. **Reliability:** the on-device model failed requests transiently and sometimes returned a fluent sentence in the *wrong* language; a bounded retry (added in 0.16.2) reduced but could not eliminate the failures, and they aborted real cast runs. **Reproducibility:** the audition audio *is* the voice-lock reference the `.vox` embedding derives from, so non-deterministic reference text meant the same `voicePrompt` produced a different embedding on every run, with no record of which text produced which voice. **Portability:** it made `echada generate vox` unavailable on CI and on any Mac without Apple Intelligence, despite the TTS pipeline itself having no such requirement.
+
+  Consequences: `.vox` generation is now reproducible; `echada generate vox`, `echada voice`, and `echada test-voice` run without Apple Intelligence; and the model-backed `generate vox` CI test is gated on TTS-weight presence alone, so it now runs on hosted `macos-26` instead of silently skipping. Regional tags (`es-MX`, `pt-BR`) resolve to their base language; an uncurated language throws `AuditionSentenceError` naming the supported set.
+
+  `generate prompt` still uses the on-device Foundation Model — writing a voice-design brief from a character's dialogue is genuine generative work, unlike a fixed reference sentence.
+
+  The flaky `FoundationModelSentenceTests` (which asked the model for a sentence, then asserted `NLLanguageRecognizer` agreed on its language — doubly non-deterministic, and skipped on CI) is replaced by `AuditionSentenceTests`: pure data validation that runs identically everywhere, enforcing coverage, determinism, the TTS text contract, and length bounds.
+
 ### Added
 
 - **`echada --version` now reports the dependency versions compiled into the binary.** It lists every direct dependency from `Package.swift` alongside both its *declared* requirement (e.g. `4.6.1 ..< 5.0.0`) and the version SwiftPM actually *resolved and linked* (e.g. `4.6.1`), followed by the transitive graph. The table is generated at build time by `Scripts/generate-dependency-versions.py` and baked in via `make resolve` (which every build target already depends on); `make generate-deps` regenerates it on demand.

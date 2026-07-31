@@ -15,8 +15,8 @@ import Testing
 ///
 /// **Two independent gates.**
 ///
-/// 1. **Apple Intelligence** — `SystemLanguageModel.default.isAvailable`, exactly
-///    as in `FoundationModelSentenceTests`. GitHub-hosted `macos-26` reports
+/// 1. **Apple Intelligence** — `SystemLanguageModel.default.isAvailable`. Only
+///    `generate prompt` needs this. GitHub-hosted `macos-26` reports
 ///    `false` here, so Foundation-Model paths skip on hosted CI and run only on a
 ///    developer Mac / self-hosted Apple-Intelligence runner (accepted per resolved
 ///    OQ-4; see `Docs/build-and-test.md`).
@@ -28,11 +28,12 @@ import Testing
 ///    sets `TEST_RUNNER_ACERVO_OFFLINE=0`). Locally the weights are usually absent,
 ///    so the `.vox` tests skip here.
 ///
-/// The `generate vox` and full-pipeline `echada cast` paths need BOTH models: the
-/// candidate/lock steps load the Qwen3-TTS weights, and every audition sentence is
-/// sourced exclusively from the Foundation Model (`CastVoiceGenerator` calls
-/// `FoundationModelSentence.requireAvailable()`), so their gate is the conjunction
-/// of both conditions. `generate prompt` needs only the Foundation Model.
+/// `generate vox` needs only the TTS weights — audition sentences are curated
+/// data (``AuditionSentence``), not model output, so nothing in that path touches
+/// Apple Intelligence. The full-pipeline `echada cast` path still needs BOTH,
+/// because its `generate prompt` stage calls
+/// `VoicePromptSynthesizer.requireAvailable()`; hence the conjunction gate there.
+/// `generate prompt` alone needs only the Foundation Model.
 
 // MARK: - TTS-weights presence check (filesystem only — no hydration)
 
@@ -143,7 +144,11 @@ private func makeIsolatedProject(scripts: [String: String]) throws -> (
 @Suite("Model-backed generation — gated (skip when the model is absent)")
 struct ModelBackedGenerationTests {
 
-  /// **Gate: Foundation Model + TTS weights.**
+  /// **Gate: TTS weights only.**
+  ///
+  /// `generate vox` no longer touches Apple Intelligence — audition sentences are
+  /// curated data (``AuditionSentence``) rather than model output — so this needs
+  /// only the Qwen3-TTS weights and can run on hosted CI once they are primed.
   ///
   /// Drives `generate vox` twice against a single PROJECT.md — once for the 0.6B
   /// variant and once for 1.7B — so the second run APPENDS its embedding to the
@@ -151,7 +156,7 @@ struct ModelBackedGenerationTests {
   /// valid, ready bundle carrying embeddings from two distinct models.
   @Test(
     "generate vox produces a valid multi-model .vox (0.6B + 1.7B)",
-    .enabled(if: SystemLanguageModel.default.isAvailable && TTSWeights.present))
+    .enabled(if: TTSWeights.present))
   func generateVoxProducesMultiModelVox() async throws {
     let (projectDir, projectFile) = try makeIsolatedProject(scripts: [:])
     defer { try? FileManager.default.removeItem(at: projectDir.deletingLastPathComponent()) }
@@ -246,7 +251,7 @@ struct ModelBackedGenerationTests {
     #expect(vox.isReady)
   }
 
-  /// **Gate: Foundation Model only** (consistent with `FoundationModelSentenceTests`).
+  /// **Gate: Foundation Model only.**
   ///
   /// `generate prompt` reads a character's dialogue and asks the on-device
   /// Foundation Model to write a `voicePrompt`. No TTS weights involved. Skips on

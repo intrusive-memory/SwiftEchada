@@ -37,8 +37,10 @@ enum VoicePromptSynthesizerError: LocalizedError {
 /// Synthesizes a character's `voicePrompt` from screenplay evidence using Apple's
 /// on-device Foundation Model.
 ///
-/// echada already uses the on-device `SystemLanguageModel` as the single source
-/// of audition sentences (see ``FoundationModelSentence``); this uses the same
+/// This is the one place echada uses the on-device `SystemLanguageModel`.
+/// Audition sentences are curated data (see ``AuditionSentence``) because they
+/// need to be fixed and reproducible; writing a voice-design brief from a
+/// character's dialogue is genuine generative work, so it uses the
 /// model to turn a character's own dialogue and delivery notes into a compact,
 /// human-readable voice-design brief. That brief is written to PROJECT.md as
 /// `voicePrompt` and later fed to VoiceDesign's `voice:` parameter by

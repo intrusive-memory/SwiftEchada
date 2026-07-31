@@ -64,7 +64,7 @@ Swift Testing (`@Test` macro) -- not XCTest.
 | `CharacterMergerTests` | 8 | Dedup, voice preservation, alphabetical sorting |
 | `VoicePromptRoundTripTests` | 3 | YAML parse/serialize, field preservation |
 | `NonEnglishPassthroughTests` | -- | Non-English `--language` passthrough (es/pt/it/de) |
-| `FoundationModelSentenceTests` | -- | On-device in-language audition sentences (es/pt/it/de) |
+| `AuditionSentenceTests` | 11 | Curated audition sentences: coverage, determinism, text contract |
 
 ### Fixtures
 
@@ -119,20 +119,22 @@ Test fixture files live in `Fixtures/`:
   GitHub-hosted `macos-26` reports `SystemLanguageModel.default.isAvailable ==
   false` (no device opt-in, no signed-in Apple Account, no on-device model
   download on ephemeral hosted runners). Every test gated with `.enabled(if:
-  SystemLanguageModel.default.isAvailable)` -- `FoundationModelSentenceTests`,
-  `generate prompt` -- **skips** on this workflow; that is accepted, expected
-  coverage, not a failure.
-  **This also includes the `generate vox` and full-pipeline `.vox` tests**
-  (`ModelBackedGenerationTests`), even though the TTS weights are cached and
-  present: `CastVoiceGenerator.generate()` sources every audition sentence
-  exclusively from the on-device Foundation Model
-  (`FoundationModelSentence.requireAvailable()`), so those tests are gated on
-  the **conjunction** of both Apple Intelligence availability *and* TTS-weight
-  presence. Since Apple Intelligence is unavailable on hosted `macos-26`, the
-  model-backed `.vox` and full-pipeline `voicePrompt`/`.vox` assertions skip
-  here too -- the weight cache keeps the infrastructure ready, but does not by
-  itself unlock coverage. All of these paths are exercised locally on a
-  developer Mac with Apple Intelligence enabled, or would need a self-hosted
+  SystemLanguageModel.default.isAvailable)` -- `generate prompt` and the
+  full-pipeline `echada cast` test -- **skips** on this workflow; that is
+  accepted, expected coverage, not a failure.
+
+  **`generate vox` no longer skips here.** Audition sentences used to come
+  exclusively from the on-device Foundation Model, which gated the `.vox` tests
+  on the *conjunction* of Apple Intelligence *and* TTS weights -- so the cached
+  weights never actually unlocked any coverage on hosted CI. Sentences are now
+  curated data (`AuditionSentence`), so nothing in the vox path touches Apple
+  Intelligence and the `generate vox` test is gated on `TTSWeights.present`
+  alone. With the model cache primed, it runs on hosted `macos-26`.
+
+  The full-pipeline `echada cast` test still needs both, because its
+  `generate prompt` stage calls `VoicePromptSynthesizer.requireAvailable()`.
+  Those remaining paths are exercised locally on a developer Mac with Apple
+  Intelligence enabled, or would need a self-hosted
   Apple-Intelligence-provisioned runner, which this workflow does not provide.
   Full CI coverage of both the Foundation-Model paths (`generate prompt`) and
   the transitively-gated model-backed `.vox` paths (`generate vox`,
