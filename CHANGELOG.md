@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`echada --version` now reports the dependency versions compiled into the binary.** It lists every direct dependency from `Package.swift` alongside both its *declared* requirement (e.g. `4.6.1 ..< 5.0.0`) and the version SwiftPM actually *resolved and linked* (e.g. `4.6.1`), followed by the transitive graph. The table is generated at build time by `Scripts/generate-dependency-versions.py` and baked in via `make resolve` (which every build target already depends on); `make generate-deps` regenerates it on demand.
+
+  This exists because `Package.resolved` is gitignored, so nothing in version control records what a given release links against. Diagnosing [#44](https://github.com/intrusive-memory/SwiftEchada/issues/44)/[#55](https://github.com/intrusive-memory/SwiftEchada/issues/55) required inferring the compiled-in SwiftProyecto version by running the shipped binary against a fixture and reading the behaviour. Now the binary just says. The generated Swift file is committed, so it doubles as the missing lockfile record.
+
 ### Fixed
 
 - **PROJECT.md write-back no longer destroys or corrupts non-cast content** ([#44](https://github.com/intrusive-memory/SwiftEchada/issues/44), [#55](https://github.com/intrusive-memory/SwiftEchada/issues/55)). All three `generate` stages (`cast`, `prompt`, `vox`) re-serialized the entire YAML front matter from the typed model on every write-back, routing through the hand-rolled emitter in `ProjectMarkdownParser.generate`. That emitter deleted keys it did not know how to write (`introFile`/`outroFile`, #55) and, for unknown top-level keys captured into `appSections`, preserved the key name while destroying its structure — a nested list of maps such as `episodes_index` came back as an Objective-C `NSDictionary.description` dump inside a YAML string (#44). On a real 309-line project file this collapsed it to 103 lines, and because the mangled form still contained the original substrings, the existing regression tests passed while the data was being lost.

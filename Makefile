@@ -15,7 +15,7 @@ XCODE_FLAGS = -skipPackagePluginValidation -skipMacroValidation
 
 export GIT_LFS_SKIP_SMUDGE = 1
 
-.PHONY: all build release install clean test resolve help integration-test lint codesign-cli
+.PHONY: all build release install clean test resolve help integration-test lint codesign-cli generate-deps
 
 all: install
 
@@ -23,6 +23,12 @@ all: install
 resolve:
 	xcodebuild -resolvePackageDependencies -scheme $(SCHEME) -destination '$(DESTINATION)'
 	@echo "Package dependencies resolved."
+	@$(MAKE) --no-print-directory generate-deps
+
+# Bake the resolved dependency versions into the binary for `echada --version`.
+# Depends on Package.resolved existing, so it runs after `resolve`.
+generate-deps:
+	@python3 Scripts/generate-dependency-versions.py
 
 # Development build with xcodebuild (Debug)
 build: resolve
@@ -139,6 +145,7 @@ help:
 	@echo ""
 	@echo "Targets:"
 	@echo "  resolve          - Resolve all SPM package dependencies"
+	@echo "  generate-deps    - Bake resolved dependency versions into 'echada --version'"
 	@echo "  build            - Debug build with xcodebuild"
 	@echo "  install          - Debug build + copy to ./bin (default)"
 	@echo "  release          - Release build + copy to ./bin"
