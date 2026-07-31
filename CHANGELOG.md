@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **PROJECT.md write-back no longer destroys or corrupts non-cast content** ([#44](https://github.com/intrusive-memory/SwiftEchada/issues/44), [#55](https://github.com/intrusive-memory/SwiftEchada/issues/55)). All three `generate` stages (`cast`, `prompt`, `vox`) re-serialized the entire YAML front matter from the typed model on every write-back, routing through the hand-rolled emitter in `ProjectMarkdownParser.generate`. That emitter deleted keys it did not know how to write (`introFile`/`outroFile`, #55) and, for unknown top-level keys captured into `appSections`, preserved the key name while destroying its structure — a nested list of maps such as `episodes_index` came back as an Objective-C `NSDictionary.description` dump inside a YAML string (#44). On a real 309-line project file this collapsed it to 103 lines, and because the mangled form still contained the original substrings, the existing regression tests passed while the data was being lost.
+
+  All three stages now write through the new `ProjectCastWriteBack` helper, which splices only the `cast:` line span via `ProjectMarkdownParser.replacingCastBlock(in:with:)` and copies every other byte verbatim. Unknown keys, nested structure, key ordering, comments, and spacing are preserved by construction. Regression tests now assert structure after re-parsing and line-level equality outside the cast block, rather than substring presence.
+
 ## [0.16.1] - 2026-07-12
 
 ### Fixed

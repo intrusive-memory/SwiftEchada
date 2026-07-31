@@ -4,100 +4,171 @@ import Testing
 
 @testable import EchadaCLICore
 
-/// Regression coverage for issue #44 — `echada generate vox` must NOT destroy
-/// non-cast content in PROJECT.md when it writes back `voices.voxalta` paths.
+/// Regression coverage for issues #44 and #55 — the `generate` stages must not
+/// destroy or corrupt non-cast content in PROJECT.md when they write back the
+/// `cast:` block.
 ///
-/// The bug: the write-back rebuilt `ProjectFrontMatter` field-by-field, dropping
-/// every field it didn't explicitly copy — most damagingly `appSections`, the
-/// catch-all that carries unknown top-level keys the user hand-maintains
-/// (`episodes_index`, etc.). Those were silently deleted on every voice run.
+/// Two distinct failure modes, both now covered:
 ///
-/// The fix routes the write-back through `ProjectFrontMatter.withCast(_:)`, which
-/// preserves all non-cast fields. These tests exercise the exact seam the command
-/// uses (`GenerateVoxCommand.updatedFrontMatter(preserving:cast:)`) plus the
-/// parser round-trip, offline, without loading any TTS model.
-@Suite("GenerateVoxCommand write-back preserves PROJECT.md content (#44)")
+/// - **#55 — deletion.** Keys the hand-rolled emitter in
+///   `ProjectMarkdownParser.generate` didn't know how to write (`introFile`,
+///   `outroFile`) were dropped entirely.
+/// - **#44 — corruption.** Unknown top-level keys captured into `appSections`
+///   survived by *name* but lost their structure: a list of maps such as
+///   `episodes_index` came back as an Objective-C `NSDictionary.description`
+///   dump inside a YAML string.
+///
+/// The corruption mode is why the previous version of these tests passed while
+/// the bug shipped: they asserted `output.contains("ep-001")`, and the mangled
+/// form `- "{\n    id = ep-001;\n ...}"` still contains that substring. Every
+/// assertion here therefore checks **structure after re-parsing**, or exact
+/// line-level preservation — never bare substring presence.
+@Suite("PROJECT.md cast write-back preserves non-cast content (#44, #55)")
 struct GenerateVoxWriteBackTests {
 
   /// A PROJECT.md shaped like the real podcasts/* layout: a `cast:` block echada
-  /// owns, plus a top-level `episodes_index:` list it does not own (and must keep).
-  static let projectWithEpisodesIndex = """
+  /// owns, plus content it does not own and must keep byte-for-byte —
+  /// `introFile`/`outroFile` (#55), a nested `episodes_index` list-of-maps (#44),
+  /// a per-member `bio`, and a comment.
+  static let projectWithExtras = """
     ---
     type: project
     title: Confessions
     author: Test Author
     created: 2026-01-01T00:00:00Z
     description: A hand-maintained project file with extra keys.
+    # This comment must survive the write-back.
+    introFile: audio/intro.m4a
+    outroFile: audio/outro.m4a
     cast:
       - character: THE PRACTITIONER
         voicePrompt: "A calm, deliberate voice."
+        bio: "A hand-authored biography."
         voices:
           voxalta: voices/PRACTITIONER.vox
     episodes_index:
       - id: ep-001
         title: The First Confession
+        keywords:
+          - shame
+          - ADHD
       - id: ep-002
         title: The Second Confession
-      - id: ep-003
-        title: The Third Confession
     ---
     Body content stays too.
     """
 
-  /// The write-back seam must keep the top-level `episodes_index` key and update
-  /// only the cast — proving `appSections` survives the round-trip.
-  @Test("Top-level episodes_index survives a cast write-back")
-  func topLevelKeyPreserved() throws {
-    let parser = ProjectMarkdownParser()
-    let (frontMatter, body) = try parser.parse(content: Self.projectWithEpisodesIndex)
-
-    // Simulate what run() does after generation: attach a freshly written .vox.
-    let updatedCast = [
-      CastMember(
-        character: "THE PRACTITIONER",
-        voiceDescription: "A calm, deliberate voice.",
-        voices: ["voxalta": ["voices/PRACTITIONER.vox"]]
-      )
-    ]
-    let updated = GenerateVoxCommand.updatedFrontMatter(
-      preserving: frontMatter, cast: updatedCast)
-    let output = parser.generate(frontMatter: updated, body: body)
-
-    // The destroyed-on-write-back content must still be present.
-    #expect(output.contains("episodes_index"), "episodes_index was dropped (#44 regression)")
-    #expect(output.contains("ep-001"))
-    #expect(output.contains("The Third Confession"))
-    #expect(output.contains("Body content stays too."))
+  /// Applies a cast update through the real write-back seam the commands use.
+  private func writeBack(_ cast: [CastMember], to source: String) throws -> String {
+    try ProjectCastWriteBack.applying(cast: cast, to: source)
   }
 
-  /// A full parse → update → re-parse cycle keeps episodes_index structurally
-  /// intact and reflects the updated cast voice.
-  @Test("Round-trip keeps episodes_index and applies the cast update")
-  func roundTripPreservesAndUpdates() throws {
-    let parser = ProjectMarkdownParser()
-    let (frontMatter, body) = try parser.parse(content: Self.projectWithEpisodesIndex)
-
-    let updatedCast = [
+  private var updatedCast: [CastMember] {
+    [
       CastMember(
         character: "THE PRACTITIONER",
         voiceDescription: "A calm, deliberate voice.",
         voices: ["voxalta": ["voices/PRACTITIONER-v2.vox"]]
       )
     ]
-    let updated = GenerateVoxCommand.updatedFrontMatter(
-      preserving: frontMatter, cast: updatedCast)
-    let output = parser.generate(frontMatter: updated, body: body)
+  }
 
-    let (reparsed, _) = try parser.parse(content: output)
+  /// #55: keys the emitter never knew how to write must still be present.
+  @Test("introFile/outroFile survive a cast write-back (#55)")
+  func introOutroPreserved() throws {
+    let output = try writeBack(updatedCast, to: Self.projectWithExtras)
+    let (reparsed, _) = try ProjectMarkdownParser().parse(content: output)
 
-    // Non-cast content preserved.
-    #expect(reparsed.title == "Confessions")
-    #expect(reparsed.description == "A hand-maintained project file with extra keys.")
-    #expect(output.contains("episodes_index"))
-    #expect(output.contains("ep-002"))
+    #expect(reparsed.introFile == "audio/intro.m4a", "introFile was dropped (#55 regression)")
+    #expect(reparsed.outroFile == "audio/outro.m4a", "outroFile was dropped (#55 regression)")
+  }
 
-    // Cast update applied.
+  /// #44: the nested `episodes_index` must stay a **list of maps**, not become
+  /// strings. This is the assertion the old substring-based test lacked.
+  @Test("Nested episodes_index keeps its structure, not just its name (#44)")
+  func nestedUnknownKeyStructurePreserved() throws {
+    let output = try writeBack(updatedCast, to: Self.projectWithExtras)
+
+    #expect(
+      !output.contains("{\\n"),
+      "episodes_index was flattened into an NSDictionary description dump (#44 regression)")
+
+    // The list entries must still be indented YAML mappings.
+    #expect(output.contains("  - id: ep-001"), "episodes_index entry lost its mapping form")
+    #expect(output.contains("    title: The First Confession"))
+    #expect(output.contains("      - shame"), "nested keywords list was flattened")
+    #expect(output.contains("  - id: ep-002"))
+  }
+
+  /// The strongest guarantee: every line outside the `cast:` block is unchanged.
+  @Test("Everything outside the cast block is byte-for-byte identical")
+  func nonCastContentIsByteIdentical() throws {
+    let output = try writeBack(updatedCast, to: Self.projectWithExtras)
+
+    func linesOutsideCastBlock(_ text: String) -> [String] {
+      var result: [String] = []
+      var inCast = false
+      for line in text.components(separatedBy: "\n") {
+        if line.hasPrefix("cast:") {
+          inCast = true
+          continue
+        }
+        if inCast {
+          // The block ends at the first line that isn't indented.
+          if let first = line.first, first == " " || first == "\t" { continue }
+          inCast = false
+        }
+        result.append(line)
+      }
+      return result
+    }
+
+    #expect(
+      linesOutsideCastBlock(output) == linesOutsideCastBlock(Self.projectWithExtras),
+      "content outside the cast block changed")
+  }
+
+  /// The comment must survive — proof the whole-file re-serialization path is gone.
+  @Test("Inline comments survive the write-back")
+  func commentPreserved() throws {
+    let output = try writeBack(updatedCast, to: Self.projectWithExtras)
+    #expect(output.contains("# This comment must survive the write-back."))
+  }
+
+  /// The cast update itself must actually be applied.
+  @Test("Cast update is applied")
+  func castUpdateApplied() throws {
+    let output = try writeBack(updatedCast, to: Self.projectWithExtras)
+    let (reparsed, _) = try ProjectMarkdownParser().parse(content: output)
+
     #expect(reparsed.cast?.count == 1)
     #expect(reparsed.cast?.first?.voices["voxalta"] == ["voices/PRACTITIONER-v2.vox"])
+    #expect(reparsed.title == "Confessions")
+  }
+
+  /// Per-member unknown keys (`bio`) must round-trip.
+  @Test("Per-member bio survives the write-back")
+  func perMemberExtraKeyPreserved() throws {
+    // Re-parse the source so the member carries its decoded `extraKeys`, then
+    // write that same member back with an updated voice.
+    let (frontMatter, _) = try ProjectMarkdownParser().parse(content: Self.projectWithExtras)
+    guard let existing = frontMatter.cast?.first else {
+      Issue.record("fixture cast failed to parse")
+      return
+    }
+    // Mutating a struct copy keeps the decoded `extraKeys` (which carry `bio`).
+    var updated = existing
+    updated.voices = ["voxalta": ["voices/PRACTITIONER-v2.vox"]]
+
+    let output = try writeBack([updated], to: Self.projectWithExtras)
+    #expect(output.contains("bio:"), "per-member bio was dropped")
+  }
+
+  /// Running the write-back twice must be a no-op the second time.
+  @Test("Write-back is idempotent")
+  func idempotent() throws {
+    let once = try writeBack(updatedCast, to: Self.projectWithExtras)
+    let twice = try writeBack(updatedCast, to: once)
+    #expect(once == twice, "write-back is not idempotent")
   }
 }

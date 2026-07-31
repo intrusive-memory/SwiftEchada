@@ -87,20 +87,6 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
     return result
   }
 
-  /// Builds the PROJECT.md front matter to write back after voice generation,
-  /// updating only the cast list while preserving **all** other content.
-  ///
-  /// Delegates to ``ProjectFrontMatter/withCast(_:)``, which carries every
-  /// non-cast field — including `appSections`, the catch-all for unknown
-  /// top-level keys such as `episodes_index` that the user maintains by hand.
-  /// Extracted so the round-trip (parse → update cast → re-serialize) can be
-  /// regression-tested offline without running voice generation (issue #44).
-  static func updatedFrontMatter(
-    preserving frontMatter: ProjectFrontMatter, cast: [CastMember]
-  ) -> ProjectFrontMatter {
-    frontMatter.withCast(cast)
-  }
-
   public func run() async throws {
     let fileURL = URL(fileURLWithPath: project)
     guard FileManager.default.fileExists(atPath: fileURL.path) else {
@@ -108,7 +94,7 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
     }
     let projectDir = fileURL.deletingLastPathComponent()
     let parser = ProjectMarkdownParser()
-    let (frontMatter, body) = try parser.parse(fileURL: fileURL)
+    let (frontMatter, _) = try parser.parse(fileURL: fileURL)
 
     // Resolve TTS model: CLI flag > PROJECT.md tts.model > default slug
     let effectiveTTSModel =
@@ -217,17 +203,13 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
 
     // Write updated PROJECT.md.
     //
-    // Route the write-back through `withCast(_:)` rather than reconstructing the
-    // front matter field-by-field. The manual rebuild dropped every field it did
-    // not explicitly copy — most damagingly `appSections`, the catch-all that
-    // holds unknown top-level keys the user hand-maintains (e.g. `episodes_index`).
-    // That silently deleted that content on every voice write-back (issue #44).
-    // `withCast` preserves all non-cast fields verbatim, including `appSections`.
-    let updatedFrontMatter = GenerateVoxCommand.updatedFrontMatter(
-      preserving: frontMatter, cast: finalCast)
-
-    let output = parser.generate(frontMatter: updatedFrontMatter, body: body)
-    try output.write(to: fileURL, atomically: true, encoding: .utf8)
+    // Surgical write-back: splice only the `cast:` block and leave every other
+    // byte untouched. Re-serializing the whole front matter — even via
+    // `withCast(_:)`, which does preserve the in-memory model — still routes
+    // through the hand-rolled emitter in `ProjectMarkdownParser.generate`, which
+    // deletes keys it doesn't know and corrupts the structure of nested unknown
+    // ones. See ``ProjectCastWriteBack`` (issues #44, #55).
+    try ProjectCastWriteBack.write(cast: finalCast, to: fileURL, using: parser)
     print("\nWritten to \(project)")
   }
 }

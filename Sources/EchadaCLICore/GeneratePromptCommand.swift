@@ -59,7 +59,7 @@ public struct GeneratePromptCommand: AsyncParsableCommand {
     }
     let projectDir = fileURL.deletingLastPathComponent()
     let parser = ProjectMarkdownParser()
-    let (frontMatter, body) = try parser.parse(fileURL: fileURL)
+    let (frontMatter, _) = try parser.parse(fileURL: fileURL)
 
     guard let cast = frontMatter.cast, !cast.isEmpty else {
       throw ValidationError("No cast members found in \(project).")
@@ -211,8 +211,10 @@ public struct GeneratePromptCommand: AsyncParsableCommand {
     // Merge updated members back into the full cast, preserving order and any
     // members outside the target filter.
     let finalCast = cast.map { updatedByName[$0.character] ?? $0 }
-    let updatedFrontMatter = frontMatter.withCast(finalCast)
-    try parser.write(frontMatter: updatedFrontMatter, body: body, to: fileURL)
+
+    // Surgical write-back: splice only the `cast:` block and leave every other
+    // byte of PROJECT.md untouched. See ``ProjectCastWriteBack`` (issues #44, #55).
+    try ProjectCastWriteBack.write(cast: finalCast, to: fileURL, using: parser)
     print("\nWritten to \(project)")
   }
 }

@@ -67,7 +67,7 @@ public struct GenerateCastCommand: AsyncParsableCommand {
     }
     let projectDir = fileURL.deletingLastPathComponent()
     let parser = ProjectMarkdownParser()
-    let (frontMatter, body) = try parser.parse(fileURL: fileURL)
+    let (frontMatter, _) = try parser.parse(fileURL: fileURL)
 
     let episodeURLs = SourceMaterialLocator.episodeFiles(
       projectDirectory: projectDir, frontMatter: frontMatter)
@@ -167,8 +167,9 @@ public struct GenerateCastCommand: AsyncParsableCommand {
     print("  Total cast: \(mergedCast.count)")
     if addedCount > 0 { print("  Added: \(addedCount)") }
 
-    let updatedFrontMatter = frontMatter.withCast(mergedCast.isEmpty ? nil : mergedCast)
-    try parser.write(frontMatter: updatedFrontMatter, body: body, to: fileURL)
+    // Surgical write-back: splice only the `cast:` block and leave every other
+    // byte of PROJECT.md untouched. See ``ProjectCastWriteBack`` (issues #44, #55).
+    try ProjectCastWriteBack.write(cast: mergedCast, to: fileURL, using: parser)
     print("\nWritten to \(project)")
   }
 }
