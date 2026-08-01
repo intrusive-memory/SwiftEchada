@@ -11,11 +11,10 @@ import Testing
 ///   `--language` flag → `resolvedLanguages()` → `castableLanguages(_:)`
 ///     → `localizedVoicePrompt(for:language:)` → `voxLanguageTag(for:)` (storage)
 ///
-/// The audition-sentence source (`FoundationModelSentence.auditionSentence`) and
-/// the TTS forward pass (`Qwen3TTSModel.generate(language:)`) are exercised
-/// separately — the former by ``FoundationModelSentenceTests`` against on-device
-/// Apple Intelligence, the latter by the integration test. Everything below is
-/// pure and runs anywhere.
+/// The audition-sentence source (`AuditionSentence.auditionSentence`) and the
+/// TTS forward pass (`Qwen3TTSModel.generate(language:)`) are exercised
+/// separately — the former by ``AuditionSentenceTests``, the latter by the
+/// integration test. Everything below is pure and runs anywhere.
 @Suite("Non-English language passthrough (es, pt, it, de)")
 struct NonEnglishPassthroughTests {
 

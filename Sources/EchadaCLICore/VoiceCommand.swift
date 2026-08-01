@@ -58,11 +58,8 @@ public struct VoiceCommand: AsyncParsableCommand {
     let ttsLanguage = try TTSLanguage(languageCode: normalizedLanguage)
     let modelManager = VoxAltaModelManager()
     let outputURL = URL(fileURLWithPath: output)
-    // The audition sentence is sourced exclusively from the on-device Foundation
-    // Model; an unavailable model or unsupported locale throws a clear
-    // configuration error rather than falling back to a canned sentence.
-    let sampleSentence = try await FoundationModelSentence.auditionSentence(
-      language: normalizedLanguage)
+    // Curated, deterministic audition sentence — no Apple Intelligence needed.
+    let sampleSentence = try AuditionSentence.auditionSentence(language: normalizedLanguage)
 
     print("Generating voice from prompt...")
     if verbose {

@@ -45,8 +45,8 @@ public struct TestVoiceCommand: AsyncParsableCommand {
     )
 
     let modelManager = VoxAltaModelManager()
-    // Audition sentences come exclusively from the on-device Foundation Model.
-    let sampleSentence = try await FoundationModelSentence.auditionSentence(language: "en")
+    // Curated, deterministic audition sentence — no Apple Intelligence needed.
+    let sampleSentence = try AuditionSentence.auditionSentence(language: "en")
 
     // Generate candidate WAV
     print("Generating candidate voice (\(ttsModel))...")

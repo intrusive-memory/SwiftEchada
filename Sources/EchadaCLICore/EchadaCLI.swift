@@ -26,12 +26,24 @@ public struct EchadaCLI: AsyncParsableCommand {
       vox` — for per-stage control. See `echada cast --help` for the full \
       pipeline and its cascading `--force`.
       """,
-    version: SwiftEchada.version,
+    version: EchadaCLI.versionReport,
     subcommands: [
       VoiceCommand.self, CastCommand.self, GenerateCommand.self,
       TestVoiceCommand.self,
     ]
   )
+
+  /// What `echada --version` prints: the tool version, followed by the
+  /// dependency versions actually compiled into this binary.
+  ///
+  /// The dependency table is generated at build time from `Package.swift` and
+  /// `Package.resolved` (see `Scripts/generate-dependency-versions.py`). It is
+  /// reported here because `Package.resolved` is gitignored, so a shipped
+  /// binary is otherwise the only artifact that knows what it links against —
+  /// and reading it out of a binary is far harder than printing it.
+  static var versionReport: String {
+    SwiftEchada.version + "\n" + DependencyVersions.report()
+  }
 
   public init() {}
 }

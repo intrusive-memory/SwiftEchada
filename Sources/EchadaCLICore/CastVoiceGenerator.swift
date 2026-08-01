@@ -289,11 +289,6 @@ struct CastVoiceGenerator {
   ///
   /// Members without a `voiceDescription` (or with an empty one) are silently skipped.
   func generate(cast: [CastMember]) async throws -> GenerateResult {
-    // Audition sentences are sourced exclusively from the on-device Foundation
-    // Model — fail fast with a clear configuration error before any expensive
-    // model loading if Apple Intelligence isn't available.
-    try FoundationModelSentence.requireAvailable()
-
     let voicesDir = projectDirectory.appending(path: "voices")
     try FileManager.default.createDirectory(at: voicesDir, withIntermediateDirectories: true)
 
@@ -412,11 +407,11 @@ struct CastVoiceGenerator {
         }
         let voicePrompt = composeVoicePrompt(base: selectedPrompt, accent: accent)
 
-        // The in-language audition sentence comes exclusively from the on-device
-        // Foundation Model. A configuration failure (Apple Intelligence off,
-        // unsupported locale) propagates out to abort the whole run rather than
-        // being swallowed as a per-character skip below.
-        let sampleSentence = try await FoundationModelSentence.auditionSentence(language: language)
+        // The in-language audition sentence is curated and deterministic, so the
+        // same voice prompt reproduces the same .vox embedding. An unsupported
+        // language propagates out to abort the whole run rather than being
+        // swallowed as a per-character skip below.
+        let sampleSentence = try AuditionSentence.auditionSentence(language: language)
         if verbose {
           print("[verbose] Language: \(language) — prompt: \(voicePrompt)")
           print("[verbose] Language: \(language) — sample sentence: \(sampleSentence)")

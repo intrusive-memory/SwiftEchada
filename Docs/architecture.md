@@ -1,3 +1,7 @@
+---
+type: doc
+---
+
 # Architecture
 
 **Version**: 0.12.0-dev | **Swift**: 6.2 | **Platforms**: macOS 26+, iOS 26+
@@ -74,7 +78,7 @@
 | `CharacterMergerTests.swift` | 8 | Dedup, voice preservation, sorting |
 | `VoicePromptRoundTripTests.swift` | 3 | YAML parse/serialize round-trips |
 | `NonEnglishPassthroughTests.swift` | -- | Non-English `--language` passthrough (es/pt/it/de) |
-| `FoundationModelSentenceTests.swift` | -- | On-device in-language audition sentences (es/pt/it/de) |
+| `AuditionSentenceTests.swift` | 11 | Curated audition sentences: coverage, determinism, text contract |
 
 ---
 
@@ -98,7 +102,7 @@ CastVoiceGenerator.generate(cast:)
       |── Phase A: Candidate Generation ──────────────────────────
       |   Load VoiceDesign 1.7B model (once for all characters)
       |   For each CastMember with voiceDescription:
-      |     1. FoundationModelSentence.auditionSentence(language:)
+      |     1. AuditionSentence.auditionSentence(language:)  [curated, deterministic]
       |     2. Qwen3TTSModel.generate(text: sample, voice: prompt)
       |     3. AudioConversion.mlxArrayToWAVData() → candidateWAV
       |     4. GPU flush (Stream.synchronize + Memory.clearCache)
