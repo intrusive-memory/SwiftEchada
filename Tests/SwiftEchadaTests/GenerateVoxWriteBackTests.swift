@@ -171,4 +171,86 @@ struct GenerateVoxWriteBackTests {
     let twice = try writeBack(updatedCast, to: once)
     #expect(once == twice, "write-back is not idempotent")
   }
+
+  // MARK: - Blank lines inside the cast block (SwiftProyecto 4.8.1)
+
+  /// A hand-maintained file that separates cast entries with a blank line —
+  /// ordinary YAML style, and exactly what the #44/#55 population writes.
+  static let projectWithBlankLineInCast = """
+    ---
+    type: project
+    title: Confessions
+    author: Test Author
+    created: 2026-01-01T00:00:00Z
+    cast:
+      - character: THE PRACTITIONER
+        voicePrompt: "A calm, deliberate voice."
+
+      - character: THE PENITENT
+        voicePrompt: "A hesitant, searching voice."
+    episodes_index:
+      - id: ep-001
+        title: The First Confession
+    ---
+    Body content stays too.
+    """
+
+  /// The splice used to stop at the blank line, leaving every entry below it
+  /// unreplaced but still indented. The re-rendered block was spliced in *above*
+  /// those survivors, so re-parsing read them back as **duplicate** members.
+  ///
+  /// This is the seam `echada generate {cast,prompt,vox}` all write through, so
+  /// the corruption was reachable from an ordinary cast run. Requires the fix in
+  /// SwiftProyecto 4.8.1 — it fails against 4.6.1.
+  @Test("A blank line between cast entries does not duplicate members")
+  func blankLineInCastDoesNotDuplicate() throws {
+    let (frontMatter, _) = try ProjectMarkdownParser().parse(
+      content: Self.projectWithBlankLineInCast)
+    let cast = try #require(frontMatter.cast)
+    #expect(cast.count == 2, "fixture should parse as exactly two members")
+
+    var updated = cast
+    updated[1].voices = ["voxalta": ["voices/PENITENT.vox"]]
+
+    let output = try writeBack(updated, to: Self.projectWithBlankLineInCast)
+    let (reparsed, _) = try ProjectMarkdownParser().parse(content: output)
+
+    #expect(
+      (reparsed.cast ?? []).map(\.character) == ["THE PRACTITIONER", "THE PENITENT"],
+      "cast was duplicated by the blank line")
+    #expect(
+      output.components(separatedBy: "- character: THE PENITENT").count - 1 == 1,
+      "THE PENITENT must appear exactly once")
+
+    // The unknown top-level key after the block must still survive intact.
+    #expect(output.contains("  - id: ep-001"), "episodes_index lost its structure")
+  }
+
+  /// The write-back must also stay idempotent once blank lines are involved —
+  /// a second pass over its own output must change nothing.
+  @Test("Write-back over a blank-line cast block is idempotent")
+  func blankLineWriteBackIsIdempotent() throws {
+    let (frontMatter, _) = try ProjectMarkdownParser().parse(
+      content: Self.projectWithBlankLineInCast)
+    let cast = try #require(frontMatter.cast)
+
+    let once = try writeBack(cast, to: Self.projectWithBlankLineInCast)
+    let twice = try writeBack(cast, to: once)
+    #expect(once == twice, "write-back is not idempotent across a blank line")
+  }
+
+  /// `GenerateCastCommand` stopped special-casing an empty merge and now passes
+  /// `[]` straight through, relying on the splice to remove the block. Pin that
+  /// behaviour here so the dependency cannot change it silently.
+  @Test("An empty cast removes the block but keeps everything else")
+  func emptyCastRemovesBlock() throws {
+    let output = try writeBack([], to: Self.projectWithExtras)
+    let (reparsed, _) = try ProjectMarkdownParser().parse(content: output)
+
+    #expect(reparsed.cast?.isEmpty ?? true, "cast members should be gone")
+    #expect(reparsed.introFile == "audio/intro.m4a", "introFile must survive")
+    #expect(reparsed.outroFile == "audio/outro.m4a", "outroFile must survive")
+    #expect(output.contains("  - id: ep-001"), "episodes_index must survive")
+    #expect(output.contains("Body content stays too."))
+  }
 }
