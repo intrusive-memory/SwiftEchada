@@ -29,12 +29,12 @@ enum DependencyVersions {
 
   /// Pulled in transitively, sorted by package identity.
   static let transitive: [(name: String, resolved: String)] = [
-    (name: "glosa-av", resolved: "0.7.1"),
+    (name: "glosa-av", resolved: "0.8.0"),
     (name: "progress.swift", resolved: "0.4.0"),
     (name: "swift-asn1", resolved: "1.7.1"),
     (name: "swift-cmark", resolved: "0.8.0"),
     (name: "swift-collections", resolved: "1.6.0"),
-    (name: "swift-crypto", resolved: "4.5.0"),
+    (name: "swift-crypto", resolved: "4.5.1"),
     (name: "swift-markdown", resolved: "0.8.0"),
     (name: "swift-numerics", resolved: "1.1.1"),
     (name: "swift-syntax", resolved: "600.0.1"),

@@ -16,7 +16,7 @@ XCODE_FLAGS = -skipPackagePluginValidation -skipMacroValidation
 
 export GIT_LFS_SKIP_SMUDGE = 1
 
-.PHONY: all build release install clean test resolve help integration-test lint codesign-cli generate-deps verify-deps
+.PHONY: all build release install clean test resolve help integration-test lint codesign-cli generate-deps verify-deps refresh-deps
 
 all: install
 
@@ -31,8 +31,8 @@ resolve:
 #
 # `build` depends on this transitively, so a missing python3 must not break the
 # build: the generated file is committed and stays valid, it just goes stale.
-# The version table is diagnostics, never a build input. CI enforces freshness
-# separately (see the verify-deps job), which is where a real drift should fail.
+# The version table is diagnostics, never a build input. CI reports drift
+# separately (see the verify-deps job) without failing on it.
 generate-deps:
 	@if command -v python3 >/dev/null 2>&1; then \
 		python3 Scripts/generate-dependency-versions.py; \
@@ -41,16 +41,43 @@ generate-deps:
 		echo "         \`echada --version\` may report stale versions."; \
 	fi
 
-# Fail if the committed dependency table has drifted from what SwiftPM resolves.
-# Used by CI, where builds run through xcodebuild directly and never invoke
-# generate-deps, so nothing else would notice a stale table.
+# Report (but do not fail on) drift between the committed dependency table and
+# what SwiftPM resolves here. Used by CI, where builds run through xcodebuild
+# directly and never invoke generate-deps, so nothing else would notice.
+#
+# This WARNS rather than fails, deliberately. Resolution is not reproducible
+# across environments: a dependency whose Package.swift still carries the
+# `sibling()` development scaffolding evaluates differently on CI (where
+# CI=true forces clean remote pins) than on a developer machine, so the two
+# select different versions and can never agree. SwiftTuberia 0.7.9 is a live
+# example — CI resolves it, local backtracks to 0.7.8. Failing the build on
+# that would red-CI every PR for a defect in someone else's release.
+#
+# Local caches add a second source of disagreement: `make resolve` will not
+# fetch tags published since the last run. Use `make refresh-deps` to purge the
+# caches and re-resolve for real before trusting a local table.
 verify-deps: resolve
-	@git diff --exit-code -- $(GENERATED_DEPS) \
+	@git diff --quiet -- $(GENERATED_DEPS) \
+		&& echo "Dependency table is up to date." \
 		|| (echo ""; \
-		    echo "error: $(GENERATED_DEPS) is stale."; \
-		    echo "       Run \`make resolve\` and commit the result."; \
-		    exit 1)
-	@echo "Dependency table is up to date."
+		    echo "warning: $(GENERATED_DEPS) differs from what resolved here."; \
+		    echo "         Run \`make refresh-deps\` and commit if the drift is real."; \
+		    echo ""; \
+		    git --no-pager diff -- $(GENERATED_DEPS); \
+		    echo ""; \
+		    echo "Not failing the build: resolution is environment-dependent."; \
+		    echo "See the comment above verify-deps in the Makefile.")
+
+# Purge the SPM/xcodebuild git mirror caches and re-resolve from scratch, so the
+# dependency table reflects tags published since the last local resolve. Plain
+# `make resolve` reuses cached refs and will silently keep stale versions.
+refresh-deps:
+	rm -rf $(HOME)/Library/Caches/org.swift.swiftpm/repositories
+	rm -rf $(HOME)/Library/Caches/org.swift.swiftpm/manifests
+	rm -rf $(DERIVED_DATA)/SwiftEchada-*/SourcePackages
+	rm -f Package.resolved
+	@$(MAKE) --no-print-directory resolve
+	@echo "Dependency table refreshed from a clean resolve."
 
 # Development build with xcodebuild (Debug)
 build: resolve
@@ -168,7 +195,8 @@ help:
 	@echo "Targets:"
 	@echo "  resolve          - Resolve all SPM package dependencies"
 	@echo "  generate-deps    - Bake resolved dependency versions into 'echada --version'"
-	@echo "  verify-deps      - Fail if the committed dependency table is stale (CI)"
+	@echo "  verify-deps      - Report drift in the committed dependency table (CI, non-fatal)"
+	@echo "  refresh-deps     - Purge SPM caches and re-resolve so the table is truly current"
 	@echo "  build            - Debug build with xcodebuild"
 	@echo "  install          - Debug build + copy to ./bin (default)"
 	@echo "  release          - Release build + copy to ./bin"

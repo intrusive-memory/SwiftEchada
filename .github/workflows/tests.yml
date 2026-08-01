@@ -45,11 +45,22 @@ jobs:
   # and DependencyVersionsTests happily validates whatever was committed. A
   # confidently-wrong version table is worse than none, hence this job.
   #
-  # Note the trade-off: direct dependencies use open `.upToNextMajor` ranges, so
-  # an unrelated upstream release can turn this red on a PR that did not touch
-  # dependencies. The fix is always `make resolve` + commit the regenerated file.
+  # This REPORTS drift without failing. Two things make resolution
+  # non-reproducible across environments, so a hard gate would red-CI PRs that
+  # changed nothing:
+  #
+  #   1. A dependency that ships the `sibling()` development scaffolding in its
+  #      Package.swift evaluates differently here (CI=true forces clean remote
+  #      pins) than on a developer machine. SwiftTuberia 0.7.9 does exactly
+  #      this: CI selects it, local backtracks to 0.7.8.
+  #   2. Open `.upToNextMajor` ranges mean any upstream release moves the
+  #      resolved set, and local git mirror caches lag behind published tags
+  #      until `make refresh-deps` purges them.
+  #
+  # The drift report is still worth having: `echada --version` claims to state
+  # what the binary links, and a silently stale table makes that claim false.
   verify-deps:
-    name: Dependency Table Freshness
+    name: Dependency Table Drift
     runs-on: macos-26
     steps:
       - name: Checkout code
@@ -58,7 +69,7 @@ jobs:
       - name: Select Xcode version
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
-      - name: Verify the committed dependency table matches what SwiftPM resolves
+      - name: Report dependency table drift
         env:
           GIT_LFS_SKIP_SMUDGE: "1"
         run: make verify-deps
