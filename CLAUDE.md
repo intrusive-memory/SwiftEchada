@@ -45,4 +45,4 @@ Not applicable -- SwiftEchada is a library, not an app.
 
 ---
 
-**Last Updated**: July 31, 2026 (v0.17.0)
+**Last Updated**: August 1, 2026 (v0.17.0-dev)
