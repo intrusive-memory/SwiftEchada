@@ -123,24 +123,41 @@ enum AuditionSentence {
   /// Language codes with curated sentences, sorted for stable error messages.
   static var supportedLanguages: [String] { pools.keys.sorted() }
 
-  /// Full-name and dialect aliases accepted alongside ISO 639-1 codes, mirroring
-  /// what `TTSLanguage` resolves so the two never disagree on an input.
+  /// Full-name, dialect, and `auto` aliases accepted alongside ISO 639-1 codes.
+  ///
+  /// This must accept **everything** `TTSLanguage(languageCode:)` accepts.
+  /// `CastVoiceGenerator` resolves the audition sentence *before* it constructs
+  /// the `TTSLanguage`, and does so outside the per-character `do`/`catch` — so
+  /// any input this table misses but `TTSLanguage` would have accepted aborts
+  /// the entire cast run rather than skipping one character.
+  ///
+  /// Dialects collapse to the base language they are spoken in, since the
+  /// audition only needs a phonetically representative utterance and Qwen3-TTS
+  /// conditions the accent from the voice prompt, not the sentence. `auto` means
+  /// "let the model infer," which leaves no language to select on; English is the
+  /// historical default for that path.
   private static let aliases: [String: String] = [
     "english": "en", "spanish": "es", "french": "fr", "italian": "it",
     "portuguese": "pt", "german": "de", "russian": "ru", "chinese": "zh",
     "japanese": "ja", "korean": "ko",
-    "mandarin": "zh", "beijing_dialect": "zh", "sichuan_dialect": "zh",
+    "mandarin": "zh",
+    "beijing_dialect": "zh", "beijingdialect": "zh", "beijing": "zh",
+    "sichuan_dialect": "zh", "sichuandialect": "zh", "sichuan": "zh",
+    "auto": "en",
   ]
 
   /// Reduces a BCP-47 tag or language name to the ISO 639-1 code used as a pool
   /// key: `es-MX` and `es_MX` both become `es`, `English` becomes `en`.
   static func baseCode(_ rawLanguage: String) -> String {
-    let normalized =
-      rawLanguage
-      .trimmingCharacters(in: .whitespaces)
-      .lowercased()
-      .replacingOccurrences(of: "_", with: "-")
+    let lowered = rawLanguage.trimmingCharacters(in: .whitespaces).lowercased()
 
+    // Look up the raw form first. Aliases like `beijing_dialect` carry a literal
+    // underscore, so checking before separator normalization is what keeps them
+    // reachable — normalizing first turns them into `beijing-dialect`, which
+    // matches nothing and then splits to a bare `beijing`.
+    if let alias = aliases[lowered] { return alias }
+
+    let normalized = lowered.replacingOccurrences(of: "_", with: "-")
     if let alias = aliases[normalized] { return alias }
 
     let base = normalized.split(separator: "-").first.map(String.init) ?? normalized

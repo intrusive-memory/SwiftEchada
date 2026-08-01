@@ -7,6 +7,7 @@ BINARY = echada
 BIN_DIR = ./bin
 DESTINATION = platform=macOS,arch=arm64
 DERIVED_DATA = $(HOME)/Library/Developer/Xcode/DerivedData
+GENERATED_DEPS = Sources/EchadaCLICore/Generated/DependencyVersions.swift
 
 # mlx-swift ships a CudaBuild build-tool plugin and the dependency graph pulls in
 # swift-syntax macros; skip their interactive trust prompts so headless/CI builds
@@ -15,7 +16,7 @@ XCODE_FLAGS = -skipPackagePluginValidation -skipMacroValidation
 
 export GIT_LFS_SKIP_SMUDGE = 1
 
-.PHONY: all build release install clean test resolve help integration-test lint codesign-cli generate-deps
+.PHONY: all build release install clean test resolve help integration-test lint codesign-cli generate-deps verify-deps
 
 all: install
 
@@ -27,8 +28,29 @@ resolve:
 
 # Bake the resolved dependency versions into the binary for `echada --version`.
 # Depends on Package.resolved existing, so it runs after `resolve`.
+#
+# `build` depends on this transitively, so a missing python3 must not break the
+# build: the generated file is committed and stays valid, it just goes stale.
+# The version table is diagnostics, never a build input. CI enforces freshness
+# separately (see the verify-deps job), which is where a real drift should fail.
 generate-deps:
-	@python3 Scripts/generate-dependency-versions.py
+	@if command -v python3 >/dev/null 2>&1; then \
+		python3 Scripts/generate-dependency-versions.py; \
+	else \
+		echo "warning: python3 not found — keeping the committed dependency table."; \
+		echo "         \`echada --version\` may report stale versions."; \
+	fi
+
+# Fail if the committed dependency table has drifted from what SwiftPM resolves.
+# Used by CI, where builds run through xcodebuild directly and never invoke
+# generate-deps, so nothing else would notice a stale table.
+verify-deps: resolve
+	@git diff --exit-code -- $(GENERATED_DEPS) \
+		|| (echo ""; \
+		    echo "error: $(GENERATED_DEPS) is stale."; \
+		    echo "       Run \`make resolve\` and commit the result."; \
+		    exit 1)
+	@echo "Dependency table is up to date."
 
 # Development build with xcodebuild (Debug)
 build: resolve
@@ -146,6 +168,7 @@ help:
 	@echo "Targets:"
 	@echo "  resolve          - Resolve all SPM package dependencies"
 	@echo "  generate-deps    - Bake resolved dependency versions into 'echada --version'"
+	@echo "  verify-deps      - Fail if the committed dependency table is stale (CI)"
 	@echo "  build            - Debug build with xcodebuild"
 	@echo "  install          - Debug build + copy to ./bin (default)"
 	@echo "  release          - Release build + copy to ./bin"

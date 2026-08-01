@@ -44,8 +44,12 @@ enum ProjectCastWriteBack {
 
   /// Reads `fileURL`, splices in `cast`, and writes the result back atomically.
   ///
-  /// The file is re-read here rather than reusing text captured earlier so the
-  /// splice always applies to what is actually on disk at write time.
+  /// The file is re-read here rather than reusing text captured earlier, so the
+  /// splice applies to what is on disk at write time. Note the scope of that
+  /// guarantee: it protects everything *outside* the `cast:` block from edits
+  /// made while the command was running. The `cast` argument itself was derived
+  /// from a parse taken much earlier, so a concurrent edit *inside* the cast
+  /// block is still overwritten.
   static func write(
     cast: [CastMember],
     to fileURL: URL,

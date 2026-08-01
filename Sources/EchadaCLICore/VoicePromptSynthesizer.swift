@@ -39,12 +39,14 @@ enum VoicePromptSynthesizerError: LocalizedError {
 ///
 /// This is the one place echada uses the on-device `SystemLanguageModel`.
 /// Audition sentences are curated data (see ``AuditionSentence``) because they
-/// need to be fixed and reproducible; writing a voice-design brief from a
-/// character's dialogue is genuine generative work, so it uses the
-/// model to turn a character's own dialogue and delivery notes into a compact,
-/// human-readable voice-design brief. That brief is written to PROJECT.md as
-/// `voicePrompt` and later fed to VoiceDesign's `voice:` parameter by
-/// ``CastVoiceGenerator`` to lock the character's `.vox`.
+/// must be fixed and reproducible; writing a voice-design brief is the opposite
+/// — genuine generative work with no single right answer — so it stays with the
+/// model, which turns a character's own dialogue and delivery notes into a
+/// compact, human-readable brief.
+///
+/// That brief is written to PROJECT.md as `voicePrompt` and later fed to
+/// VoiceDesign's `voice:` parameter by ``CastVoiceGenerator`` to lock the
+/// character's `.vox`.
 enum VoicePromptSynthesizer {
 
   /// Fails fast when the on-device model is unusable. Call before any work.

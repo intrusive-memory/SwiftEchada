@@ -5,35 +5,29 @@ name: Tests
 # `SystemLanguageModel.default.isAvailable` reports `false` here (it requires
 # device opt-in, a signed-in Apple Account, and on-device model downloads that
 # are unavailable on ephemeral hosted runners). Every test gated with
-# `.enabled(if: SystemLanguageModel.default.isAvailable)` — the on-device
-# audition-sentence generation in FoundationModelSentenceTests and `generate
-# prompt` — SKIPS on this job. That is accepted, expected coverage, not a
-# failure.
+# `.enabled(if: SystemLanguageModel.default.isAvailable)` — `generate prompt`,
+# and the full-pipeline `echada cast` test whose prompt stage calls
+# `VoicePromptSynthesizer.requireAvailable()` — SKIPS on this job. That is
+# accepted, expected coverage, not a failure.
 #
-# This ALSO includes the `generate vox` and full-pipeline `.vox` tests
-# (Sortie 9's ModelBackedGenerationTests), even though R-CI-2 below caches the
-# TTS weights they need: `CastVoiceGenerator.generate()` sources every
-# audition sentence exclusively from the on-device Foundation Model, so those
-# tests are gated on the CONJUNCTION of Apple-Intelligence availability *and*
-# TTS-weight presence. With Apple Intelligence unavailable here, they skip too
-# — the weight cache keeps the infra ready but does not by itself unlock that
-# coverage. All of these paths are exercised locally (on a developer Mac with
-# Apple Intelligence enabled) or on a self-hosted Apple-Intelligence-
-# provisioned runner, neither of which this workflow provides. Full model-path
-# CI coverage — both `generate prompt` and the transitively-gated `generate
-# vox` / full-pipeline paths — is a future item contingent on standing up such
-# a self-hosted runner; this workflow makes no claim to exercise them today.
-# R-CI-1 is treated as UNMET per the resolved OQ-4 hosted-only decision in
-# EXECUTION_PLAN.md.
+# `generate vox` NO LONGER skips here. Audition sentences used to come
+# exclusively from the on-device Foundation Model, which gated the `.vox` tests
+# on the CONJUNCTION of Apple Intelligence *and* TTS weights — so the weight
+# cache below never actually unlocked any coverage on this runner. Sentences are
+# now curated data (`AuditionSentence`), nothing in the vox path touches Apple
+# Intelligence, and the `generate vox` test is gated on `TTSWeights.present`
+# alone. With the model cache primed it RUNS here.
 #
-# What THIS workflow does deliver (R-CI-2): the Qwen3-TTS 0.6B/1.7B weights
-# that `generate vox` (via SwiftVoxAlta's VoxAltaModelManager / SwiftAcervo)
-# loads are cached across runs with actions/cache and primed from the CDN on a
-# cache miss, so that on a machine which ALSO has Apple Intelligence available,
-# model-backed `.vox` tests would find the weights already on disk instead of
-# re-downloading multi-GB checkpoints every run. On this hosted runner that
-# infrastructure is correct and in place, but the tests it enables still skip
-# per the Apple-Intelligence gate above.
+# Remaining Apple-Intelligence paths (`generate prompt`, full-pipeline `echada
+# cast`) are exercised locally on a developer Mac, or would need a self-hosted
+# Apple-Intelligence-provisioned runner, which this workflow does not provide.
+# R-CI-1 remains partially UNMET per the resolved OQ-4 hosted-only decision.
+#
+# What THIS workflow delivers (R-CI-2): the Qwen3-TTS 0.6B/1.7B weights that
+# `generate vox` (via SwiftVoxAlta's VoxAltaModelManager / SwiftAcervo) loads are
+# cached across runs with actions/cache and primed from the CDN on a cache miss,
+# so the model-backed `.vox` tests find the weights already on disk instead of
+# re-downloading multi-GB checkpoints every run.
 
 on:
   push:
@@ -42,6 +36,33 @@ on:
     branches: [main]
 
 jobs:
+  # `echada --version` reports the dependency versions compiled into the binary,
+  # from a table generated at build time and committed to git (Package.resolved
+  # is gitignored, so the generated file is the only lockfile record we keep).
+  #
+  # Nothing else notices when that table goes stale: the unit-test job below runs
+  # xcodebuild directly and never invokes `make`, so `generate-deps` never fires,
+  # and DependencyVersionsTests happily validates whatever was committed. A
+  # confidently-wrong version table is worse than none, hence this job.
+  #
+  # Note the trade-off: direct dependencies use open `.upToNextMajor` ranges, so
+  # an unrelated upstream release can turn this red on a PR that did not touch
+  # dependencies. The fix is always `make resolve` + commit the regenerated file.
+  verify-deps:
+    name: Dependency Table Freshness
+    runs-on: macos-26
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Verify the committed dependency table matches what SwiftPM resolves
+        env:
+          GIT_LFS_SKIP_SMUDGE: "1"
+        run: make verify-deps
+
   unit-tests:
     name: Unit Tests
     runs-on: macos-26

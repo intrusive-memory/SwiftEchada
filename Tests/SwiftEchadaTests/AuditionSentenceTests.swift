@@ -1,5 +1,6 @@
 import Foundation
 import NaturalLanguage
+import SwiftVoxAlta
 import Testing
 
 @testable import EchadaCLICore
@@ -49,6 +50,14 @@ struct AuditionSentenceTests {
     arguments: [
       ("es-MX", "es"), ("es_MX", "es"), ("pt-BR", "pt"), ("de-AT", "de"),
       ("it-IT", "it"), ("EN-GB", "en"), ("English", "en"), ("japanese", "ja"),
+      // Dialects collapse to the language they are spoken in. These carry a
+      // literal underscore, so they only resolve if the alias lookup happens
+      // before `_` is normalized to `-` — otherwise they split to a bare
+      // `beijing`/`sichuan` and throw.
+      ("beijing_dialect", "zh"), ("beijingDialect", "zh"), ("beijing", "zh"),
+      ("sichuan_dialect", "zh"), ("sichuanDialect", "zh"), ("sichuan", "zh"),
+      // `auto` means "let the model infer"; English is the historical default.
+      ("auto", "en"),
     ])
   func resolvesToBaseLanguage(_ input: String, _ expected: String) throws {
     #expect(AuditionSentence.baseCode(input) == expected)
@@ -56,6 +65,43 @@ struct AuditionSentenceTests {
     let viaTag = try AuditionSentence.auditionSentence(language: input)
     let viaBase = try AuditionSentence.auditionSentence(language: expected)
     #expect(viaTag == viaBase, "'\(input)' should audition as '\(expected)'")
+  }
+
+  /// The parity gate that matters operationally.
+  ///
+  /// `CastVoiceGenerator` resolves the audition sentence *before* building the
+  /// `TTSLanguage`, and outside the per-character `do`/`catch` — so any input
+  /// `TTSLanguage` accepts but this table misses aborts the **entire cast run**
+  /// instead of skipping one character. Driving it from `allCases` means adding
+  /// a TTS language fails here until it has sentences, rather than in the field.
+  @Test(
+    "Every TTSLanguage case has an audition sentence",
+    arguments: TTSLanguage.allCases)
+  func parityWithTTSLanguage(_ language: TTSLanguage) throws {
+    // PROJECT.md and `--language` can carry either spelling.
+    for tag in Set([language.rawValue, language.modelName]) {
+      let sentence = try AuditionSentence.auditionSentence(language: tag)
+      #expect(!sentence.isEmpty, "no audition sentence for TTSLanguage '\(tag)'")
+    }
+  }
+
+  /// Same guarantee, stated over concrete user-facing spellings: if
+  /// `TTSLanguage` accepts the tag, the audition must not be what rejects it.
+  @Test(
+    "Tags TTSLanguage accepts never abort the audition",
+    arguments: [
+      "en", "es-MX", "pt-BR", "zh", "ru", "auto",
+      "beijing", "beijing_dialect", "beijingDialect",
+      "sichuan", "sichuan_dialect", "sichuanDialect",
+      "English", "japanese", "korean",
+    ])
+  func acceptsEverythingTTSLanguageAccepts(_ tag: String) throws {
+    // Precondition: TTSLanguage really does accept this tag, so a failure below
+    // is a genuine divergence and not a bad test input.
+    _ = try TTSLanguage(languageCode: tag)
+
+    let sentence = try AuditionSentence.auditionSentence(language: tag)
+    #expect(!sentence.isEmpty, "'\(tag)' resolves for TTS but has no audition sentence")
   }
 
   /// The sentence contract, enforced against the data rather than sanitized at

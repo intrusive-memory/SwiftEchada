@@ -9,7 +9,7 @@ All notable changes to SwiftEchada will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.17.0] - 2026-07-31
 
 ### Changed
 
@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   The flaky `FoundationModelSentenceTests` (which asked the model for a sentence, then asserted `NLLanguageRecognizer` agreed on its language — doubly non-deterministic, and skipped on CI) is replaced by `AuditionSentenceTests`: pure data validation that runs identically everywhere, enforcing coverage, determinism, the TTS text contract, and length bounds.
 
+- **`echada --version` output is now multi-line.** The first line is still the bare version string, so `echada --version | head -1` is unaffected, but the dependency table (below) follows it. Anything comparing the *entire* output against a fixed string needs updating. The Homebrew formula only invokes `echada --version` and checks the exit status, so it needs no change.
+
 ### Added
 
 - **`echada --version` now reports the dependency versions compiled into the binary.** It lists every direct dependency from `Package.swift` alongside both its *declared* requirement (e.g. `4.6.1 ..< 5.0.0`) and the version SwiftPM actually *resolved and linked* (e.g. `4.6.1`), followed by the transitive graph. The table is generated at build time by `Scripts/generate-dependency-versions.py` and baked in via `make resolve` (which every build target already depends on); `make generate-deps` regenerates it on demand.
@@ -34,6 +36,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **PROJECT.md write-back no longer destroys or corrupts non-cast content** ([#44](https://github.com/intrusive-memory/SwiftEchada/issues/44), [#55](https://github.com/intrusive-memory/SwiftEchada/issues/55)). All three `generate` stages (`cast`, `prompt`, `vox`) re-serialized the entire YAML front matter from the typed model on every write-back, routing through the hand-rolled emitter in `ProjectMarkdownParser.generate`. That emitter deleted keys it did not know how to write (`introFile`/`outroFile`, #55) and, for unknown top-level keys captured into `appSections`, preserved the key name while destroying its structure — a nested list of maps such as `episodes_index` came back as an Objective-C `NSDictionary.description` dump inside a YAML string (#44). On a real 309-line project file this collapsed it to 103 lines, and because the mangled form still contained the original substrings, the existing regression tests passed while the data was being lost.
 
   All three stages now write through the new `ProjectCastWriteBack` helper, which splices only the `cast:` line span via `ProjectMarkdownParser.replacingCastBlock(in:with:)` and copies every other byte verbatim. Unknown keys, nested structure, key ordering, comments, and spacing are preserved by construction. Regression tests now assert structure after re-parsing and line-level equality outside the cast block, rather than substring presence.
+
+  Requires SwiftProyecto 4.8.1, which fixes a splice bug the surgical write-back would otherwise have been exposed to: a blank line or column-0 comment inside the `cast:` block terminated the block scan early, leaving the entries below it unreplaced but still indented, so re-parsing read them back as **duplicate cast members**. Blank lines between cast entries are ordinary in hand-maintained project files — the same population that hit #44 and #55 — so this was reachable from a normal cast run.
+
+- **`AuditionSentence` now accepts every language tag `TTSLanguage` does.** Its alias table normalized `_` to `-` *before* looking up aliases, which made the `beijing_dialect`/`sichuan_dialect` entries unreachable dead code, and it had no entry for `auto`, `beijing`, `beijingdialect`, `sichuan`, or `sichuandialect`. Because `CastVoiceGenerator` resolves the audition sentence outside its per-character `do`/`catch`, any of those tags aborted the **entire cast run** rather than skipping one character. Dialects now resolve to the language they are spoken in, and `auto` resolves to English (its historical default). A new test drives `TTSLanguage.allCases`, so adding a TTS language fails the suite until it has curated sentences.
+
+### Internal
+
+- **`make verify-deps` and a matching CI job** fail the build when the committed `DependencyVersions.swift` no longer matches what SwiftPM resolves. The unit-test workflow runs `xcodebuild` directly and never invokes `make`, so nothing previously regenerated the table in CI and `DependencyVersionsTests` validated whatever stale data happened to be committed — a confidently-wrong version table being worse than none. Note that direct dependencies use open `.upToNextMajor` ranges, so an unrelated upstream release can turn this job red; the fix is always `make resolve` plus committing the regenerated file.
+- `make generate-deps` no longer breaks the build when `python3` is absent, since the version table is diagnostics rather than a build input. The generator also refuses to write an empty table instead of silently emptying it if manifest parsing regresses.
+
+## [0.16.2] - 2026-07-21
+
+### Fixed
+
+- **Transient `FoundationModels` failures during casting are retried** ([#54](https://github.com/intrusive-memory/SwiftEchada/issues/54)). The on-device system model intermittently failed a single request (e.g. "Failed to deserialize a Generable type from model output"), which aborted an entire cast run. `FoundationModelRetry` retries with a fresh session so one flaky call no longer takes down the run.
+
+  Superseded for audition sentences in 0.17.0, which removes the Foundation Model from that path altogether; the retry still covers `generate prompt`.
 
 ## [0.16.1] - 2026-07-12
 

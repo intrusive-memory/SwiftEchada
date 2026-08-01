@@ -49,7 +49,15 @@ def next_minor(version):
 
 
 def parse_declared(text):
-    """Extract (repo_name, requirement_description) for each direct dependency."""
+    """Extract (repo_name, requirement_description) for each direct dependency.
+
+    Only `.package(url:...)` declarations are matched. Local checkouts declared
+    as `.package(name:path:)` — the `sibling()` development pattern this repo
+    can be flipped into — have no version to report and are deliberately
+    skipped; they also never appear in Package.resolved. If the manifest is ever
+    switched to that pattern wholesale, the table would silently empty out, so
+    `main()` warns when nothing matched.
+    """
     declared = []
     # Collapse the manifest so multi-line `.package(...)` calls match as one unit,
     # and strip comments so commented-out URLs are never picked up.
@@ -124,6 +132,16 @@ def swift_string(value):
 def main():
     with open(PACKAGE_SWIFT) as handle:
         declared = parse_declared(handle.read())
+
+    if not declared:
+        print(
+            "error: no direct dependencies matched in Package.swift. Either the "
+            "manifest uses only local `.package(name:path:)` declarations, or the "
+            "regex has regressed. Refusing to overwrite the generated file with an "
+            "empty table.",
+            file=sys.stderr,
+        )
+        return 1
 
     resolved = parse_resolved(PACKAGE_RESOLVED)
     if resolved is None:
