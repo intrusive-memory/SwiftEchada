@@ -88,6 +88,9 @@ let package = Package(
         .product(name: "VoxFormat", package: "vox-format"),
         .product(name: "SwiftVoxAlta", package: "SwiftVoxAlta"),
       ],
+      resources: [
+        .copy("Fixtures")
+      ],
       swiftSettings: [
         .enableUpcomingFeature("StrictConcurrency")
       ]
