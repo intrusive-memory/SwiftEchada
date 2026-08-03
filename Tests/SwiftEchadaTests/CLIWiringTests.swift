@@ -11,6 +11,8 @@ import Testing
 ///     │   ├── cast
 ///     │   ├── prompt
 ///     │   └── vox
+///     ├── verify
+///     │   └── cast  (read-only migration gate, EC-9)
 ///     ├── cast      (pipeline orchestrator)
 ///     ├── voice
 ///     └── test-voice (hidden)
@@ -52,6 +54,24 @@ struct CLIWiringTests {
     #expect(identifiers.contains(ObjectIdentifier(VoiceCommand.self)))
   }
 
+  @Test("EchadaCLI.subcommands contains verify, making `verify cast` reachable from the root")
+  func rootSubcommandsContainVerify() {
+    let names = Set(
+      EchadaCLI.configuration.subcommands.map {
+        $0.configuration.commandName ?? String(describing: $0)
+      })
+    #expect(names.contains("verify"))
+    // Also confirm by identity, not just by name string.
+    let identifiers = Set(EchadaCLI.configuration.subcommands.map(ObjectIdentifier.init))
+    #expect(identifiers.contains(ObjectIdentifier(VerifyCommand.self)))
+  }
+
+  @Test("Root --help output lists the verify verb")
+  func rootHelpListsVerify() {
+    let rendered = EchadaCLI.helpMessage()
+    #expect(rendered.contains("verify"))
+  }
+
   // MARK: - `generate` container wiring
 
   @Test("GenerateCommand's subcommands are exactly cast/prompt/vox, with no default")
@@ -71,6 +91,21 @@ struct CLIWiringTests {
         ObjectIdentifier(GeneratePromptCommand.self),
         ObjectIdentifier(GenerateVoxCommand.self),
       ])
+  }
+
+  // MARK: - `verify` container wiring
+
+  @Test("VerifyCommand's subcommands are exactly cast, with no default")
+  func verifyContainerSubcommandsExactlyCast() {
+    #expect(VerifyCommand.configuration.defaultSubcommand == nil)
+
+    let names = VerifyCommand.configuration.subcommands.map {
+      $0.configuration.commandName ?? String(describing: $0)
+    }
+    #expect(names == ["cast"])
+
+    let identifiers = Set(VerifyCommand.configuration.subcommands.map(ObjectIdentifier.init))
+    #expect(identifiers == [ObjectIdentifier(VerifyCastCommand.self)])
   }
 
   // MARK: - Non-empty abstract/discussion, mentioning inputs/outputs
@@ -111,6 +146,16 @@ struct CLIWiringTests {
         discussion: GenerateVoxCommand.configuration.discussion,
         mustMention: ["PROJECT.md", "voicePrompt", ".vox"]
       ),
+      (
+        name: "verify", abstract: VerifyCommand.configuration.abstract,
+        discussion: VerifyCommand.configuration.discussion,
+        mustMention: ["CAST.md", "PROJECT.md", "cast"]
+      ),
+      (
+        name: "verify cast", abstract: VerifyCastCommand.configuration.abstract,
+        discussion: VerifyCastCommand.configuration.discussion,
+        mustMention: ["CAST.md", "PROJECT.md", ".vox"]
+      ),
     ] as [(name: String, abstract: String, discussion: String, mustMention: [String])]
   )
   func commandHasNonEmptyDocumentation(
@@ -142,6 +187,8 @@ struct CLIWiringTests {
       (name: "cast", type: GenerateCastCommand.self as ParsableCommand.Type),
       (name: "prompt", type: GeneratePromptCommand.self as ParsableCommand.Type),
       (name: "vox", type: GenerateVoxCommand.self as ParsableCommand.Type),
+      (name: "verify", type: VerifyCommand.self as ParsableCommand.Type),
+      (name: "cast", type: VerifyCastCommand.self as ParsableCommand.Type),
     ] as [(name: String, type: ParsableCommand.Type)]
   )
   func helpRenderingContainsNameAndDiscussion(
