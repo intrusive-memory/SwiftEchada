@@ -1,5 +1,5 @@
 import Foundation
-import SwiftProyecto
+import SwiftReparto
 import Testing
 
 @testable import EchadaCLICore

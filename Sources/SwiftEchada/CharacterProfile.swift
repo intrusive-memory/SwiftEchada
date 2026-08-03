@@ -1,5 +1,5 @@
 import Foundation
-import SwiftProyecto
+import SwiftReparto
 
 /// A detailed voice profile for a screenplay character, used to drive voice design.
 public struct CharacterProfile: Codable, Sendable, Equatable {

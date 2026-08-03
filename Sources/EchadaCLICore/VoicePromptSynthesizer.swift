@@ -1,6 +1,6 @@
 import Foundation
 import FoundationModels
-import SwiftProyecto
+import SwiftReparto
 
 /// Failures surfaced when the on-device Foundation Model cannot synthesize a
 /// character voice prompt.

@@ -26,6 +26,8 @@ let package = Package(
     .package(
       url: "https://github.com/intrusive-memory/SwiftProyecto.git", .upToNextMajor(from: "4.8.1")),
     .package(
+      url: "https://github.com/intrusive-memory/SwiftReparto.git", .upToNextMajor(from: "0.1.0")),
+    .package(
       url: "https://github.com/intrusive-memory/SwiftVoxAlta.git", .upToNextMajor(from: "0.14.1")),
     .package(url: "https://github.com/apple/swift-argument-parser", .upToNextMajor(from: "1.7.1")),
     .package(url: "https://github.com/ml-explore/mlx-swift", .upToNextMajor(from: "0.31.3")),
@@ -43,7 +45,7 @@ let package = Package(
     .target(
       name: "SwiftEchada",
       dependencies: [
-        .product(name: "SwiftProyecto", package: "SwiftProyecto")
+        .product(name: "SwiftReparto", package: "SwiftReparto")
       ],
       swiftSettings: [
         .enableUpcomingFeature("StrictConcurrency")
@@ -54,6 +56,7 @@ let package = Package(
       dependencies: [
         "SwiftEchada",
         .product(name: "SwiftProyecto", package: "SwiftProyecto"),
+        .product(name: "SwiftReparto", package: "SwiftReparto"),
         .product(name: "SwiftVoxAlta", package: "SwiftVoxAlta"),
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
         .product(name: "MLX", package: "mlx-swift"),
@@ -81,8 +84,12 @@ let package = Package(
       dependencies: [
         "SwiftEchada",
         "EchadaCLICore",
+        .product(name: "SwiftReparto", package: "SwiftReparto"),
         .product(name: "VoxFormat", package: "vox-format"),
         .product(name: "SwiftVoxAlta", package: "SwiftVoxAlta"),
+      ],
+      resources: [
+        .copy("Fixtures")
       ],
       swiftSettings: [
         .enableUpcomingFeature("StrictConcurrency")

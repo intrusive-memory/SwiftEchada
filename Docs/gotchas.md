@@ -27,6 +27,44 @@ The CLI entry point uses `import enum SwiftEchada.SwiftEchada` to access the ver
 
 ---
 
+## Transition-Window `CastMember`/`Gender` Ambiguity
+
+Until SwiftProyecto 5.0 removes its cast surface, **both** SwiftProyecto and
+SwiftReparto declare types named `CastMember` and `Gender`. Any file that
+imports both modules wholesale makes the bare names ambiguous — and
+`EchadaCLICore` has several such files (`CastCommand`, `GenerateCastCommand`,
+`GeneratePromptCommand`, `GenerateVoxCommand`), because they need SwiftProyecto
+for project-level fields and SwiftReparto for the roster.
+
+**Required style** in dual-import files: fully qualify the SwiftReparto types.
+
+```swift
+import SwiftProyecto
+import SwiftReparto
+
+let member = SwiftReparto.CastMember(character: name)   // CORRECT
+let member = CastMember(character: name)                // WRONG -- ambiguous
+```
+
+Two sharp edges inside this gotcha:
+
+- **`SwiftProyecto.CastMember` does not resolve.** The `SwiftProyecto` module
+  is shadowed by its own `public struct SwiftProyecto`, so the qualified name
+  is member lookup on that struct, not on the module. When legacy-typed values
+  are genuinely needed (test fixtures building old `cast:` blocks), use a file
+  that imports **only** SwiftProyecto and re-export under an alias — see
+  `Tests/SwiftEchadaTests/LegacyCastMemberAlias.swift`
+  (`typealias ProyectoCastMember = CastMember`).
+- **`SwiftReparto.CastMember` does resolve** — SwiftReparto's module marker
+  file is deliberately API-free, so nothing shadows the module name.
+
+Production code should never need SwiftProyecto's cast types at all: legacy
+`cast:` blocks are read through `LegacyProjectCastReader`, which decodes raw
+YAML straight into SwiftReparto's `[CastMember]`. This gotcha (and the reader)
+disappears at SwiftProyecto 5.0.
+
+---
+
 ## Test Scheme Name
 
 The test scheme is `SwiftEchada-Package`, **not** `SwiftEchada`. Using the wrong scheme will build but not run tests.
@@ -89,7 +127,8 @@ bare `echada` does **not** run `cast` (or `voice`). Invoke a command
 explicitly. The `extract` and `download` commands were removed in v0.9.2.
 
 **As of v0.16.0, `cast` means the full pipeline, not just `.vox` generation.**
-`echada cast` bootstraps `PROJECT.md` (if absent) and then runs
+`echada cast` bootstraps `PROJECT.md` and the `CAST.md` roster (if absent) and
+then runs
 `generate cast` → `generate prompt` → `generate vox` in order — every stage
 idempotent, so re-running only fills gaps. This is a breaking change: what
 `echada cast` used to do (produce `.vox` files from existing `voicePrompt`s

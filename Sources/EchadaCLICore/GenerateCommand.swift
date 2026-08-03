@@ -23,7 +23,7 @@ public struct GenerateCommand: AsyncParsableCommand {
       standalone for fine-grained control over a single step:
 
       - `generate cast`   discovers cast members from the screenplay source and merges \
-        them into PROJECT.md.
+        them into CAST.md (PROJECT.md is read-only to this stage).
       - `generate prompt` examines the source material and writes a `voicePrompt` for \
         each cast member.
       - `generate vox`    synthesizes an on-device `.vox` voice file from each member's \

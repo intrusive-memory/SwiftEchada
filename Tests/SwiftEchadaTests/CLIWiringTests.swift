@@ -11,6 +11,10 @@ import Testing
 ///     │   ├── cast
 ///     │   ├── prompt
 ///     │   └── vox
+///     ├── verify
+///     │   └── cast  (read-only migration gate, EC-9)
+///     ├── prune
+///     │   └── cast  (explicit legacy `cast:` removal, EC-10)
 ///     ├── cast      (pipeline orchestrator)
 ///     ├── voice
 ///     └── test-voice (hidden)
@@ -52,6 +56,42 @@ struct CLIWiringTests {
     #expect(identifiers.contains(ObjectIdentifier(VoiceCommand.self)))
   }
 
+  @Test("EchadaCLI.subcommands contains verify, making `verify cast` reachable from the root")
+  func rootSubcommandsContainVerify() {
+    let names = Set(
+      EchadaCLI.configuration.subcommands.map {
+        $0.configuration.commandName ?? String(describing: $0)
+      })
+    #expect(names.contains("verify"))
+    // Also confirm by identity, not just by name string.
+    let identifiers = Set(EchadaCLI.configuration.subcommands.map(ObjectIdentifier.init))
+    #expect(identifiers.contains(ObjectIdentifier(VerifyCommand.self)))
+  }
+
+  @Test("Root --help output lists the verify verb")
+  func rootHelpListsVerify() {
+    let rendered = EchadaCLI.helpMessage()
+    #expect(rendered.contains("verify"))
+  }
+
+  @Test("EchadaCLI.subcommands contains prune, making `prune cast` reachable from the root")
+  func rootSubcommandsContainPrune() {
+    let names = Set(
+      EchadaCLI.configuration.subcommands.map {
+        $0.configuration.commandName ?? String(describing: $0)
+      })
+    #expect(names.contains("prune"))
+    // Also confirm by identity, not just by name string.
+    let identifiers = Set(EchadaCLI.configuration.subcommands.map(ObjectIdentifier.init))
+    #expect(identifiers.contains(ObjectIdentifier(PruneCommand.self)))
+  }
+
+  @Test("Root --help output lists the prune verb")
+  func rootHelpListsPrune() {
+    let rendered = EchadaCLI.helpMessage()
+    #expect(rendered.contains("prune"))
+  }
+
   // MARK: - `generate` container wiring
 
   @Test("GenerateCommand's subcommands are exactly cast/prompt/vox, with no default")
@@ -71,6 +111,36 @@ struct CLIWiringTests {
         ObjectIdentifier(GeneratePromptCommand.self),
         ObjectIdentifier(GenerateVoxCommand.self),
       ])
+  }
+
+  // MARK: - `verify` container wiring
+
+  @Test("VerifyCommand's subcommands are exactly cast, with no default")
+  func verifyContainerSubcommandsExactlyCast() {
+    #expect(VerifyCommand.configuration.defaultSubcommand == nil)
+
+    let names = VerifyCommand.configuration.subcommands.map {
+      $0.configuration.commandName ?? String(describing: $0)
+    }
+    #expect(names == ["cast"])
+
+    let identifiers = Set(VerifyCommand.configuration.subcommands.map(ObjectIdentifier.init))
+    #expect(identifiers == [ObjectIdentifier(VerifyCastCommand.self)])
+  }
+
+  // MARK: - `prune` container wiring
+
+  @Test("PruneCommand's subcommands are exactly cast, with no default")
+  func pruneContainerSubcommandsExactlyCast() {
+    #expect(PruneCommand.configuration.defaultSubcommand == nil)
+
+    let names = PruneCommand.configuration.subcommands.map {
+      $0.configuration.commandName ?? String(describing: $0)
+    }
+    #expect(names == ["cast"])
+
+    let identifiers = Set(PruneCommand.configuration.subcommands.map(ObjectIdentifier.init))
+    #expect(identifiers == [ObjectIdentifier(PruneCastCommand.self)])
   }
 
   // MARK: - Non-empty abstract/discussion, mentioning inputs/outputs
@@ -104,12 +174,32 @@ struct CLIWiringTests {
       (
         name: "generate prompt", abstract: GeneratePromptCommand.configuration.abstract,
         discussion: GeneratePromptCommand.configuration.discussion,
-        mustMention: ["PROJECT.md", "voicePrompt"]
+        mustMention: ["PROJECT.md", "CAST.md", "voicePrompt", "echada generate cast"]
       ),
       (
         name: "generate vox", abstract: GenerateVoxCommand.configuration.abstract,
         discussion: GenerateVoxCommand.configuration.discussion,
-        mustMention: ["PROJECT.md", "voicePrompt", ".vox"]
+        mustMention: ["PROJECT.md", "CAST.md", "voicePrompt", ".vox", "echada generate cast"]
+      ),
+      (
+        name: "verify", abstract: VerifyCommand.configuration.abstract,
+        discussion: VerifyCommand.configuration.discussion,
+        mustMention: ["CAST.md", "PROJECT.md", "cast"]
+      ),
+      (
+        name: "verify cast", abstract: VerifyCastCommand.configuration.abstract,
+        discussion: VerifyCastCommand.configuration.discussion,
+        mustMention: ["CAST.md", "PROJECT.md", ".vox"]
+      ),
+      (
+        name: "prune", abstract: PruneCommand.configuration.abstract,
+        discussion: PruneCommand.configuration.discussion,
+        mustMention: ["PROJECT.md", "CAST.md", "cast", "verify"]
+      ),
+      (
+        name: "prune cast", abstract: PruneCastCommand.configuration.abstract,
+        discussion: PruneCastCommand.configuration.discussion,
+        mustMention: ["PROJECT.md", "CAST.md", "verify", "--dry-run"]
       ),
     ] as [(name: String, abstract: String, discussion: String, mustMention: [String])]
   )
@@ -142,6 +232,10 @@ struct CLIWiringTests {
       (name: "cast", type: GenerateCastCommand.self as ParsableCommand.Type),
       (name: "prompt", type: GeneratePromptCommand.self as ParsableCommand.Type),
       (name: "vox", type: GenerateVoxCommand.self as ParsableCommand.Type),
+      (name: "verify", type: VerifyCommand.self as ParsableCommand.Type),
+      (name: "cast", type: VerifyCastCommand.self as ParsableCommand.Type),
+      (name: "prune", type: PruneCommand.self as ParsableCommand.Type),
+      (name: "cast", type: PruneCastCommand.self as ParsableCommand.Type),
     ] as [(name: String, type: ParsableCommand.Type)]
   )
   func helpRenderingContainsNameAndDiscussion(
@@ -173,18 +267,44 @@ struct CLIWiringTests {
     #expect(rendered.contains(firstDiscussionWords))
   }
 
+  // MARK: - `--cast` option surface (EC-13)
+
+  @Test("Rendered --help for generate prompt and generate vox lists --cast")
+  func generatePromptAndVoxHelpListCastOption() {
+    for type in [GeneratePromptCommand.self as ParsableCommand.Type, GenerateVoxCommand.self] {
+      let rendered = EchadaCLI.helpMessage(for: type)
+      #expect(rendered.contains("--cast"), "\(type) --help should list --cast")
+    }
+  }
+
+  @Test("Rendered --help for the cast orchestrator lists --cast (EC-15 cascade)")
+  func castOrchestratorHelpListsCastOption() {
+    let rendered = EchadaCLI.helpMessage(for: CastCommand.self)
+    #expect(rendered.contains("--cast"), "echada cast --help should list --cast")
+  }
+
+  @Test("CastCommand's --cast defaults to CAST.md and accepts an override")
+  func castCommandCastOptionParses() throws {
+    let defaulted = try CastCommand.parse([])
+    #expect(defaulted.cast == "CAST.md")
+    let overridden = try CastCommand.parse(["--cast", "ROSTER.md"])
+    #expect(overridden.cast == "ROSTER.md")
+  }
+
   // MARK: - Thin parse wiring test
 
   @Test("GeneratePromptCommand parses its full flag surface")
   func generatePromptCommandParses() throws {
     let cmd = try GeneratePromptCommand.parse([
       "--project", "PROJECT.md",
+      "--cast", "ROSTER.md",
       "--character", "ALICE",
       "--force",
       "--dry-run",
       "--verbose",
     ])
     #expect(cmd.project == "PROJECT.md")
+    #expect(cmd.cast == "ROSTER.md")
     #expect(cmd.character == "ALICE")
     #expect(cmd.force)
     #expect(cmd.dryRun)
@@ -195,9 +315,20 @@ struct CLIWiringTests {
   func generatePromptCommandParsesWithDefaults() throws {
     let cmd = try GeneratePromptCommand.parse(["--project", "PROJECT.md"])
     #expect(cmd.project == "PROJECT.md")
+    #expect(cmd.cast == "CAST.md")
     #expect(cmd.character == nil)
     #expect(!cmd.force)
     #expect(!cmd.dryRun)
     #expect(!cmd.verbose)
+  }
+
+  @Test("GenerateVoxCommand's --cast defaults to CAST.md and accepts an override")
+  func generateVoxCommandCastOptionParses() throws {
+    let defaulted = try GenerateVoxCommand.parse(["--project", "PROJECT.md"])
+    #expect(defaulted.cast == "CAST.md")
+    let overridden = try GenerateVoxCommand.parse([
+      "--project", "PROJECT.md", "--cast", "ROSTER.md",
+    ])
+    #expect(overridden.cast == "ROSTER.md")
   }
 }

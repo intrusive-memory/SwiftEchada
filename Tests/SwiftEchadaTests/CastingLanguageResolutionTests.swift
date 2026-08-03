@@ -1,5 +1,5 @@
 import Foundation
-import SwiftProyecto
+import SwiftReparto
 import Testing
 
 @testable import EchadaCLICore
@@ -12,34 +12,34 @@ struct CastingLanguageResolutionTests {
 
   @Test("Explicit --language override wins and applies to every member")
   func explicitOverrideWins() {
-    let maestra = CastMember(character: "MAESTRA", voiceDescription: "voz", language: "es-MX")
+    let maestra = CastMember(character: "MAESTRA", language: "es-MX", voicePrompt: "voz")
     // Even though the member declares es-MX, an explicit override replaces it.
     #expect(castingLanguages(for: maestra, explicitLanguages: ["fr", "it"]) == ["fr", "it"])
   }
 
   @Test("No override → member is cast in its own declared language")
   func fallsBackToMemberLanguage() {
-    let maestra = CastMember(character: "MAESTRA", voiceDescription: "voz", language: "es-MX")
+    let maestra = CastMember(character: "MAESTRA", language: "es-MX", voicePrompt: "voz")
     // The es-MX tag is normalized (trimmed + lowercased) to match the --language path.
     #expect(castingLanguages(for: maestra, explicitLanguages: []) == ["es-mx"])
   }
 
   @Test("No override + no member language → defaults to English")
   func defaultsToEnglishWhenUnspecified() {
-    let member = CastMember(character: "GHOST", voiceDescription: "spooky", language: nil)
+    let member = CastMember(character: "GHOST", language: nil, voicePrompt: "spooky")
     #expect(castingLanguages(for: member, explicitLanguages: []) == ["en"])
   }
 
   @Test("Whitespace-only member language is treated as absent → English")
   func blankMemberLanguageDefaultsToEnglish() {
-    let member = CastMember(character: "GHOST", voiceDescription: "spooky", language: "   ")
+    let member = CastMember(character: "GHOST", language: "   ", voicePrompt: "spooky")
     #expect(castingLanguages(for: member, explicitLanguages: []) == ["en"])
   }
 
   @Test("English narrator and Spanish teacher resolve independently in one pass")
   func mixedCastResolvesPerMember() {
-    let narrador = CastMember(character: "NARRADOR", voiceDescription: "baritone", language: "en")
-    let maestra = CastMember(character: "MAESTRA", voiceDescription: "voz", language: "es-MX")
+    let narrador = CastMember(character: "NARRADOR", language: "en", voicePrompt: "baritone")
+    let maestra = CastMember(character: "MAESTRA", language: "es-MX", voicePrompt: "voz")
     #expect(castingLanguages(for: narrador, explicitLanguages: []) == ["en"])
     #expect(castingLanguages(for: maestra, explicitLanguages: []) == ["es-mx"])
   }

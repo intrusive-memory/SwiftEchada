@@ -2,6 +2,7 @@ import ArgumentParser
 import Foundation
 import FoundationModels
 import SwiftProyecto
+import SwiftReparto
 import Testing
 @preconcurrency import VoxFormat
 
@@ -161,25 +162,29 @@ struct ModelBackedGenerationTests {
     let (projectDir, projectFile) = try makeIsolatedProject(scripts: [:])
     defer { try? FileManager.default.removeItem(at: projectDir.deletingLastPathComponent()) }
 
-    // A single cast member with a voice prompt (the input `generate vox` consumes).
+    // PROJECT.md carries no cast — the roster lives in CAST.md (Sortie 7).
     let frontMatter = ProjectFrontMatter(
       type: "project",
       title: "Multi-Model Vox",
       author: "Test",
       created: Date(timeIntervalSince1970: 0),
       episodesDir: "episodes",
-      filePattern: FilePattern("*.fountain"),
-      cast: [
-        CastMember(
-          character: "NARR",
-          voiceDescription: "A calm, warm narrator with a measured, steady pace.",
-          language: "en"
-        )
-      ]
+      filePattern: FilePattern("*.fountain")
     )
     try ProjectMarkdownParser().write(frontMatter: frontMatter, body: "", to: projectFile)
 
-    // Two passes into the same PROJECT.md → one .vox with both model embeddings.
+    // A single cast member with a voice prompt (the input `generate vox` consumes).
+    let castFile = projectDir.appendingPathComponent("CAST.md")
+    let roster = [
+      SwiftReparto.CastMember(
+        character: "NARR",
+        language: "en",
+        voicePrompt: "A calm, warm narrator with a measured, steady pace."
+      )
+    ]
+    try CastMarkdownParser().write(document: CastDocument(cast: roster), to: castFile)
+
+    // Two passes into the same CAST.md → one .vox with both model embeddings.
     for variant in ["0.6b", "1.7b"] {
       let cmd = try GenerateVoxCommand.parse([
         "--project", projectFile.path, "--tts-model", variant,
@@ -200,9 +205,9 @@ struct ModelBackedGenerationTests {
       distinctModels.count >= 2,
       "expected embeddings from both the 0.6B and 1.7B models, got: \(distinctModels)")
 
-    // PROJECT.md now records the produced .vox under the member's voxalta voices.
-    let (updated, _) = try ProjectMarkdownParser().parse(fileURL: projectFile)
-    let narr = try #require(updated.cast?.first { $0.character == "NARR" })
+    // CAST.md now records the produced .vox under the member's voxalta voices.
+    let updated = try CastMarkdownParser().parse(fileURL: castFile).cast
+    let narr = try #require(updated.first { $0.character == "NARR" })
     #expect(narr.voices["voxalta"] == ["voices/NARR.vox"])
   }
 
@@ -230,16 +235,21 @@ struct ModelBackedGenerationTests {
     let cmd = try CastCommand.parse(["--project", projectFile.path])
     try await cmd.run()
 
-    // 1) PROJECT.md was bootstrapped.
+    // 1) PROJECT.md was bootstrapped — and stays cast-free: the roster's home
+    //    is CAST.md (Sortie 7).
     #expect(FileManager.default.fileExists(atPath: projectFile.path))
-    let (frontMatter, _) = try ProjectMarkdownParser().parse(fileURL: projectFile)
+    #expect(
+      try LegacyProjectCastReader.readCast(fileURL: projectFile).isEmpty,
+      "PROJECT.md must stay cast-free — the roster's home is CAST.md")
 
-    // 2) Cast populated heuristically from the screenplay.
-    #expect(frontMatter.cast?.map(\.character) == ["NARR"])
-    let narr = try #require(frontMatter.cast?.first { $0.character == "NARR" })
+    // 2) Cast populated heuristically from the screenplay, into CAST.md.
+    let castFile = projectDir.appendingPathComponent("CAST.md")
+    let roster = try CastMarkdownParser().parse(fileURL: castFile).cast
+    #expect(roster.map(\.character) == ["NARR"])
+    let narr = try #require(roster.first { $0.character == "NARR" })
 
     // 3) A voicePrompt was written by the Foundation Model.
-    let prompt = try #require(narr.voiceDescription)
+    let prompt = try #require(narr.voicePrompt)
     #expect(!prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
     // 4) A .vox file was produced by MLX TTS and recorded on the member.
@@ -266,24 +276,28 @@ struct ModelBackedGenerationTests {
     ])
     defer { try? FileManager.default.removeItem(at: projectDir.deletingLastPathComponent()) }
 
-    // Seed a PROJECT.md whose cast has ALICE with an empty voicePrompt to fill.
+    // Seed a cast-free PROJECT.md plus a CAST.md whose roster has ALICE with an
+    // empty voicePrompt to fill (the roster's home since Sortie 7).
     let frontMatter = ProjectFrontMatter(
       type: "project",
       title: "Prompt Fixture",
       author: "Test",
       created: Date(timeIntervalSince1970: 0),
       episodesDir: "episodes",
-      filePattern: FilePattern("*.fountain"),
-      cast: [CastMember(character: "ALICE", language: "en")]
+      filePattern: FilePattern("*.fountain")
     )
     try ProjectMarkdownParser().write(frontMatter: frontMatter, body: "", to: projectFile)
+
+    let castFile = projectDir.appendingPathComponent("CAST.md")
+    let roster = [SwiftReparto.CastMember(character: "ALICE", language: "en")]
+    try CastMarkdownParser().write(document: CastDocument(cast: roster), to: castFile)
 
     let cmd = try GeneratePromptCommand.parse(["--project", projectFile.path])
     try await cmd.run()
 
-    let (updated, _) = try ProjectMarkdownParser().parse(fileURL: projectFile)
-    let alice = try #require(updated.cast?.first { $0.character == "ALICE" })
-    let prompt = try #require(alice.voiceDescription)
+    let updated = try CastMarkdownParser().parse(fileURL: castFile).cast
+    let alice = try #require(updated.first { $0.character == "ALICE" })
+    let prompt = try #require(alice.voicePrompt)
     #expect(!prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
   }
 }
