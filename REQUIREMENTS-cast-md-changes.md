@@ -1,8 +1,9 @@
 ---
-type: cast
+type: requirements
 title: CAST.md Extraction — Controlling Requirements
 status: draft
 created: 2026-07-26
+updated: 2026-08-01
 controlling_repo: SwiftEchada
 target_version: 1.0.0
 ---
@@ -16,25 +17,70 @@ schema, ownership boundary, and sequencing. If they disagree with this file, thi
 | Repo | Path | Doc |
 |---|---|---|
 | **SwiftEchada** (controlling) | `package-collection/pkg/SwiftEchada` | this file |
+| **SwiftReparto** (new) | `package-collection/pkg/SwiftReparto` | `REQUIREMENTS.md` — owns the schema |
 | SwiftProyecto | `package-collection/pkg/SwiftProyecto` | `REQUIREMENTS-cast-md-changes.md` |
-| Produciesta | `apps/Produciesta` | `REQUIREMENTS-cast-md-changes.md` |
+| SwiftSemblanzas | `package-collection/pkg/SwiftSemblanzas` | `REQUIREMENTS.md` §4.3 — second consumer |
+| Produciesta | `~/Projects/apps/Produciesta` | `REQUIREMENTS-cast-md-changes.md` |
 | podcasts/* (12 content repos) | `~/Projects/podcasts/*` | no doc — content rollout only, see §7 |
+
+---
+
+## 0. Revision note — 2026-08-01: cast becomes its own package
+
+**The first draft put the cast model in SwiftEchada. It goes into a new leaf package,
+`SwiftReparto`.** Two findings forced the change.
+
+**1. SwiftProyecto could never delegate to SwiftEchada — only delete.** SwiftEchada's package
+manifest depends on SwiftProyecto (`Package.swift:26-27`), because `EchadaCLICore` reads
+`PROJECT.md` for `title`, `episodesDir`, `filePattern`, and `tts.model` and will continue to
+forever (`EC-12`). A `SwiftProyecto → SwiftEchada` edge is therefore a **package-level cycle**.
+SwiftPM evaluates cycles at package granularity, not target granularity, and fails at manifest load
+with `cyclic dependency declaration found` — there is no target-level escape hatch. The first draft
+handled this by forbidding the edge (`D6`) and accepting that SwiftProyecto could only delete its
+cast surface, never hand it off.
+
+**2. A second consumer exists.** `pkg/SwiftSemblanzas` — pre-alpha, docs-only, real repo — generates
+character-consistent storyboard panels by training a per-character FLUX.2 LoRA. It needs the same
+roster SwiftEchada does, to hang trained adapters off. With cast in SwiftEchada it would have to
+link MLX, SwiftVoxAlta, and the whole TTS stack to read a character's name. With cast in
+SwiftSemblanzas, SwiftEchada would have to link FLUX.2 to do the same.
+
+So the cast model goes where neither consumer's weight can reach it:
+
+```
+                        SwiftReparto  ← CAST.md: schema, parse, serialize. A leaf.
+                       ↗             ↖
+          SwiftEchada                  SwiftSemblanzas
+        voice identity                 visual identity
+          → .vox files                   → LoRA adapters
+
+          SwiftProyecto  ← PROJECT.md only. No cast, no dependency on Reparto.
+```
+
+**What survives from the first draft:** everything about non-destructive rollout (`EC-6`…`EC-11`),
+command rewiring (`EC-12`…`EC-18`), the sequencing philosophy, and the podcast pilot. **What
+changed:** `D1` and `D6`; `EC-1`…`EC-5` move out of this repo entirely; `§6` gains a step; the
+diamond analysis in `§5` is superseded.
 
 ---
 
 ## 1. Motivation
 
 Cast data currently lives in `PROJECT.md`'s YAML front matter as `ProjectFrontMatter.cast`, a
-**SwiftProyecto** model. SwiftEchada — whose entire purpose is casting and voice generation — is a
-downstream consumer that parses, mutates, and writes back a schema it does not own.
+**SwiftProyecto** model. SwiftProyecto is a project-configuration library; cast is not project
+configuration. Meanwhile the packages that actually *do* something with cast are downstream
+consumers parsing and mutating a schema none of them owns.
 
-The goal is a clean ownership boundary:
+The goal is a clean ownership boundary, enforced structurally:
 
-- **`PROJECT.md` is SwiftProyecto's config file.** Project identity, episode discovery, variants, TTS config.
-- **`CAST.md` is SwiftEchada's config file.** Cast list, voice prompts, voice files, character summaries.
+- **`PROJECT.md` is SwiftProyecto's config file.** Project identity, episode discovery, variants,
+  TTS config.
+- **`CAST.md` is SwiftReparto's config file.** Cast list, voice prompts, voice files, appearance
+  pointers, character summaries.
+- **SwiftEchada is a consumer.** It creates voice assets and records where they went.
 
-Any utility needing cast information uses SwiftEchada's processor. Any utility needing project
-information uses SwiftProyecto's processor. Neither reaches into the other's file.
+Any utility needing cast information uses SwiftReparto. Any utility needing project information uses
+SwiftProyecto. Neither reaches into the other's file, and no consumer serializes either one.
 
 ---
 
@@ -44,91 +90,38 @@ Decided; not open for re-litigation in the sibling docs.
 
 | # | Decision |
 |---|---|
-| D1 | **Ownership split.** SwiftEchada owns `CAST.md` end to end. SwiftProyecto owns `PROJECT.md` and loses all cast modelling. |
-| D2 | **Hard cut, staged.** `cast:` is ultimately removed from `ProjectFrontMatter` entirely — no dual-read, no permanent fallback. But the rollout is **two-phase and non-destructive**: CAST.md is generated alongside an untouched PROJECT.md, verified, and only then is `cast:` removed. See §4.2 and §6. |
-| D3 | **Format.** YAML front matter with the same `CastMember` shape as today, plus a free markdown body. No new serialization format. |
-| D4 | **File references.** `.vox` paths stay in `voices.voxalta` (relocated as-is). One new optional field: `portrait`. |
-| D5 | **Body content.** Markdown body holds character summaries split into major/minor sections. Generation of that body is **deferred** (§8) — the format is reserved now, filled later. |
-| D6 | **Dependency direction.** SwiftEchada → SwiftProyecto, never the reverse. Nothing in SwiftProyecto may import SwiftEchada. |
-| D7 | **No destructive migration.** There is no one-shot "move the data" command. Generation and removal are separate, separately-triggered operations with a human verification gate between them. |
+| D1 | **Ownership split.** **SwiftReparto** owns `CAST.md` end to end — schema, parser, serializer. SwiftProyecto owns `PROJECT.md` and loses all cast modelling. SwiftEchada owns *voice assets* and is a consumer of both |
+| D2 | **Hard cut, staged.** `cast:` is ultimately removed from `ProjectFrontMatter` entirely — no dual-read, no permanent fallback. But the rollout is **two-phase and non-destructive**: CAST.md is generated alongside an untouched PROJECT.md, verified, and only then is `cast:` removed. See §4.2 and §6 |
+| D3 | **Format.** YAML front matter with the same `CastMember` shape as today, plus a free markdown body. No new serialization format |
+| D4 | **File references.** `.vox` paths stay in `voices.voxalta` (relocated as-is). New optional `appearance:` block reserved for SwiftSemblanzas — see SwiftReparto `RQ-5` |
+| D5 | **Body content.** Markdown body holds character summaries split into major/minor sections. Generation of that body is **deferred** (§8) — the format is reserved now, filled later |
+| D6 | **SwiftReparto is a leaf.** It declares no dependency on any `intrusive-memory` package, ever. This replaces the first draft's directional rule ("SwiftEchada → SwiftProyecto, never the reverse") with a structural one: cycles become impossible by construction rather than forbidden by discipline. See SwiftReparto `RQ-INV-1` |
+| D7 | **No destructive migration.** There is no one-shot "move the data" command. Generation and removal are separate, separately-triggered operations with a human verification gate between them |
+| D8 | **One writer.** Only SwiftReparto serializes `CAST.md`. Consumers mutate a `CastDocument` and hand it back. No consumer builds YAML or splices text. See SwiftReparto `RQ-INV-2` |
+| D9 | **`CAST.md` is canonical for character identity.** SwiftSemblanzas' SwiftData catalog is a derived index keyed by character slug, rebuildable from the markdown — never the source of truth for who exists |
 
 ---
 
 ## 3. CAST.md schema
 
-Lives beside `PROJECT.md`. Default filename `CAST.md`.
+**The schema is owned by SwiftReparto and specified in full in
+`pkg/SwiftReparto/REQUIREMENTS.md` §3.** It is not restated here; that file wins on any detail.
 
-```markdown
----
-type: cast
-cast:
-  - character: NARRATOR
-    actor: Tom Stovall
-    gender: M
-    voicePrompt: "Deep authoritative British baritone. Warm, commanding documentary narrator."
-    language: en
-    portrait: art/narrator.png
-    voices:
-      voxalta:
-        - voices/NARRATOR.vox
-  - character: THE PRACTITIONER
-    voicePrompt: "Younger adult male voice. Conversational, sometimes anxious, occasionally wry."
-    bio: "Neurodivergent (ADHD), gay Gen X developer in his late forties…"
-    voices:
-      voxalta:
-        - voices/THE_PRACTITIONER.vox
----
+Summary for readers of this document:
 
-# Cast
+- Lives beside `PROJECT.md`, default filename `CAST.md`.
+- Front matter carries `type: cast` and a `cast:` array. **Both** are required for a document to be
+  accepted (`RQ-1`) — a `type:`-only check would match every markdown file in the repo, since the
+  house frontmatter policy forces `type:` onto all of them.
+- `CastMember` fields: `character` (required), `actor`, `gender`, `language`, `voicePrompt` (legacy
+  alias `voiceDescription` still decodes), `voices` (scalar and array forms both decode),
+  `appearance`, and arbitrary unknown keys preserved via `extraKeys`.
+- Paths are relative to the directory containing `CAST.md`.
+- The markdown body is opaque and re-emitted byte-for-byte.
 
-## Major Characters
-
-### NARRATOR
-
-Summary prose here.
-
-## Minor Characters
-
-### …
-```
-
-### 3.1 Front matter
-
-- `type: cast` — document discriminator, lowercase, matching the existing `type: project`
-  convention in PROJECT.md.
-- `cast:` — array of cast members. Field-for-field identical to today's `CastMember`, with the
-  additions and rules below.
-
-> **Snag to resolve (see §9 Q6):** the repo-wide markdown frontmatter policy requires every `.md`
-> file to declare `type:`. These `REQUIREMENTS-cast-md-changes.md` docs therefore also carry
-> `type: cast`, which means a naive "find all cast documents" scan would match them. Either the
-> discriminator needs to be more specific (`type: echada-cast`), or `CastMarkdownParser` must
-> additionally require a `cast:` key before accepting a file.
-
-### 3.2 `CastMember` fields
-
-| Field | Type | Notes |
-|---|---|---|
-| `character` | String, required | Character name as it appears in CHARACTER cues |
-| `actor` | String? | Credits/reference only |
-| `gender` | `Gender`? | `M` / `F` / `NB` / `NS` |
-| `voicePrompt` | String? | Preferred key. Legacy alias `voiceDescription` must still decode |
-| `voices` | `[String: [String]]` | Provider → file paths/IDs. Scalar form (`voxalta: path.vox`) must still decode |
-| `language` | String? | BCP-47 |
-| `portrait` | String? | **New.** Project-relative path to a character image. Manually populated |
-| *(unknown keys)* | — | Preserved verbatim via `extraKeys` (this is how `bio:` survives) |
-
-### 3.3 Path semantics
-
-All file references (`voices.*`, `portrait`) are **relative to the directory containing CAST.md**,
-which is the project directory. This matches current `.vox` behaviour exactly. Absolute paths are
-permitted but not emitted.
-
-### 3.4 Body
-
-Free markdown. Reserved structure is `## Major Characters` / `## Minor Characters` with an `###`
-heading per character. Nothing generates this yet (§8). Hand-authored content in the body **must
-survive** every write-back.
+**The `bio:` case is the one to remember.** `~/Projects/podcasts/confessions/PROJECT.md` carries a
+per-member `bio:` that nothing in the ecosystem declares, alongside the scalar `voices:` form. Both
+must survive every write by every consumer. It is the pinned fixture for exactly that reason.
 
 ---
 
@@ -136,22 +129,34 @@ survive** every write-back.
 
 Prefix `EC-`. Sibling docs reference these IDs.
 
-### 4.1 Model & parsing
+### 4.1 Model & parsing — **moved to SwiftReparto**
 
-- **EC-1** — `CastMember` and `Gender` are defined in the `SwiftEchada` library target, moved from
-  SwiftProyecto. Public API, `Codable`, `Sendable`, `Equatable`, `Hashable`, `Identifiable`.
-  Decoding must accept every form currently in the wild: `voicePrompt` and legacy
-  `voiceDescription`; `voices` as scalar and as array.
-- **EC-2** — `CastMember.extraKeys` lossless round-trip is preserved. Unknown per-member keys
-  (`bio:` and anything else a user hand-writes) decode into `extraKeys` and re-emit verbatim.
-- **EC-3** — New type `CastDocument` holding `(cast: [CastMember], body: String)` plus any
-  front-matter-level fields (`type`).
-- **EC-4** — New type `CastMarkdownParser` with `parse(fileURL:)`, `parse(content:)`,
-  `generate(document:)`, and `write(document:to:)`. Ports `renderCast` and the YAML emit/escape
-  logic from SwiftProyecto's `ProjectMarkdownParser`. Requires adding the
-  `marcprux/universal` dependency to the `SwiftEchada` library target.
-- **EC-5** — `AnyCodable` is available to the `SwiftEchada` target (either vendored or consumed
-  from SwiftProyecto, which exports it publicly). See §9 Q4.
+`EC-1` … `EC-5` are **no longer SwiftEchada's work.** They are superseded by SwiftReparto's
+`RQ-1` … `RQ-18`. The IDs are retained as redirects so references from the sibling docs still
+resolve.
+
+| Was | Now |
+|---|---|
+| **EC-1** — define `CastMember`/`Gender` in SwiftEchada | → SwiftReparto `RQ-2`, `RQ-3`. Defined in `SwiftReparto` |
+| **EC-2** — `extraKeys` lossless round-trip | → SwiftReparto `RQ-4` |
+| **EC-3** — `CastDocument` | → SwiftReparto `RQ-9` |
+| **EC-4** — `CastMarkdownParser`, `universal` dependency | → SwiftReparto `RQ-10`, `RQ-16` |
+| **EC-5** — `AnyCodable` availability | → SwiftReparto `RQ-13`. **Vendored, not imported** — the leaf invariant forbids depending on SwiftProyecto. Reparto's copy is canonical; collapsing the twins is a follow-on |
+
+**EC-1a — SwiftEchada's library target sheds SwiftProyecto.** The `SwiftEchada` library target
+imports SwiftProyecto at exactly two sites — `Sources/SwiftEchada/CharacterProfile.swift:2` and
+`Sources/SwiftEchada/CharacterMerger.swift:1` — for exactly two symbols, `Gender` and `CastMember`.
+Both move to SwiftReparto. After the move the light library depends on **SwiftReparto alone**.
+`EchadaCLICore` keeps its SwiftProyecto dependency for project-level fields.
+
+**EC-1b — `CharacterProfile.gender` changes module twice over.** It is public API of the light
+`SwiftEchada` library that `ProduciestaCore` already links. Keep the spelling `Gender` unqualified
+at every in-repo use site so the module change is source-compatible for downstream consumers.
+
+**EC-1c — the merge moves too.** `CharacterMerger`'s additive-merge behaviour is the reference
+semantics for `EC-8`, and SwiftSemblanzas will need the same guarantee. It belongs in SwiftReparto
+as `RQ-14`. What stays in SwiftEchada is the *screenplay-discovery* half — turning `[CharacterInfo]`
+into candidate members — which is voice-pipeline work and depends on `CastExtractor`.
 
 ### 4.2 Non-destructive rollout
 
@@ -160,13 +165,14 @@ The two operations below are **separate commands** and must never be fused. Gene
 
 - **EC-6** — A **legacy read path** reads `cast:` out of a `PROJECT.md` front matter *as raw YAML*,
   without depending on `ProjectFrontMatter.cast` (which is being deleted). It powers EC-7's seeding
-  and EC-9's verification, and is removed once SwiftProyecto 5.0 ships (§6, step 6).
+  and EC-9's verification, and is removed once SwiftProyecto 5.0 ships (§6, step 7). It decodes into
+  SwiftReparto's `CastMember`.
 
 - **EC-7 — Generate CAST.md, seeded, never destructive.** `echada generate cast` writes `CAST.md`.
   When `CAST.md` is absent and `PROJECT.md` carries a legacy `cast:`, that existing cast is
   **seeded into CAST.md verbatim** — every field, including `voicePrompt`, `bio` and other
   `extraKeys`, `language`, and `voices.voxalta` paths — and then newly-discovered characters are
-  merged in on top using the existing additive merge. **`PROJECT.md` is not modified.**
+  merged in on top using the additive merge (`RQ-14`). **`PROJECT.md` is not modified.**
 
   > **Why seeding, not fresh generation.** Regenerating cast from screenplays alone would discard
   > every hand-tuned `voicePrompt` and `bio`. Worse, existing `.vox` files were generated *from*
@@ -178,14 +184,14 @@ The two operations below are **separate commands** and must never be fused. Gene
   additively, never overwritten. `--force` re-syncs to discovered characters (matching today's
   `generate cast --force` semantics). `--dry-run` prints the resulting cast without writing.
 
-- **EC-9 — Verification.** A command (name TBD, §9 Q3) that compares a project's `CAST.md` against
-  the legacy `cast:` still present in its `PROJECT.md` and reports any divergence: characters
-  present in one and not the other, differing field values, and `.vox` paths that do not resolve to
-  an existing file. Exits non-zero on divergence so it can gate step 5 in CI or a loop. This is the
-  human gate — it reports, it does not fix.
+- **EC-9 — Verification.** `echada verify cast` compares a project's `CAST.md` against the legacy
+  `cast:` still present in its `PROJECT.md` and reports any divergence: characters present in one
+  and not the other, differing field values, and `.vox` paths that do not resolve to an existing
+  file. Exits non-zero on divergence so it can gate step 6 in CI or a loop. This is the human gate —
+  it reports, it does not fix.
 
-- **EC-10 — Removal, separately triggered.** A distinct command (§9 Q3) strips the `cast:` block
-  from `PROJECT.md`, preserving all other front matter and the body byte-for-byte where possible.
+- **EC-10 — Removal, separately triggered.** `echada prune cast` strips the `cast:` block from
+  `PROJECT.md`, preserving all other front matter and the body byte-for-byte where possible.
   `appSections` (`episodes_index`, `tts`, …) must survive. Requirements:
   - Refuses to run unless a `CAST.md` exists **and** EC-9 verification passes.
   - Supports `--dry-run`; prints the exact diff it would apply.
@@ -202,8 +208,12 @@ The two operations below are **separate commands** and must never be fused. Gene
 - **EC-12** — `GenerateCastCommand`, `GeneratePromptCommand`, and `GenerateVoxCommand` read and
   write `CAST.md` instead of `PROJECT.md`'s `cast:`. They continue to read `PROJECT.md` for
   project-level data (`title`, `episodesDir`, `filePattern`, `tts.model`) via SwiftProyecto.
-- **EC-13** — All three gain a `--cast` option (default `CAST.md`), resolved as a sibling of
-  `--project` when relative. See §9 Q1.
+- **EC-13** — All three gain a `--cast` option (default `CAST.md`). **Filename override only** —
+  `CAST.md` always lives in the project directory. A `--cast` value containing a path separator, or
+  resolving outside `--project`'s directory, is rejected with an explicit error. This keeps
+  SwiftReparto `RQ-6` ("relative to the directory containing CAST.md") and `EC-16` ("same directory
+  in practice") simultaneously true, and means `CastVoiceGenerator.projectDirectory` never has to
+  split in two.
 - **EC-14** — When `CAST.md` is absent, `generate cast` creates it (EC-7). `generate prompt` and
   `generate vox` fail with an actionable error naming `echada generate cast`.
 - **EC-15** — `CastCommand` (the `echada cast` orchestrator) ensures `CAST.md` alongside its
@@ -211,28 +221,41 @@ The two operations below are **separate commands** and must never be fused. Gene
   EC-10 removal.
 - **EC-16** — `CastVoiceGenerator` continues to write `.vox` files to `voices/` and record paths in
   `voices.voxalta`. Paths become CAST.md-relative (identical in practice — same directory).
-- **EC-17** — `CharacterMerger` is updated for the new `CastMember` location. Behaviour unchanged.
-- **EC-18** — Body preservation: every write-back through `CastMarkdownParser` preserves the
-  markdown body verbatim. Regression test required — this is the same class of bug as issue #44,
-  where a field-by-field front matter rebuild silently destroyed `appSections`.
+- **EC-17** — The screenplay-discovery half of `CharacterMerger` stays here and is updated for
+  `CastMember`'s new module; the additive-merge half moves to SwiftReparto (`EC-1c`, `RQ-14`).
+- **EC-18** — Body preservation: every write-back goes through SwiftReparto's writer (`D8`), which
+  preserves the markdown body verbatim. Regression test required on the SwiftEchada side
+  independently — a green round-trip test in SwiftReparto proves the *parser* is lossless, not that
+  this repo's call sequence is. This is the same class of bug as issue #44, where a field-by-field
+  front matter rebuild silently destroyed `appSections`.
 
 ### 4.4 Documentation
 
 - **EC-19** — Update `AGENTS.md`, `CLAUDE.md`, `README.md`, `Docs/architecture.md`,
-  `Docs/api.md`, `Docs/vox-pipeline.md`, `Docs/gotchas.md`, and `CHANGELOG.md`.
+  `Docs/api.md`, `Docs/vox-pipeline.md`, `Docs/gotchas.md`, `Docs/dependencies.md`, and
+  `CHANGELOG.md`.
+
+  `CLAUDE.md` rule 4 currently reads *"Library depends only on SwiftProyecto."* After `EC-1a` it
+  becomes *"Library depends only on SwiftReparto."* — a smaller and better-defended claim, since
+  SwiftReparto is a leaf.
+
 - **EC-20** — Update the `cast-voices` and `podcast-audio-plan` skills in `~/.claude/skills/`,
-  which instruct agents to read/write cast in `PROJECT.md`.
+  which instruct agents to read/write cast in `PROJECT.md`. Use runtime capability detection so the
+  skills work against both a Homebrew `echada` and the older signed binary embedded in a shipped
+  `Produciesta.app` (see Produciesta `X-4`) — probe for the `verify cast` subcommand and fall back
+  to the `PROJECT.md` path when absent.
 
 ### 4.5 Tests
 
 - **EC-21** — Update the affected test files: `CastPipelineTests`, `GenerateCastCommandTests`,
   `GenerateVoxCommandTests`, `GenerateVoxWriteBackTests`, `VoicePromptRoundTripTests`,
   `PerLanguagePromptTests`, `ModelBackedGenerationTests`, `CastingLanguageResolutionTests`,
-  `NonEnglishPassthroughTests`, `CharacterMergerTests`.
-- **EC-22** — New coverage: CAST.md parse/generate round-trip; `extraKeys` preservation; body
-  preservation; legacy `voiceDescription` and scalar-`voices` decoding; **seeding fidelity (EC-7)**;
-  EC-7 idempotency; EC-9 divergence detection; EC-10 idempotency and PROJECT.md preservation;
-  missing-CAST.md error paths.
+  `NonEnglishPassthroughTests`, `CharacterMergerTests`, `CLIWiringTests`.
+- **EC-22** — New coverage: **seeding fidelity (EC-7)**; EC-7 idempotency; EC-9 divergence
+  detection; EC-10 idempotency and PROJECT.md preservation; missing-CAST.md error paths;
+  `--cast` rejection of out-of-directory paths (EC-13). Parser-level round-trip, `extraKeys`, body
+  preservation, and legacy-form decoding are **SwiftReparto's** tests, not duplicated here — except
+  `EC-18`'s call-sequence regression, which is genuinely this repo's.
 
 ---
 
@@ -240,122 +263,129 @@ The two operations below are **separate commands** and must never be fused. Gene
 
 Detail lives in each repo's own doc. This is the boundary contract.
 
+### SwiftReparto (new, 1.0.0)
+
+Full detail in `pkg/SwiftReparto/REQUIREMENTS.md` (`RQ-1` … `RQ-18`). Greenfield: the repo
+`intrusive-memory/SwiftReparto` **does not exist yet** and must be created, then added to
+`collection.json`.
+
+Receives, from SwiftProyecto: `CastMember`, `Gender`, `AnyCodable` (vendored), and the
+`renderCast` / `replacingCastBlock` emit logic from `ProjectMarkdownParser`. Receives, from
+SwiftEchada: the additive-merge half of `CharacterMerger`.
+
 ### SwiftProyecto (breaking, 5.0)
 
 Full detail in `pkg/SwiftProyecto/REQUIREMENTS-cast-md-changes.md` (`PR-0` … `PR-31`). Verified
-2026-07-26 against source; corrections to the first draft are marked.
+2026-07-26 against source.
 
 | Deletion | Validation |
 |---|---|
-| `ProjectFrontMatter.cast`, `withCast(_:)`, `mergeCast`, `mergingCast(_:forProvider:)` | Moves to SwiftEchada. **Correction:** the symbol is `mergingCast(_:forProvider:)` (`:645`), not `mergingCastVoices`. This is the API Produciesta actually calls |
-| `Models/CastMember.swift` (`CastMember`, `Gender`) | `Gender` has **zero** references outside this file — confirmed |
-| `proyecto roles` (`Sources/proyecto/RolesCommand.swift`) | Duplicate of `echada generate cast`. Cannot be kept — it writes cast, so it would need SwiftEchada, which is a **cycle**. Confirmed it writes `frontMatter.cast` |
-| `ProjectService.discoverCastList` / `mergeCastLists` | Public API returning `[CastMember]`. Orphans the private `extractCharacters(from:)` (`:648`) — note this is a **second, independent** character parser that does *not* use `CastExtractor`, so it is not equivalent to EC-7 |
+| `ProjectFrontMatter.cast`, `withCast(_:)`, `mergeCast`, `mergingCast(_:forProvider:)` | Moves to SwiftReparto. The symbol is `mergingCast(_:forProvider:)` (`:645`), not `mergingCastVoices`. This is the API Produciesta actually calls |
+| `Models/CastMember.swift` (`CastMember`, `Gender`) | `Gender` has **zero** references outside this file *within SwiftProyecto* — but four inside SwiftEchada, one of them public API (`EC-1b`) |
+| `proyecto roles` (`Sources/proyecto/RolesCommand.swift`) | Duplicate of `echada generate cast`. **The cycle argument no longer applies** — with cast in a leaf package, `proyecto roles` *could* survive by depending on SwiftReparto. It is deleted by choice (`D1`: Proyecto exits the cast business), not by constraint. See §9 Q5, Q8 |
+| `ProjectService.discoverCastList` / `mergeCastLists` | Public API returning `[CastMember]`. Orphans the private `extractCharacters(from:)` (`:648`) — a **second, independent** character parser that does *not* use `CastExtractor` |
 | `ProjectDiscovery.readCast(from:providerID:)` | Public API returning `[CastMember]` |
-| `SeasonDefinition.cast`, `VariantResolver.resolveCast` | **No podcast project uses `seasons:` or `variants:`** — re-verified across all 16 dirs. **Correction:** `resolveCast` is `private static` (`:199`), not public. `resolve(...)` returns `ProjectFrontMatter` before and after — nothing to redesign |
-| `ProjectMarkdownParser.renderCast` / `replacingCastBlock` | Ports to `CastMarkdownParser`. **`replacingCastBlock` is needed twice by SwiftEchada** — for CAST.md write-back *and* for EC-10's `cast:` excision, where "delete exactly this line span" is the entire requirement. Port deliberately |
-| `proyecto validate --verbose` cast count (`ProyectoCLI.swift:192-194`) | **Newly found** — an unlisted compile-error site |
+| `SeasonDefinition.cast`, `VariantResolver.resolveCast` | **No podcast project uses `seasons:` or `variants:`** — verified across all 16 dirs. `resolveCast` is `private static` (`:199`); `resolve(...)` returns `ProjectFrontMatter` before and after |
+| `ProjectMarkdownParser.renderCast` (`:280`) / `replacingCastBlock` (`:352`) | Ports to SwiftReparto. **`replacingCastBlock` is needed twice** — for CAST.md write-back *and* for EC-10's `cast:` excision, where "delete exactly this line span" is the entire requirement |
+| `proyecto validate --verbose` cast count (`ProyectoCLI.swift:192-194`) | An unlisted compile-error site |
 
-**Struck from the first draft — these deletions describe work that does not exist:**
-
-- ~~Cast display in `ProjectBrowser`~~ — the `ProjectBrowser` target declares `dependencies: []`
-  and does not link SwiftProyecto at all, so it *cannot* reference `CastMember`. The only match was
-  the word "podcast" in a SwiftUI preview string. (DEF-2's architectural note remains valid.)
-- ~~Cast write-out in `ProjectGeneratorService`~~ — there is no `CastMemberData` → `CastMember`
-  conversion anywhere in `Sources/`. `GeneratedProjectMetadata.cast` is populated by all three LLM
-  backends and read by **nothing**. `proyecto generate` never wrote cast into PROJECT.md. See §9 Q9.
+**Struck — these describe work that does not exist:** ~~cast display in `ProjectBrowser`~~ (the
+target declares `dependencies: []` and does not link SwiftProyecto at all); ~~cast write-out in
+`ProjectGeneratorService`~~ (no `CastMemberData` → `CastMember` conversion exists anywhere in
+`Sources/`; `GeneratedProjectMetadata.cast` is populated by all three LLM backends and read by
+nothing — see §9 Q9).
 
 **Retained (confirmed):** `CastExtractor` — returns `[String]`, no `CastMember` coupling, live
 consumer at `ProjectService.swift:1182`. `LLMBackendProtocol.CastMemberData` — generation-time DTO.
-`AnyCodable` — public.
 
-**Test blast radius is smaller than first stated.** `ProjectValidatorTests`, `IntroOutroAssetsTests`,
-and `DocumentationExamplesTests` have **zero** cast references (matches were `broadcast`/`podcast`).
-The five LLM-backend test files use the retained `CastMemberData`. `DirectoryAnalysisTests` tests
-the retained `CastExtractor`.
+**On deprecation shims.** The first draft argued no shim was *possible*, because a shim for
+`ProjectFrontMatter.cast` would need `CastMember`, which would live in SwiftEchada and could not be
+imported. **That argument is void** — SwiftReparto is a leaf, so SwiftProyecto could import it and
+write a perfectly good deprecated shim. The decision not to is now a **choice**: `D1` puts
+SwiftProyecto out of the cast business entirely, and a shim would keep a cast concern alive in a
+file that no longer has one. The staged rollout in §6 is the migration.
 
-**No deprecation shims** (PR-28). A shim for `ProjectFrontMatter.cast` would need `CastMember`,
-which by then lives in SwiftEchada and cannot be imported (D6). The only way to write one is to keep
-a duplicate `CastMember` in SwiftProyecto, which is worse than the problem. The staged rollout in §6
-*is* the migration.
+### ⛔ The diamond — superseded, but not gone
 
-### ⛔ Diamond dependency — hard release blocker
+The first draft flagged a hard release blocker:
 
 ```
 SwiftEchada → SwiftVoxAlta 0.14.1 → SwiftHablare 6.2.0 → SwiftProyecto 4.0.0..<5.0.0
 SwiftEchada ────────────────────────────────────────────→ SwiftProyecto 5.0.0..<6.0.0
 ```
 
-When SwiftEchada raises its SwiftProyecto floor to 5.0.0, those ranges are **disjoint and SwiftPM
-resolution fails outright**. Step 7's "bump echada + Produciesta" is insufficient — as written it
-needs five sequenced releases across four repos.
+**SwiftReparto does not participate** — it depends on no `intrusive-memory` package, so introducing
+it adds no edges to this graph and cannot make resolution worse.
 
-**Resolution: SwiftHablare's SwiftProyecto dependency is a phantom.**
+The diamond still bites at **step 7** when SwiftEchada raises its SwiftProyecto floor to 5.0.0.
+The fix is unchanged and independently worth doing: **SwiftHablare's SwiftProyecto dependency is a
+phantom.** `Package.swift:65-66,74` declares it and wires the product into a target, while
 `grep -rn SwiftProyecto SwiftHablare/{Sources,Tests}` returns nothing. Deleting it dissolves the
-diamond permanently, is a non-breaking patch release for SwiftHablare, shrinks every downstream
-dependency graph, and is worth doing **regardless of this effort**. It becomes step 0 in §6.
+diamond permanently, is a non-breaking patch release, and shrinks every downstream graph. Verified
+still present 2026-08-01. It is step 0 in §6.
 
-Two further consumers found: `apps/Proyecto` (macOS GUI, Xcode remote package ref,
+Two further SwiftProyecto consumers: `apps/Proyecto` (macOS GUI, Xcode remote package ref,
 `minimumVersion = 4.6.2`, no cast usage) and SwiftHablare above.
+
+### SwiftSemblanzas (second consumer, pre-alpha)
+
+`pkg/SwiftSemblanzas/REQUIREMENTS.md` §4.3 (added 2026-08-01). Pre-alpha, docs only, no `Sources/`.
+Consumes SwiftReparto for the roster; writes `appearance.lora` and `appearance.triggerWord` back
+through SwiftReparto's writer. Its SwiftData catalog is a derived index (`D9`).
+
+Its §4.2 composition type, previously named `Reparto`, was renamed **`Convocatoria`** to free the
+package name.
+
+**This package is not scheduled by this effort** and nothing here blocks on it. It is documented
+because it is the reason the split is shaped this way, and because `RQ-Q2` — whether one LoRA per
+character is enough or `Appearance` needs `[LoRAAsset]` — should be answered by its author before
+SwiftReparto tags 1.0.0. Adding a field later is routine; changing its shape is not.
 
 ### Produciesta (consumer)
 
-Full detail in `apps/Produciesta/REQUIREMENTS-cast-md-changes.md` (`PD-1` … `PD-40`). Verified
-2026-07-26 against source; several claims in the first draft of this document were **wrong** and are
-corrected here.
+Full detail in `~/Projects/apps/Produciesta/REQUIREMENTS-cast-md-changes.md` (`PD-1` … `PD-40`),
+revised 2026-08-01 for the split.
 
-**Scope is 6 source files, not 2.** The four missed by the first draft:
+**Scope is 6 source files**, not 2: `ProduciestaCLICore/CastSupport.swift` (the critical one — every
+cast read funnels through `:168-179`, and it owns both PROJECT.md path-construction sites),
+`ProduciestaCore/ProjectMd/ProjectMdSyncService.swift` (two public functions existing purely to push
+cast into `ProjectFrontMatter`), `ProjectMd/CastResolver.swift`, `ProduciestaCLICore/CastCommand.swift`,
+plus `ProjectMd/ProjectMdCast.swift` and `ProjectMd/CastWriter.swift`. Plus 8 test files, 6
+fixtures, 2 package manifests, and the Xcode project.
 
-| File | Why |
-|---|---|
-| `ProduciestaCLICore/CastSupport.swift` | **The critical one.** Every cast read in the product funnels through `:168-179`, and it owns *both* PROJECT.md path-construction sites (`:148-156`, `:159-165`) |
-| `ProduciestaCore/ProjectMd/ProjectMdSyncService.swift` | Two **public** functions (`merge(_:into:)` `:102-107`, `makeMinimalFrontMatter(title:cast:)` `:153-165`) exist purely to push cast into `ProjectFrontMatter` |
-| `ProduciestaCore/ProjectMd/CastResolver.swift` | Consumes `CastMember` structurally (`:39`, `:61`) |
-| `ProduciestaCLICore/CastCommand.swift` | The `produciesta cast --export` verb |
+**The split simplifies this repo.** Reading a cast list now needs only the light SwiftReparto
+library — not SwiftEchada, and certainly not `EchadaCLICore`. But it also inverts `PD-1`: the first
+draft leaned on an already-declared-but-dormant SwiftEchada edge, and **SwiftReparto is a genuinely
+new declaration** in both manifests.
 
-Plus the two already known (`ProjectMd/ProjectMdCast.swift`, `ProjectMd/CastWriter.swift`),
-8 test files, 6 fixtures, 2 package manifests, and the Xcode project.
+Standing corrections from that repo: the `EchadaCLICore` link on the `echada` Xcode tool target is
+deliberate and must stay (it builds the signed embedded binary). Sandbox risk is **LOW** — the app's
+grant is directory-scoped (bookmark on the folder, `canChooseDirectories = true`), so a sibling
+`CAST.md` is already covered for read and write; no entitlement changes needed.
 
-**Corrections to earlier claims in this document:**
+**Blocking issues raised by that repo:**
 
-- **SwiftEchada is already a dependency.** Declared in both manifests; the light `SwiftEchada`
-  product is already linked into `ProduciestaCore` (`Package.swift:36`), merely never imported.
-  No new dependency is needed — only imports and a version bump.
-- **"Avoid `EchadaCLICore`" is wrong for one target.** `EchadaCLICore` is already linked
-  *deliberately* to the `echada` Xcode tool target that ships the signed binary inside
-  `Produciesta.app`. Avoid it in `ProduciestaCore`; keep it in the tool target.
-- **Sandbox risk is LOW**, contrary to the concern raised when dispatching. The app's grant is
-  **directory-scoped**, not file-scoped: `NSOpenPanel` with `canChooseDirectories = true`,
-  bookmark taken on the *directory*, `startAccessingSecurityScopedResource()` held on the
-  directory for the window's lifetime. A newly-created sibling `CAST.md` is already covered for
-  read *and* write. The three embedded CLIs are deliberately unsandboxed, and that is where all
-  cast I/O happens. **No entitlement, bookmark, or picker changes needed.**
-- **Not affected:** `Gender`, `mergeCast`, `readCast`, `discoverCastList`, `voicePrompt`,
-  `voiceDescription` have zero Swift references in this repo. `GenerateScreenplayUseCaseTests` is
-  unaffected.
-
-**New blocking issues raised by this repo:**
-
-- **X-1 — `CastWriter` prunes; EC-8 says writes are additive.** `CastWriter.swift:91-98` deletes
+- **X-1 — `CastWriter` prunes; `EC-8` says writes are additive.** `CastWriter.swift:91-98` deletes
   every cast entry absent from the *current screenplay's* roster. `CAST.md` is project-wide but
-  `produciesta cast/export` runs per-episode — so exporting episode 01 of a 12-episode podcast
-  would delete every other character, taking their hand-authored `bio` and `voicePrompt` with them
-  and orphaning the `.vox` files those prompts generated. **EC-8's additive guarantee must win;
+  `produciesta cast/export` runs per-episode — exporting episode 01 of a 12-episode podcast would
+  delete every other character, taking their hand-authored `bio` and `voicePrompt` with them and
+  orphaning the `.vox` files those prompts generated. **`RQ-14`'s additive-only guarantee wins;
   `CastWriter` changes behaviour.** See §9 Q7.
 - **X-2 — No `sibling()` pattern, and `Package.resolved` is gitignored.** There is no supported way
-  to build Produciesta against an unreleased local SwiftEchada. Mitigated by the §6 reorder, which
-  places Produciesta's work after SwiftEchada 1.0.0 is tagged — but SwiftEchada **must** be a real
-  tagged release by then, not a local checkout.
+  to build Produciesta against an unreleased local dependency. Sharper now than before:
+  SwiftReparto must be a **real tagged 1.0.0** before Produciesta work starts — there is no
+  existing floor to quietly resolve against.
 - **X-3 — Two manifests pin independently.** A one-sided bump makes `make build` and
-  `make install-gui` resolve different SwiftEchada versions.
+  `make install-gui` resolve different versions.
 - **X-4 — The `echada` binary is embedded and code-signed inside `Produciesta.app`.** EC-20's skill
-  update therefore depends on a Produciesta *release*, not just a doc edit.
-- **X-5 — `Docs/PROJECT_MD.md`** is a written contract now mostly describing a file Produciesta no
+  update therefore depends on a Produciesta *release*, not just a doc edit — hence the capability
+  detection.
+- **X-5 — `Docs/PROJECT_MD.md`** is a written contract mostly describing a file Produciesta no
   longer owns, including a normative §4 rule 4 this change must retire.
 
-**Transition-window type ambiguity** stands: both modules export `CastMember` until SwiftProyecto
-5.0 lands. Use targeted imports (`import struct SwiftEchada.CastMember`), the house style in
-SwiftEchada's `CLAUDE.md` rule 3.
+**Transition-window type ambiguity** stands, with the colliding module now `SwiftReparto`: both it
+and SwiftProyecto export `CastMember` and `Gender` until 5.0 lands. Use targeted imports
+(`import struct SwiftReparto.CastMember`), the house style in SwiftEchada's `CLAUDE.md` rule 3.
 
 `apps/produciesta-old/` is legacy and out of scope.
 
@@ -363,31 +393,34 @@ SwiftEchada's `CLAUDE.md` rule 3.
 
 ## 6. Sequencing
 
-Ordered to avoid a flag day. Each step ships independently; nothing downstream breaks until step 6.
+Ordered to avoid a flag day. Each step ships independently; nothing downstream breaks until step 7.
 
-**Reordered 2026-07-26.** The original order put Produciesta *after* the podcast `cast:` removal.
-That is a silent-data-loss flag day: once step 5 strips `cast:`, the shipped Produciesta gets
-`frontMatter.cast == nil` → empty `ProjectMdCast` → `CastResolver` returns an empty map → **every
-character unassigned, with no throw and no warning.** Produciesta must be repointed *before* any
-`cast:` is removed. The reorder is free.
+**Step 1 is new** — SwiftReparto must exist and be tagged before anything can consume it, and X-2
+means a local checkout will not do.
+
+**Step 6 before step 7** is load-bearing. The first draft had the podcast `cast:` removal before the
+Produciesta repoint, which is a silent-data-loss flag day: once `cast:` is stripped, a shipped
+Produciesta gets `frontMatter.cast == nil` → empty `ProjectMdCast` → `CastResolver` returns an empty
+map → **every character unassigned, with no throw and no warning.**
 
 | Step | Repo | Work | Gate |
 |---|---|---|---|
-| **0** | SwiftHablare | Delete the **phantom** SwiftProyecto dependency (zero source references). Patch release. Dissolves the §5 diamond | `make test` green; downstream graphs resolve |
-| **1** | SwiftEchada | EC-1 … EC-5. Add `CastMember`/`Gender`/`CastDocument`/`CastMarkdownParser`. No behaviour change yet — SwiftProyecto still owns `cast:` | Unit tests green |
-| **2** | SwiftEchada | EC-6 … EC-11. Seeded generation, verification, and the separate removal command | EC-11 round-trip test green against a copy of a real podcast `PROJECT.md` |
-| **3** | SwiftEchada | EC-12 … EC-22. Rewire the commands, docs, tests. **Tag and ship 1.0.0** — a real release, not a local checkout (X-2) | `make test` green; manual `echada cast` run against a scratch project |
-| **4** | podcasts/* | **Generate only.** Run EC-7 across the 12 projects with `cast:`. `CAST.md` appears; `PROJECT.md` untouched. Commit per repo | EC-9 clean in each; `echada generate vox --dry-run` lists the same members as before |
-| **5** | Produciesta | Repoint the 6 source files to SwiftEchada; fix `CastWriter` pruning (X-1); bump both manifests together (X-3). **Ship** | App builds; audio generation works end to end against a step-4 project (both `CAST.md` and legacy `cast:` present) |
-| **6** | podcasts/* | **Remove only, after verification.** Run EC-10 per repo. Separate commit per repo | EC-9 clean; residual `PROJECT.md` diff is cast-block-only |
-| **7** | SwiftProyecto | Delete everything in §5. **Ship 5.0.** Bump echada + Produciesta + `apps/Proyecto`. Remove EC-6's legacy read path | `make test` green in all repos |
+| **0** | SwiftHablare | Delete the **phantom** SwiftProyecto dependency (zero source references). Patch release. Dissolves the diamond. Independently worth doing | `make test` green; downstream graphs resolve |
+| **1** | **SwiftReparto** | Create the repo. `RQ-1` … `RQ-18`. **Tag and ship 1.0.0** — a real release, not a local checkout (X-2). Add to `collection.json` | `make test` green; round-trip SHA-256 identity on the `confessions` fixture; zero `intrusive-memory` deps in `Package.swift` |
+| **2** | SwiftEchada | `EC-1a` … `EC-1c`. Depend on SwiftReparto; drop SwiftProyecto from the light library target; move the additive merge out. No behaviour change yet — SwiftProyecto still owns `cast:` | `make test` green |
+| **3** | SwiftEchada | `EC-6` … `EC-11`. Seeded generation, verification, and the separate removal command | EC-11 round-trip test green against a copy of a real podcast `PROJECT.md` |
+| **4** | SwiftEchada | `EC-12` … `EC-22`. Rewire the commands, docs, tests. **Tag and ship 1.0.0** | `make test` green; manual `echada cast` run against a scratch project |
+| **5** | podcasts/* | **Generate only.** Run EC-7 across the 12 projects with `cast:`. `CAST.md` appears; `PROJECT.md` untouched. Commit per repo | EC-9 clean in each; `echada generate vox --dry-run` lists the same members as before |
+| **6** | Produciesta | Declare SwiftReparto in both manifests; repoint the 6 source files; fix `CastWriter` pruning (X-1); bump together (X-3). **Ship** | App builds; audio generation works end to end against a step-5 project (both `CAST.md` and legacy `cast:` present) |
+| **7** | podcasts/* | **Remove only, after verification.** Run EC-10 per repo. Separate commit per repo | EC-9 clean; residual `PROJECT.md` diff is cast-block-only |
+| **8** | SwiftProyecto | Delete everything in §5. **Ship 5.0.** Bump echada + Produciesta + `apps/Proyecto`. Remove EC-6's legacy read path | `make test` green in all repos |
 
-Steps 0–4 are strictly additive from the outside — SwiftProyecto and Produciesta keep working
-untouched throughout, and step 4 leaves every `PROJECT.md` byte-identical. Step 5 must land before
-step 6. Step 6 is reversible per repo via git. Step 7 is the only breaking release and can be
-deferred indefinitely: after step 6, `cast:` in `PROJECT.md` is dead weight, not a blocker.
+Steps 0–5 are strictly additive from the outside — SwiftProyecto and Produciesta keep working
+untouched throughout, and step 5 leaves every `PROJECT.md` byte-identical. Step 6 must land before
+step 7. Step 7 is reversible per repo via git. Step 8 is the only breaking release and can be
+deferred indefinitely: after step 7, `cast:` in `PROJECT.md` is dead weight, not a blocker.
 
-**Step 5 requires a live dual state.** At that point every migrated project has both a `CAST.md`
+**Step 6 requires a live dual state.** At that point every migrated project has both a `CAST.md`
 *and* a `PROJECT.md` still containing `cast:`. Produciesta must read `CAST.md` and ignore the legacy
 block. EC-9 having passed is what guarantees they agree.
 
@@ -399,11 +432,11 @@ block. EC-9 having passed is what guarantees they agree.
 rollout only** — no code, no requirements doc. Each is an independent git repo.
 
 - **PC-1** — Rollout is performed by the EC-7 and EC-10 commands, not by hand.
-- **PC-2** — Generation (step 4) and removal (step 5) are **separate commits** in each repo, so
+- **PC-2** — Generation (step 5) and removal (step 7) are **separate commits** in each repo, so
   either can be reverted independently.
 - **PC-3** — No cross-repo batching. One repo, one commit, per phase.
 - **PC-4** — `~/Projects/podcasts/common-voices` is not a git repo — handle or skip explicitly.
-- **PC-5** — Per-repo gate before step 5: EC-9 verification clean, and every `.vox` path in
+- **PC-5** — Per-repo gate before step 6: EC-9 verification clean, and every `.vox` path in
   `CAST.md` resolves to an existing file.
 - **PC-6** — Pilot on `confessions` first — richest cast (`bio`, multi-line `voicePrompt`, scalar
   `voices` form, 309-line `PROJECT.md` with a large `episodes_index`). Do not roll out further
@@ -415,107 +448,109 @@ rollout only** — no code, no requirements doc. Each is an independent git repo
 
 Real work, tracked separately. **Not** part of the CAST.md extraction.
 
-- **DEF-1 — Major/minor character summaries.** The §3.4 body structure is reserved but nothing
-  generates it. Needs (a) a major/minor classifier — dialogue line count from `DialogueExtractor`
-  is the natural signal, plus a threshold — and (b) a summary generator, i.e. a fourth Foundation
-  Model stage comparable in size to `GeneratePromptCommand`. Land after step 3.
+- **DEF-1 — Major/minor character summaries.** The reserved body structure has no generator. Needs
+  (a) a major/minor classifier — dialogue line count from `DialogueExtractor` is the natural signal,
+  plus a threshold — and (b) a summary generator, i.e. a fourth Foundation Model stage comparable in
+  size to `GeneratePromptCommand`. Land after step 4. **Belongs in SwiftEchada, not SwiftReparto** —
+  `RQ-INV-3` keeps inference out of the parser.
 - **DEF-2 — Generic cast panel.** Extracting the cast panel from
-  `apps/produciesta-old/Produciesta/CastingView.swift` into a reusable UI component.
-  **Architectural note:** it cannot live in SwiftProyecto's `ProjectBrowser` — that would recreate
-  the dependency cycle (D6). It would be a new SwiftUI product in SwiftEchada (e.g. `EchadaUI`)
-  that apps compose alongside `ProjectBrowser`. Needs its own spec.
-- **DEF-3 — Portrait generation.** `portrait` (D4) is a manually-populated field. Nothing generates
-  character art.
+  `apps/produciesta-old/Produciesta/CastingView.swift` into a reusable UI component. **The
+  architectural objection is now gone** — the first draft noted it could not live in SwiftProyecto's
+  `ProjectBrowser` without recreating the cycle. With cast in a leaf package there is no cycle, so a
+  `RepartoUI` product (or a `ProjectBrowser` panel consuming SwiftReparto) is viable. Needs its own
+  spec.
+- **DEF-3 — Portrait generation.** `appearance.portrait` is a manually-populated field. Generation
+  is SwiftSemblanzas' business, not this effort's.
 - **DEF-4 — Reference audio / dialogue extract persistence.** Considered and rejected for this
   round; `ReferenceAudioGenerator` output and `DialogueExtractor` results stay transient.
+- **DEF-5 — `AnyCodable` reunification.** SwiftReparto vendors its own copy (`RQ-13`). Collapsing
+  the twins means SwiftProyecto consuming it from SwiftReparto — legal and acyclic, but a follow-on.
+  See `RQ-Q1`.
 
 ---
 
 ## 9. Open questions
 
-Blocking implementation, not requirements. Resolve before step 1.
+### Resolved 2026-08-01
 
-- **Q1 — CAST.md location.** Convention-only (sibling of `PROJECT.md`, `--cast` to override), or may
-  `PROJECT.md` declare `castFile: CAST.md`? The latter works without SwiftProyecto knowing about
-  cast — unknown keys land in `appSections` and round-trip losslessly — but it puts a cast concern
-  back in the project file. *Recommendation: convention only.*
-- **Q2 — Legacy `cast:` after step 7. Worse than first stated.** A stale `cast:` swept into
-  `appSections` is re-emitted **last, alphabetically sorted, through the generic JSON→YAML path** —
-  so it *moves position and reformats* (member key order changes, the scalar `voices` form is
-  rewritten). Not a silent passthrough: a visible, confusing diff. Also, `ProjectValidator` has zero
-  cast code today, so the recommended warning is **new code**, not a modification. Warn, strip, or
-  ignore? *Recommendation: `proyecto validate` warns; nothing strips automatically.*
-- **Q3 — Command names for EC-9 and EC-10.** Needs two verbs that read as clearly separate and
-  clearly non-destructive/destructive. Candidates: `echada cast verify` + `echada cast prune`;
-  `echada verify cast` + `echada strip cast`. Must not collide conceptually with `echada cast`, the
-  full-pipeline orchestrator. *Recommendation: `echada verify cast` and `echada prune cast`,
-  parallel to the existing `generate` namespace.*
-- **Q4 — `AnyCodable` (EC-5).** Vendor into SwiftEchada or import from SwiftProyecto?
-  *Recommendation from SwiftProyecto: **import, not vendor**. Its exact JSON round-trip semantics
-  are what make `extraKeys`/`appSections` lossless, and SwiftEchada cannot drop the SwiftProyecto
-  dependency anyway (EC-12 still reads PROJECT.md). Zero work in SwiftProyecto either way.*
+| # | Question | Resolution |
+|---|---|---|
+| **Q1** | CAST.md location — convention, or declared in `PROJECT.md`? | **Convention only.** No `castFile:` key. `CAST.md` always sits in the project directory; `--cast` is a filename override and rejects anything with a path separator or outside `--project`'s directory (`EC-13`) |
+| **Q3** | Command names for EC-9 and EC-10 | **`echada verify cast`** and **`echada prune cast`**, top-level containers parallel to `GenerateCommand`, registered in `EchadaCLI.swift:31-33` |
+| **Q4** | `AnyCodable` — vendor or import? | **Vendor into SwiftReparto**, forced by `D6`. Reparto's copy is canonical; SwiftProyecto may consume it back later (`DEF-5`) |
+| **Q6** | `type: cast` collides with the requirements docs themselves | **Require both `type: cast` and a `cast:` key** in the parser (`RQ-1`); the requirements docs are relabelled `type: requirements` — done in all three repos |
+| **Q11** | Where does the cast model live? | **SwiftReparto**, a new leaf package. See §0 |
+| **Q12** | Does SwiftProyecto depend on SwiftReparto? | **No.** It exits the cast business entirely — no dependency, no retained cast surface (`D1`) |
+| **Q13** | `CAST.md` vs. SwiftSemblanzas' SwiftData catalog — which is canonical? | **`CAST.md`.** The catalog is a derived index keyed by character slug (`D9`) |
+
+### Still open
+
+- **Q2 — Legacy `cast:` after step 8.** A stale `cast:` swept into `appSections` is re-emitted
+  **last, alphabetically sorted, through the generic JSON→YAML path** — so it *moves position and
+  reformats* (member key order changes, the scalar `voices` form is rewritten). Not a silent
+  passthrough: a visible, confusing diff. `ProjectValidator` has zero cast code today, so a warning
+  is **new code**. Warn, strip, or ignore? *Recommendation: `proyecto validate` warns; nothing
+  strips automatically.*
 - **Q5 — Is `proyecto roles` truly unused?** No callers found anywhere under `~/Projects`, but shell
-  history and CI outside this collection were not searched. Confirm before deleting.
-- **Q6 — `type: cast` collision (§3.1).** The repo markdown policy forces `type:` onto every `.md`,
-  so these requirements docs also declare `type: cast`. Made concrete by Produciesta, whose own
-  convention for this kind of document is `type: requirements`
-  (`Docs/REQUIREMENTS-fcpxml-export.md`) — so the three sibling docs are currently mislabelled to
-  satisfy a hook. Either narrow the discriminator (`type: echada-cast`) or have
-  `CastMarkdownParser` require a `cast:` key as well, and relabel these docs `type: requirements`.
-  *Recommendation: require both `type` and `cast:` in the parser; relabel the requirements docs.*
-
-- **Q7 — `CastWriter` pruning vs. EC-8 (X-1).** `CastWriter.swift:91-98` deletes cast members absent
-  from the current screenplay's roster. `CAST.md` is project-wide; `produciesta cast/export` is
-  per-episode. Confirm EC-8's additive-only guarantee wins and Produciesta's `Docs/PROJECT_MD.md`
-  §4 rule 4 is retired. If per-project pruning is still wanted, who owns it — `echada generate cast
-  --force` already does exactly this, correctly scoped. *Recommendation: additive-only wins;
-  pruning stays with `--force` in echada.*
-
-- **Q8 — Salvage from `proyecto roles` before deleting it.** It contains
-  `discoverScreenplays(in:)` and `expandGlob(_:)` — ~35 lines, and the collection's only `glob(3)`
-  usage. SwiftEchada's `SourceMaterialLocator` may already cover this; confirm before the code is
-  lost.
-
+  history and CI outside this collection were not searched. Confirm before deleting. Note the
+  calculus changed: it *could* now survive on a SwiftReparto dependency, so this is a product
+  decision rather than a forced deletion.
+- **Q7 — `CastWriter` pruning vs. `RQ-14` (X-1).** Confirm the additive-only guarantee wins and
+  Produciesta's `Docs/PROJECT_MD.md` §4 rule 4 is retired. If per-project pruning is still wanted,
+  `echada generate cast --force` already does exactly this, correctly scoped. *Recommendation:
+  additive-only wins; pruning stays with `--force` in echada.*
+- **Q8 — Salvage from `proyecto roles` before deleting it.** It contains `discoverScreenplays(in:)`
+  and `expandGlob(_:)` — ~35 lines, and the collection's only `glob(3)` usage. SwiftEchada's
+  `SourceMaterialLocator` may already cover this; confirm before the code is lost.
 - **Q9 — The dead `CastMemberData` pipeline.** All three LLM backends populate
   `GeneratedProjectMetadata.cast` during `proyecto generate`, and **nothing reads it** — an LLM
   extracts cast metadata that is then discarded. Out of scope here, but someone should decide
   whether to wire it up, delete it, or file it.
-
-- **Q10 — SwiftHablare phantom dependency (step 0).** Removing it is zero-risk, independently
-  valuable, and collapses step 7 from five sequenced releases across four repos back to the shape
-  this document assumes. Do it now, decoupled from this effort? *Recommendation: yes, this week.*
+- **Q10 — SwiftHablare step 0.** Removing the phantom dependency is zero-risk and independently
+  valuable. Do it now, decoupled from this effort? *Recommendation: yes, this week.*
+- **Q14 — `Appearance` shape (`RQ-Q2`).** One LoRA per character, or `[LoRAAsset]` with per-adapter
+  rank/scale/engine compatibility? SwiftSemblanzas' own `REQUIREMENTS.md` §4.1 suggests the latter.
+  **Answer before SwiftReparto tags 1.0.0** — adding a field later is routine, changing its shape is
+  not.
 
 ---
 
 ## 10. Validation evidence
 
-Findings behind the decisions above, established 2026-07-26 by reading the source.
+Findings behind the decisions above. Established 2026-07-26 by reading the source; re-verified
+2026-08-01 where marked.
 
-- `Gender` is referenced **only** in `SwiftProyecto/Models/CastMember.swift`. Zero other usages.
+**Established 2026-08-01 (the split):**
+
+- SwiftPM detects dependency cycles at **package** granularity. `SwiftProyecto → SwiftEchada` while
+  `SwiftEchada → SwiftProyecto` fails at manifest load; no target-level arrangement avoids it.
+- The `SwiftEchada` **library** target imports SwiftProyecto at exactly two sites
+  (`CharacterProfile.swift:2`, `CharacterMerger.swift:1`) for exactly two symbols, `Gender` and
+  `CastMember`. After the move it depends on SwiftReparto alone.
+- `intrusive-memory/SwiftReparto` **does not exist** — confirmed 404.
+- `pkg/SwiftSemblanzas` exists, is pre-alpha with no `Sources/`, and reserved the name `Reparto` for
+  its §4.2 per-scene composition type. Renamed to `Convocatoria`.
+- SwiftHablare's phantom SwiftProyecto dependency is **still present** at `Package.swift:65-66,74`.
+- SwiftEchada's SwiftProyecto floor is `4.8.1` (`Package.swift:27`), not 4.6.1 as first stated.
+
+**Established 2026-07-26:**
+
+- `Gender` is referenced **only** in `SwiftProyecto/Models/CastMember.swift` within that repo.
 - **No** podcast `PROJECT.md` contains `seasons:` or `variants:`. The layered cast model in
   `VariantResolver`/`SeasonDefinition` is unused in production.
-- `VariantResolver` and `SeasonDefinition` have no consumers outside SwiftProyecto's own sources
-  and tests.
 - 12 of 16 podcast repos contain `cast:`; 2 have no `PROJECT.md` at all.
-- ~~Produciesta's real cast surface is exactly 2 files.~~ **Corrected:** 6 source files, 8 test
-  files, 6 fixtures, 2 manifests, and the Xcode project. `apps/produciesta-old/` is legacy.
-- ~~`ProjectBrowser` displays cast.~~ **Corrected:** the target declares `dependencies: []` and
-  does not link SwiftProyecto — it cannot reference `CastMember`.
-- ~~`proyecto generate` writes cast into PROJECT.md.~~ **Corrected:** no
-  `CastMemberData` → `CastMember` conversion exists anywhere in `Sources/`.
+- Produciesta's real cast surface is **6 source files**, 8 test files, 6 fixtures, 2 manifests, and
+  the Xcode project — not the 2 files first claimed.
+- ~~`ProjectBrowser` displays cast.~~ **Corrected:** the target declares `dependencies: []` and does
+  not link SwiftProyecto — it cannot reference `CastMember`.
+- ~~`proyecto generate` writes cast into PROJECT.md.~~ **Corrected:** no `CastMemberData` →
+  `CastMember` conversion exists anywhere in `Sources/`.
 - ~~`mergingCastVoices`~~ **Corrected:** the symbol is `mergingCast(_:forProvider:)` (`:645`).
 - `VariantResolver.resolveCast` is `private static`, not public API.
 - Produciesta's file access is **directory-scoped** (bookmark on the folder, not the file), so a
   sibling `CAST.md` is already readable and writable. No entitlement changes needed.
-- A diamond dependency (`SwiftEchada → SwiftVoxAlta → SwiftHablare → SwiftProyecto 4.x`) would
-  break SwiftPM resolution at step 7. SwiftHablare's SwiftProyecto dependency is a phantom with
-  zero source references.
 - `CastExtractor` returns `[String]` — no `CastMember` coupling, safe to leave in SwiftProyecto.
-- `AnyCodable` is a public SwiftProyecto type (`Models/AnyCodable.swift`).
+- `AnyCodable` is a public SwiftProyecto type (`Models/AnyCodable.swift:33`).
 - YAML comes from `marcprux/universal` — pure Swift, no heavy transitive deps.
-- `.vox` paths are already project-relative file references in `voices.voxalta`; the "file
-  references in CAST.md" requirement is largely satisfied by relocation.
-- SwiftEchada's `SwiftEchada` library target depends only on SwiftProyecto (no ML/voice deps —
-  those are `EchadaCLICore`), so it is a viable home for a cast processor that GUIs can import.
 - `confessions/PROJECT.md` uses the **scalar** `voices: voxalta: voices/NARRATOR.vox` form and
   carries a per-member `bio:` key — both must survive seeding (EC-7) untouched.

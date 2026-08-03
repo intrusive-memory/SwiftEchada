@@ -19,7 +19,33 @@ target_version: 1.0.0
 
 ## Revision Note
 
-This is the **second pass**. The first draft (commit `0228d97`) was validated against the SwiftEchada
+### Third pass — 2026-08-01: the cast model left this repo
+
+`EC-1` … `EC-5` no longer belong to SwiftEchada. The cast model, parser, and serializer go into
+**SwiftReparto**, a new leaf package with no `intrusive-memory` dependencies, consumed as siblings
+by SwiftEchada (voice assets) and SwiftSemblanzas (visual assets). Two findings forced it:
+`SwiftProyecto → SwiftEchada` is a package-level SwiftPM cycle, so Proyecto could only ever delete
+its cast surface rather than delegate; and a second consumer appeared that would otherwise have to
+link the whole MLX/TTS stack to read a character's name.
+
+**What changed in this plan:**
+
+| | Before | After |
+|---|---|---|
+| WU-1 | Build `CastMember`/`Gender`/`CastDocument`/`CastMarkdownParser` here | **Adopt** SwiftReparto: depend on it, shed SwiftProyecto from the library target, hand the additive merge over |
+| Gate | none before Sortie 1 | **HG-0** — SwiftReparto 1.0.0 must be tagged and published first |
+| Sorties | 13 | 13 (Sorties 1–2 rescoped, 3–13 unchanged in substance) |
+| Human gates | 2 | 3 |
+| Open questions | 8 | 1 (`OQ-9`); seven resolved — see § Open Questions |
+
+**What did not change:** WU-2 through WU-5 stand as written. The non-destructive rollout, the
+verify/prune split, the command rewiring, the docs, and the `confessions` pilot are all unaffected
+by *where* the model lives — they only care that a `CastMarkdownParser` exists and that writes are
+additive. Sortie numbering is unchanged so references from the sibling repo docs still resolve.
+
+### Second pass — 2026-07-26
+
+This was the **second pass**. The first draft (commit `0228d97`) was validated against the SwiftEchada
 source tree, `Package.swift`, the Makefile, SwiftProyecto's sources, SwiftHablare's manifest, and
 `~/Projects/podcasts/confessions/PROJECT.md`. Corrections are recorded inline and summarised in
 [§ Corrections to the First Draft](#corrections-to-the-first-draft). Sortie numbering is unchanged so
@@ -31,15 +57,20 @@ that references from the sibling repo docs still resolve.
 
 **Source**: `REQUIREMENTS-cast-md-changes.md` (the controlling document for a three-repo effort).
 
-**In scope** — SwiftEchada requirements `EC-1` … `EC-22`, corresponding to sequencing steps 1–3, plus
-the release that step 3 gates on, plus the `confessions` pilot rollout (`PC-1`, `PC-2`, `PC-5`,
+**In scope** — SwiftEchada requirements `EC-1a` … `EC-22`, corresponding to sequencing steps 2–4,
+plus the release that step 4 gates on, plus the `confessions` pilot rollout (`PC-1`, `PC-2`, `PC-5`,
 `PC-6`) that validates the whole chain.
+
+**Newly out of scope as of 2026-08-01** — `EC-1` … `EC-5`, the cast model and parser themselves.
+They are SwiftReparto's `RQ-1` … `RQ-18` and have their own mission in that repo. This mission
+*consumes* them and is gated on their release (HG-0).
 
 **Out of scope** — deliberately excluded, each has its own owner:
 
 | Excluded | Owner | Why |
 |---|---|---|
-| Step 0 — SwiftHablare phantom `SwiftProyecto` dependency | `pkg/SwiftHablare` | Different repo. **Verified phantom**: `Package.swift:65-66,74` declares it, `Sources/` and `Tests/` reference it zero times. Blocks step 7 only, never this mission — see OQ-7 |
+| **Step 1 — SwiftReparto 1.0.0** (`RQ-1` … `RQ-18`) | `pkg/SwiftReparto` | Different repo, and it does not exist yet (404 confirmed 2026-08-01). **Hard-blocks this entire mission** — see HG-0 |
+| Step 0 — SwiftHablare phantom `SwiftProyecto` dependency | `pkg/SwiftHablare` | Different repo. **Verified phantom**: `Package.swift:65-66,74` declares it, `Sources/` and `Tests/` reference it zero times. Blocks step 8 only, never this mission — see OQ-7 |
 | Step 4 — remaining 11 podcast repos | `~/Projects/podcasts/*` | `PC-6` forbids rolling out past the pilot until `confessions` is eyeballed by a human. See OQ-6 |
 | Step 5 — Produciesta repoint | `apps/Produciesta` | Own requirements doc (`PD-1` … `PD-40`) |
 | Step 6 — `cast:` removal across podcast repos | `~/Projects/podcasts/*` | Gated on step 5 shipping. Removing before Produciesta is repointed is silent data loss (§6) |
@@ -50,10 +81,13 @@ the release that step 3 gates on, plus the `confessions` pilot rollout (`PC-1`, 
 **Standing constraints** (from `CLAUDE.md` and the requirements doc, apply to every sortie):
 
 - Never `swift build` / `swift test`. Use `make build` / `make test`. Test scheme is `SwiftEchada-Package`.
-- Targeted imports in files that see both modules: `import struct SwiftEchada.CastMember`, not
-  `import SwiftEchada`. Both `SwiftProyecto` and `SwiftEchada` export `CastMember` and `Gender` for
-  the whole transition window.
-- Dependency direction is `SwiftEchada → SwiftProyecto`, never the reverse (`D6`).
+- Targeted imports in files that see both modules: `import struct SwiftReparto.CastMember`, not
+  `import SwiftReparto`. Both `SwiftProyecto` and `SwiftReparto` export `CastMember` and `Gender`
+  for the whole transition window, until SwiftProyecto 5.0 lands at step 8.
+- **SwiftReparto is a leaf** (`D6`): it depends on no `intrusive-memory` package. Nothing this
+  mission does may add one. `SwiftProyecto → SwiftEchada` remains a cycle and stays forbidden.
+- **One writer** (`D8`): only SwiftReparto serializes `CAST.md`. This repo mutates a `CastDocument`
+  and hands it back. No YAML construction, no text splicing, no field-by-field front-matter rebuild.
 - **No sortie in this mission modifies any file outside this repository**, with the two explicitly
   scoped exceptions of Sortie 11 (`~/.claude/skills/`) and Sortie 13
   (`~/Projects/podcasts/confessions`). In particular `pkg/SwiftProyecto`, `pkg/SwiftHablare`, and
@@ -68,9 +102,9 @@ sortie must pay.
 
 | Consequence | Origin | Paid by |
 |---|---|---|
-| The `SwiftEchada` **library** target gains a second dependency, `marcprux/universal`. This invalidates `CLAUDE.md` rule 4 ("Library depends only on SwiftProyecto") and `AGENTS.md`/`Docs/dependencies.md` alongside it | `EC-4` mandates it; §10 justifies keeping the cast processor in the library so GUIs can import it | Sortie 2 (manifest + `make generate-deps`), Sortie 10 (rule 4 rewrite) |
-| `Sources/EchadaCLICore/Generated/DependencyVersions.swift` is generated from the manifest and is CI-drift-checked (`make verify-deps`) | Adding any dependency changes it | Sortie 2 must run `make generate-deps` and commit the regenerated file |
-| `CharacterProfile.gender`'s type changes module from `SwiftProyecto.Gender` to `SwiftEchada.Gender`. `CharacterProfile` is public API of the light `SwiftEchada` library that `ProduciestaCore` already links | `EC-1` moves `Gender` | Sortie 1 must keep the spelling `Gender` unqualified at all four in-repo use sites so the change is source-compatible |
+| The `SwiftEchada` **library** target swaps its only dependency: SwiftProyecto out, SwiftReparto in. This invalidates `CLAUDE.md` rule 4 ("Library depends only on SwiftProyecto") and `AGENTS.md`/`Docs/dependencies.md` alongside it. **Revised 2026-08-01** — `marcprux/universal` is no longer added here; it is SwiftReparto's dependency (`RQ-16`) | `EC-1a`. Verified: the library imports SwiftProyecto at exactly two sites for exactly two symbols, both of which move | Sortie 1 (manifest + `make generate-deps`), Sortie 10 (rule 4 rewrite → "depends only on SwiftReparto") |
+| `Sources/EchadaCLICore/Generated/DependencyVersions.swift` is generated from the manifest and is CI-drift-checked (`make verify-deps`) | Adding or removing any dependency changes it | Sortie 1 must run `make generate-deps` and commit the regenerated file |
+| `CharacterProfile.gender`'s type changes module from `SwiftProyecto.Gender` to **`SwiftReparto.Gender`**. `CharacterProfile` is public API of the light `SwiftEchada` library that `ProduciestaCore` already links | `EC-1b`; the model now lives in SwiftReparto | Sortie 1 task 4 must keep the spelling `Gender` unqualified at all four in-repo use sites so the change is source-compatible |
 
 ---
 
@@ -78,11 +112,14 @@ sortie must pay.
 
 | Work Unit | Directory | Sorties | Layer | Dependencies | Intra-layer parallelism |
 |-----------|-----------|---------|-------|-------------|--------------------------|
-| WU-1 Cast Model & Parser | `Sources/SwiftEchada/` | 2 | 0 | none | none — Sortie 2 needs Sortie 1's types |
+| WU-1 Adopt SwiftReparto | `Package.swift`, `Sources/SwiftEchada/` | 2 | 0 | **HG-0** (SwiftReparto 1.0.0 published) | none — Sortie 2 needs Sortie 1's manifest |
 | WU-2 Non-Destructive Rollout Commands | `Sources/EchadaCLICore/` | 4 | 1 | WU-1 | none dispatched (see § Parallelism) |
 | WU-3 Command Rewiring | `Sources/EchadaCLICore/`, `Tests/SwiftEchadaTests/` | 3 | 2 | WU-2 | none — each sortie's exit gate is a green build |
 | WU-4 Documentation & Skills | repo root, `Docs/`, `~/.claude/skills/` | 2 | 3 | WU-3 | **Sortie 10 ∥ Sortie 11** — disjoint file sets, neither builds |
 | WU-5 Release & Pilot Rollout | repo root, `~/Projects/podcasts/confessions` | 2 | 4 | WU-4 | none — Sortie 13 needs Sortie 12's tag, with HG-1 between |
+
+**Human gates**: HG-0 (SwiftReparto published) before WU-1 · HG-1 (publish the SwiftEchada release)
+between Sortie 12 and 13 · HG-2 (eyeball the pilot) after Sortie 13.
 
 ---
 
@@ -96,9 +133,10 @@ other's artifacts and produce non-reproducible pass/fail.
 | Pair | Verdict | Reasoning |
 |---|---|---|
 | **Sortie 10 ∥ Sortie 11** | **SAFE — dispatch in parallel** | Sortie 10 touches only files inside the repo; Sortie 11 touches only `~/.claude/skills/`. Zero file overlap, and neither sortie builds or tests. This is the only genuinely free parallelism in the plan |
-| Sortie 4 ∥ Sortie 5 | **Code-disjoint but build-serialized — keep sequential** | Sortie 5's verification command reads `CAST.md` and the legacy `cast:`; it depends on Sortie 2 and Sortie 3, not on Sortie 4. The file sets barely overlap (`EchadaCLI.swift` subcommand list only). But both gate on `make test`, so parallel dispatch requires the supervisor to own a single serialized build. The coordination cost exceeds the saving for two sorties |
-| Sortie 1 ∥ Sortie 3 | **UNSAFE** | Sortie 3's legacy reader decodes into `CastMember`, which Sortie 1 creates |
+| Sortie 4 ∥ Sortie 5 | **Code-disjoint but build-serialized — keep sequential** | Sortie 5's verification command reads `CAST.md` and the legacy `cast:`; it depends on Sorties 1 and 3, not on Sortie 4. The file sets barely overlap (`EchadaCLI.swift` subcommand list only). But both gate on `make test`, so parallel dispatch requires the supervisor to own a single serialized build. The coordination cost exceeds the saving for two sorties |
+| Sortie 1 ∥ Sortie 3 | **UNSAFE** | Sortie 3's legacy reader decodes into `CastMember`, which Sortie 1 makes available by adding the SwiftReparto dependency |
 | Anything ∥ Sortie 12 | **UNSAFE** | Sortie 12 mutates `Package.swift` and the version, and its exit gate is a clean release build |
+| Anything ∥ Sortie 1 | **UNSAFE** | Sortie 1 mutates `Package.swift` and regenerates `DependencyVersions.swift`; every later sortie builds against its resolved graph |
 
 **Dependency ordering was re-verified and is correct as declared**, with one refinement recorded
 above: Sortie 5 does not actually depend on Sortie 4, and its entry criteria have been relaxed to say
@@ -106,91 +144,103 @@ so. Everything else is a genuine data or artifact dependency.
 
 ---
 
-## WU-1 — Cast Model & Parser
+## WU-1 — Adopt SwiftReparto
 
-Requirements `EC-1` … `EC-5`. Purely additive: SwiftProyecto still owns `cast:` when this work unit
-lands. Nothing outside `Sources/SwiftEchada/` and `Package.swift` changes behaviour.
+**Rescoped 2026-08-01.** This work unit used to *build* the cast model here. It no longer does.
+`EC-1` … `EC-5` moved to **SwiftReparto** (`RQ-1` … `RQ-18`), a new leaf package, and are tracked by
+that repo's own mission. What remains in this repo is **adoption**: depend on SwiftReparto, shed the
+SwiftProyecto dependency from the light library target, and hand the additive merge over.
 
-### Sortie 1: Move `CastMember` and `Gender` into the SwiftEchada library
+**This work unit cannot start until SwiftReparto 1.0.0 is tagged and published.** Not a local
+checkout — a real release. See HG-0.
 
-**Entry criteria**:
-- [ ] First sortie — no prerequisites
-- [ ] OQ-3 (`AnyCodable` vendor vs. import) resolved
+### 🚦 HG-0 — Human Gate: SwiftReparto 1.0.0 exists
 
-**Tasks**:
-1. Create `Sources/SwiftEchada/CastMember.swift` defining `public struct CastMember` and
-   `public enum Gender`, ported from
-   `pkg/SwiftProyecto/Sources/SwiftProyecto/Models/CastMember.swift` (`Gender` at `:32`,
-   `CastMember` at `:103` — read-only reference; **do not modify that repo**). Conformances:
-   `Codable`, `Sendable`, `Equatable`, `Hashable`, `Identifiable`.
-2. Preserve every decoding form currently in the wild: `voicePrompt` plus the legacy
-   `voiceDescription` alias; `voices` as both a scalar (`voxalta: path.vox`) and an array
-   (`voxalta: [path.vox]`).
-3. Add the new optional `portrait: String?` field (`D4`, §3.2) — project-relative path, manually
-   populated, no generator.
-4. Preserve `extraKeys` lossless round-trip (`EC-2`) — unknown per-member keys such as `bio:` decode
-   into `extraKeys` and re-emit verbatim.
-5. Satisfy `EC-5` by resolving `AnyCodable` per OQ-3's decision, without introducing any
-   SwiftProyecto → SwiftEchada reverse edge.
-6. **Absorb the `Gender` module change.** `Gender` is used unqualified at four in-repo sites today —
-   `Sources/SwiftEchada/CharacterProfile.swift:10,26` and
-   `Sources/EchadaCLICore/VoicePromptSynthesizer.swift:83,121`. Leave those spellings unqualified so
-   they bind to the new `SwiftEchada.Gender` without edits, and confirm no site qualifies it as
-   `SwiftProyecto.Gender`. (Note: the requirements doc's §10 claim that `Gender` has zero usages
-   outside `CastMember.swift` is true **within SwiftProyecto only** — it is false for this repo.)
-7. Add `Tests/SwiftEchadaTests/CastMemberTests.swift` with one named test per form:
-   `testDecodesLegacyVoiceDescriptionAsVoicePrompt`, `testDecodesScalarVoicesForm`,
-   `testDecodesArrayVoicesForm`, `testPortraitRoundTrips`, `testUnknownKeyBioSurvivesRoundTrip`,
-   `testAbsentOptionalFieldsAreNotEmitted`.
+**Blocks**: Sortie 1, and therefore everything.
 
-**Exit criteria**:
-- [ ] `Sources/SwiftEchada/CastMember.swift` exists and declares `public struct CastMember` and `public enum Gender`
-- [ ] `git status --porcelain` lists no path outside this repository
-- [ ] `Tests/SwiftEchadaTests/CastMemberTests.swift` contains all six test function names listed in task 7, and all six pass
-- [ ] `make build` exits 0
-- [ ] `make test` exits 0
+The entire mission is downstream of a package that does not exist yet
+(`intrusive-memory/SwiftReparto` — confirmed 404 on 2026-08-01). A human must stand up the repo,
+run its mission (`RQ-1` … `RQ-18`), tag `v1.0.0`, and add it to `collection.json`.
+
+**Gate criteria**:
+- [ ] `intrusive-memory/SwiftReparto` exists and `v1.0.0` is tagged
+- [ ] Its `Package.swift` declares zero `intrusive-memory` dependencies (`RQ-INV-1`)
+- [ ] Its round-trip SHA-256 test passes against the `confessions` fixture (`RQ-11`)
+- [ ] `collection.json` carries an entry for it
 
 ---
 
-### Sortie 2: `CastDocument`, `CastMarkdownParser`, and the `universal` dependency
+### Sortie 1: Depend on SwiftReparto; drop SwiftProyecto from the library target
 
 **Entry criteria**:
-- [ ] Sortie 1 exit criteria met (`CastMember` and `Gender` exist in `Sources/SwiftEchada/`)
-- [ ] OQ-4 (`type:` discriminator collision) resolved
+- [ ] HG-0 passed
+- [ ] `OQ-3` resolved — settled by force: SwiftReparto vendors `AnyCodable` (`RQ-13`), because its
+      leaf invariant forbids importing SwiftProyecto. Nothing for this sortie to decide
 
 **Tasks**:
-1. Add `marcprux/universal` to `Package.swift`'s `dependencies` and to the `SwiftEchada` **library**
-   target only (`EC-4`). Pin the same major line SwiftProyecto uses (`5.3.0`, `.upToNextMajor`) so the
-   two never diverge in the resolved graph.
-2. Run `make generate-deps` and commit the regenerated
-   `Sources/EchadaCLICore/Generated/DependencyVersions.swift`. `make verify-deps` reports drift in CI;
-   an uncommitted regeneration produces a permanent CI warning.
-3. Create `Sources/SwiftEchada/CastDocument.swift` — `public struct CastDocument` holding
-   `cast: [CastMember]`, `body: String`, and front-matter-level fields including `type` (`EC-3`).
-4. Create `Sources/SwiftEchada/CastMarkdownParser.swift` with `parse(fileURL:)`, `parse(content:)`,
-   `generate(document:)`, and `write(document:to:)` (`EC-4`).
-5. Port `renderCast` (`pkg/SwiftProyecto/Sources/SwiftProyecto/Utilities/ProjectMarkdownParser.swift:280`)
-   and `replacingCastBlock` (**`:352`** — the first draft said `:346`) plus the YAML emit/escape logic.
-   Port `replacingCastBlock` deliberately: it is the CAST.md write-back mechanism, and its
-   line-span-splice semantics are what prevent the issue-#44/#55 failure class.
-6. Implement the file-acceptance rule per OQ-4's resolution so that a `.md` file carrying
-   `type: cast` but no `cast:` key is not mistaken for a cast document.
-7. Expose the parse entry point that Sortie 3 will reuse for the legacy read path, so front-matter
-   YAML decoding exists in exactly one place.
-8. Add `Tests/SwiftEchadaTests/CastMarkdownParserTests.swift` against a checked-in fixture
-   `Tests/SwiftEchadaTests/Fixtures/confessions-shaped-CAST.md` (3 members, one `bio:`, scalar
-   `voices:`, a `## Major Characters` body): parse→generate byte-stability; body preserved verbatim
-   across a write-back that mutates only `cast:`; `extraKeys` (`bio:`) preserved; a `type: cast` file
-   with no `cast:` key is rejected.
+1. Add `intrusive-memory/SwiftReparto` `.upToNextMajor(from: "1.0.0")` to `Package.swift`'s
+   `dependencies`, and the `SwiftReparto` product to the `SwiftEchada` library target
+   (`Package.swift:43-51`), the `EchadaCLICore` target (`:52-67`), and the `SwiftEchadaTests` test
+   target (`:79-90`).
+2. **Remove** `.product(name: "SwiftProyecto", package: "SwiftProyecto")` from the **`SwiftEchada`
+   library target only** (`Package.swift:46`). Leave it on `EchadaCLICore` (`:56`) — that target
+   reads `PROJECT.md` for `title`, `episodesDir`, `filePattern`, `tts.model` and always will
+   (`EC-12`). Leave the package-level dependency declaration (`:26-27`) alone.
+3. Retarget the two library-target imports: `Sources/SwiftEchada/CharacterProfile.swift:2` and
+   `Sources/SwiftEchada/CharacterMerger.swift:1` change `import SwiftProyecto` → `import SwiftReparto`.
+   These are the **only** two sites, for the only two symbols (`Gender`, `CastMember`) — verified
+   2026-08-01.
+4. **Absorb the `Gender` module change without source churn** (`EC-1b`). `Gender` is used unqualified
+   at four in-repo sites — `Sources/SwiftEchada/CharacterProfile.swift:10,26` and
+   `Sources/EchadaCLICore/VoicePromptSynthesizer.swift:83,121`. Leave every spelling unqualified so
+   it rebinds to `SwiftReparto.Gender` with no edit, and confirm no site qualifies it as
+   `SwiftProyecto.Gender`. `CharacterProfile.gender` is public API of the light library that
+   `ProduciestaCore` already links — an unqualified spelling keeps the change source-compatible.
+5. Run `make generate-deps` and commit the regenerated
+   `Sources/EchadaCLICore/Generated/DependencyVersions.swift`. `make verify-deps` drift-checks it in
+   CI; an uncommitted regeneration produces a permanent CI warning.
+6. In files that now see both modules, use targeted imports per `CLAUDE.md` rule 3
+   (`import struct SwiftReparto.CastMember`). Both SwiftProyecto and SwiftReparto export `CastMember`
+   and `Gender` until SwiftProyecto 5.0 lands (step 8) — a blanket double import is a compile error.
 
 **Exit criteria**:
-- [ ] `Package.swift` declares `marcprux/universal` and only the `SwiftEchada` target lists it
-- [ ] `git diff --exit-code Sources/EchadaCLICore/Generated/DependencyVersions.swift` exits 0 after `make generate-deps` (i.e. it was regenerated and committed)
-- [ ] `Sources/SwiftEchada/CastDocument.swift` and `Sources/SwiftEchada/CastMarkdownParser.swift` exist
-- [ ] `CastMarkdownParser` exposes all four methods named in task 4
-- [ ] A test asserts `generate(parse(f)) == f` byte-for-byte for `Fixtures/confessions-shaped-CAST.md`
-- [ ] A test asserts the markdown body region is byte-identical after a cast-only mutation
-- [ ] A test asserts `parse` rejects a `type: cast` file with no `cast:` key
+- [ ] `Package.swift` declares `SwiftReparto`; the `SwiftEchada` library target lists it and **not** `SwiftProyecto`
+- [ ] `grep -rn 'import SwiftProyecto' Sources/SwiftEchada/` returns nothing
+- [ ] `git diff --exit-code Sources/EchadaCLICore/Generated/DependencyVersions.swift` exits 0 after `make generate-deps`
+- [ ] `CharacterProfile.gender` is still spelled `Gender`, unqualified, and still public
+- [ ] `git status --porcelain` lists no path outside this repository
+- [ ] `make build` exits 0 and `make test` exits 0
+
+---
+
+### Sortie 2: Hand the additive merge to SwiftReparto; keep screenplay discovery
+
+**Entry criteria**:
+- [ ] Sortie 1 exit criteria met
+
+**Rationale**: `CharacterMerger` does two separable jobs. The *additive merge* — reconcile a
+discovered roster against an existing one, keeping every existing field, never pruning — is the
+reference semantics for `EC-8`, and SwiftSemblanzas will need the identical guarantee when it writes
+`appearance` back. It belongs in SwiftReparto as `RQ-14`. The *screenplay-discovery* half — turning
+`[[CharacterInfo]]` into candidate members — is voice-pipeline work coupled to `CastExtractor` and
+stays here (`EC-1c`, `EC-17`).
+
+**Tasks**:
+1. Confirm SwiftReparto 1.0.0's `merging(_:)` (`RQ-14`) matches the current
+   `CharacterMerger.merge(extracted:existingCast:)` reconciliation semantics exactly: case- and
+   whitespace-insensitive matching on `character`, existing members keep every field, new members
+   appended, **never prunes**. If it diverges, stop and fix SwiftReparto — do not fork the behaviour.
+2. Reduce `Sources/SwiftEchada/CharacterMerger.swift` to the discovery half: dedupe `[[CharacterInfo]]`
+   into candidate `CastMember` values, then delegate reconciliation to SwiftReparto's `merging(_:)`.
+3. Keep `CharacterMerger`'s public signature stable if possible; if it must change, record it in
+   `CHANGELOG.md` under the 1.0.0 breaking-changes heading.
+4. Update `Tests/SwiftEchadaTests/CharacterMergerTests.swift` for the new seam. Keep the
+   never-prunes assertion **here** as well as in SwiftReparto — this is the behaviour Produciesta's
+   `CastWriter` gets wrong (`X-1`), and a local regression test is what stops it regressing here.
+
+**Exit criteria**:
+- [ ] `CharacterMerger` delegates reconciliation to SwiftReparto rather than reimplementing it
+- [ ] A test asserts merging a one-character discovery against a twelve-character existing roster yields twelve
 - [ ] `make build` exits 0 and `make test` exits 0
 
 ---
@@ -212,17 +262,18 @@ and removal.
 ### Sortie 3: Legacy `cast:` read path
 
 **Entry criteria**:
-- [ ] Sortie 2 exit criteria met (`CastMarkdownParser` builds and round-trips)
+- [ ] Sortie 1 exit criteria met (SwiftReparto is a resolved dependency, so `CastMarkdownParser` and `CastMember` are available)
 
 **Tasks**:
 1. Create a legacy read path (`EC-6`) that extracts `cast:` from a `PROJECT.md` front matter **as raw
    YAML**, decoding into `[CastMember]` without touching `ProjectFrontMatter.cast`.
-2. Reuse Sortie 2 task 7's front-matter decode rather than duplicating YAML plumbing.
+2. Reuse **SwiftReparto's** front-matter decode (`RQ-10`) rather than duplicating YAML plumbing. This
+   repo adds no YAML dependency of its own.
 3. Mark it clearly as temporary — it is deleted at step 7 once SwiftProyecto 5.0 ships. Put a
    greppable marker in the doc comment (e.g. `// LEGACY-CAST-READ: delete at SwiftProyecto 5.0`).
 4. Handle the absent case: a `PROJECT.md` with no `cast:` returns empty, not an error.
-5. Support both scalar and array `voices` forms and the `voiceDescription` alias, matching Sortie 1's
-   decoding.
+5. Support both scalar and array `voices` forms and the `voiceDescription` alias — these come free
+   from SwiftReparto's `CastMember` decoding (`RQ-3`); assert them here rather than reimplementing.
 6. Add a checked-in fixture `Tests/SwiftEchadaTests/Fixtures/confessions-PROJECT.md` — a copy of
    `~/Projects/podcasts/confessions/PROJECT.md` (309 lines; `type: project`, 3 cast members, scalar
    `voices:`, one `bio:`, a large `episodes_index` appSection, `introFile`/`outroFile`). This is the
@@ -471,10 +522,12 @@ file sets, neither builds.
 1. Update `AGENTS.md`, `CLAUDE.md`, and `README.md` for the ownership split: `PROJECT.md` is
    SwiftProyecto's config, `CAST.md` is SwiftEchada's.
 2. **Rewrite `CLAUDE.md` rule 4.** It currently reads "Library depends only on SwiftProyecto." That is
-   false once Sortie 2 lands. New wording must name both `SwiftProyecto` and `marcprux/universal` and
-   keep the real invariant: no ML/voice dependencies in the library target.
-3. Update `Docs/dependencies.md` — not in `EC-19`'s list, but it is the dependency table of record and
-   `universal` is a new library-target dependency.
+   false once Sortie 1 lands. New wording: **"Library depends only on SwiftReparto"** — a smaller and
+   better-defended claim, since SwiftReparto is a leaf with no `intrusive-memory` dependencies. Keep
+   the real invariant explicit: no ML/voice dependencies in the library target; those are
+   `EchadaCLICore`'s, which also keeps SwiftProyecto for project-level fields.
+3. Update `Docs/dependencies.md` — not in `EC-19`'s list, but it is the dependency table of record.
+   SwiftReparto is new; SwiftProyecto leaves the library target and stays on `EchadaCLICore`.
 4. Update `Docs/architecture.md` with the `CastDocument` / `CastMarkdownParser` layer and the
    `SwiftEchada → SwiftProyecto` boundary.
 5. Update `Docs/api.md` with `CastMember`, `Gender`, `CastDocument`, `CastMarkdownParser`, the new
@@ -613,139 +666,38 @@ missions.
 
 <!-- Consumed by Pass 1 of refine (`refine-blockers`). Each entry MUST be resolved before refinement can proceed past Pass 1. -->
 
-### OQ-1: CAST.md location — convention or declared in PROJECT.md? And may `--cast` escape the project directory?
-**Affects**: Sortie 4, Sortie 7, Sortie 8
-**Question**: Two coupled sub-decisions. (a) Is `CAST.md` located purely by convention (sibling of
-`PROJECT.md`, overridable with `--cast`), or may `PROJECT.md` declare `castFile: CAST.md`? (b) May
-`--cast` point outside the project directory, and if so, does `.vox` output follow the `CAST.md`
-directory or stay with `PROJECT.md`?
-**Source**: `REQUIREMENTS-cast-md-changes.md` §9 Q1 (lines 438–441); §3.3 path semantics (lines 123–126); `EC-16` (lines 215–217)
-**Why blocking**: Sortie 4 cannot implement `--cast` resolution and Sortie 7 cannot mirror it without
-(a). `CastVoiceGenerator` holds a single `projectDirectory` used for both screenplay discovery and
-`.vox` output; (b) decides whether that field splits in two.
-**Recommendation**: (a) Convention only — `--cast` defaults to `CAST.md` resolved as a sibling of
-`--project` when relative; no `castFile:` key. (b) Constrain `--cast` to the project directory:
-reject a resolved `--cast` whose parent differs from `--project`'s parent, with an explicit error.
-**Rationale**: (a) is the requirements doc's own recommendation, and a `castFile:` key would put a
-cast concern back into `PROJECT.md`, contradicting `D1`. (b) keeps §3.3's "relative to the directory
-containing CAST.md" and `EC-16`'s "identical in practice — same directory" simultaneously true; the
-first draft left them silently in tension.
+**Seven of the original eight were resolved on 2026-08-01.** One new question replaces them, and it
+belongs to SwiftReparto rather than to this mission.
 
-### OQ-2: Command names for verification (`EC-9`) and removal (`EC-10`)
-**Affects**: Sortie 4, Sortie 5, Sortie 6, Sortie 8, Sortie 9, Sortie 10
-**Question**: What are the two command verbs? They must read as clearly separate and clearly
-non-destructive vs. destructive, and must not be confused with `echada cast`, the full-pipeline
-orchestrator.
-**Source**: `REQUIREMENTS-cast-md-changes.md` §9 Q3 (lines 448–452)
-**Why blocking**: Sorties 5 and 6 cannot name a file, register a subcommand, or write a greppable exit
-criterion without the verb. Sorties 4, 8, 9, and 10 reference the names in error messages, negative
-assertions, `CLIWiringTests`, and the changelog.
-**Recommendation**: `echada verify cast` and `echada prune cast`, each a top-level container command
-parallel to `GenerateCommand`, registered in `EchadaCLI.swift:31-33`'s subcommand array (today
-`[VoiceCommand, CastCommand, GenerateCommand, TestVoiceCommand]`).
-**Rationale**: The requirements doc recommends exactly this. `generate cast` / `verify cast` /
-`prune cast` reads as three verbs over one noun, keeps `echada cast` unambiguously the orchestrator,
-and reuses the container pattern already in `GenerateCommand.swift`.
+### Resolved
 
-### OQ-3: `AnyCodable` — vendor into SwiftEchada or import from SwiftProyecto?
-**Affects**: Sortie 1
-**Question**: `EC-5` requires `AnyCodable` in the `SwiftEchada` target. Vendor a copy or consume
-SwiftProyecto's public type?
-**Source**: `REQUIREMENTS-cast-md-changes.md` §9 Q4 (lines 453–456)
-**Why blocking**: Sortie 1 cannot write `CastMember.extraKeys` without deciding which `AnyCodable` it
-stores, and a wrong choice silently changes round-trip fidelity.
-**Recommendation**: Import from SwiftProyecto. Do not vendor.
-**Rationale**: `Package.swift:44-51` already makes `SwiftProyecto` the sole dependency of the
-`SwiftEchada` target, and `EC-12` keeps SwiftEchada reading `PROJECT.md` indefinitely, so the
-dependency cannot be dropped anyway. `AnyCodable` is public at
-`SwiftProyecto/Models/AnyCodable.swift:33` — verified. Vendoring risks divergence in the exact JSON
-round-trip semantics that `EC-2` and `EC-18` depend on, and `ProjectCastWriteBack`'s doc comment
-records what that divergence looks like in production.
+| # | Question | Resolution |
+|---|---|---|
+| **OQ-1** | CAST.md location; may `--cast` escape the project directory? | **Convention only, and no.** No `castFile:` key in `PROJECT.md`. `CAST.md` always sits in the project directory; `--cast` is a **filename override** and rejects any value containing a path separator or resolving outside `--project`'s directory. `CastVoiceGenerator.projectDirectory` never splits in two (`EC-13`) |
+| **OQ-2** | Command names for `EC-9` and `EC-10` | **`echada verify cast`** and **`echada prune cast`** — top-level containers parallel to `GenerateCommand`, registered in `EchadaCLI.swift:31-33` |
+| **OQ-3** | `AnyCodable` — vendor or import? | **Vendored, by SwiftReparto** (`RQ-13`). Settled by force: the leaf invariant forbids Reparto importing SwiftProyecto. Reparto's copy is canonical; collapsing the twins is a follow-on (`DEF-5`). Nothing for this mission to decide |
+| **OQ-4** | `type: cast` collides with the requirements docs | **Require both `type: cast` and a `cast:` key** (`RQ-1`); requirements docs relabelled `type: requirements` — **done** in all three repos on 2026-08-01. This is now SwiftReparto's parser rule, not Sortie 2's |
+| **OQ-5** | Skill update timing vs. the embedded signed binary | **Update both skills now, with runtime capability detection** — probe for the `verify cast` subcommand and fall back to the `PROJECT.md` path when absent. Correct for both the Homebrew `echada` and the older binary inside a shipped `Produciesta.app` (`X-4`) |
+| **OQ-6** | Rollout scope — pilot, or all 12 repos? | **Pilot only.** This mission ends at HG-2. `PC-6` forbids going further until a human eyeballs `confessions`; `PC-3` forbids cross-repo batching. The remaining 11 are a follow-on mission |
+| **OQ-7** | SwiftHablare step 0 timing | **Do it now, out of band**, as an independent SwiftHablare patch release — not a sortie here. Verified phantom (`Package.swift:65-66,74` declares it; `grep -rn SwiftProyecto Sources Tests` returns nothing), still present 2026-08-01. Not blocking for this mission: this repo's SwiftProyecto floor stays at `4.8.1` |
+| **OQ-8** | Who runs the pilot against the live content repo? | **Agent-executed, commit-only, push-never** — exactly as Sortie 13 is written: clean-tree precondition, SHA-256 assertion on `PROJECT.md`, single-file commit, no push. HG-2 is the human review; `git revert` is a one-liner |
 
-### OQ-4: `type: cast` discriminator collides with the requirements docs themselves
-**Affects**: Sortie 2
-**Question**: The repo-wide frontmatter policy forces `type:` onto every `.md`, so the three sibling
-`REQUIREMENTS-cast-md-changes.md` files also declare `type: cast`. Narrow the discriminator to
-`type: echada-cast`, or have `CastMarkdownParser` additionally require a `cast:` key?
-**Source**: `REQUIREMENTS-cast-md-changes.md` §3.1 (lines 103–106) and §9 Q6 (lines 459–465)
-**Why blocking**: Sortie 2's file-acceptance rule is the deliverable. A naive `type: cast` scan
-currently matches this plan's own source document.
-**Recommendation**: Require **both** `type: cast` and a `cast:` key in `CastMarkdownParser`, and
-relabel the three requirements docs to `type: requirements`.
-**Rationale**: The requirements doc recommends this, and it matches Produciesta's own convention
-(`Docs/REQUIREMENTS-fcpxml-export.md` uses `type: requirements`). Note: `breakdown` deliberately left
-`REQUIREMENTS-cast-md-changes.md`'s `type: cast` untouched pending this decision — relabelling is part
-of resolving it, and the sibling docs in `pkg/SwiftProyecto` and `apps/Produciesta` need the same
-treatment, which is a cross-repo edit this mission is otherwise forbidden from making.
+### Still open
 
-### OQ-5: `EC-20` skill update timing vs. the embedded signed `echada` binary
-**Affects**: Sortie 11
-**Question**: `X-4` states the `echada` binary is embedded and code-signed inside `Produciesta.app`,
-so an `EC-20` skill update depends on a Produciesta *release*, not just a doc edit. Do the skills get
-updated now, or held until Produciesta ships (step 5, out of this mission's scope)?
-**Source**: `REQUIREMENTS-cast-md-changes.md` §5 `X-4` (lines 351–352) and `EC-20` (lines 223–224)
-**Why blocking**: Sortie 11 either runs or is cut. If it runs unconditionally it points `cast-voices`
-at a `CAST.md` path that the signed binary inside the currently-shipped `Produciesta.app` cannot
-produce, breaking every agent that invokes the skill.
-**Recommendation**: Update both skills now, with runtime capability detection — probe
-`echada --version` or the presence of the OQ-2 verification subcommand, and fall back to the
-`PROJECT.md` path when the available binary predates the HG-1 release.
-**Rationale**: The skills are global and run against Homebrew-installed `echada` as well as the
-embedded copy. A hard cut breaks the Homebrew path needlessly; an unconditional edit breaks the
-embedded path. Capability detection is the only branch correct for both, and it costs one shell check.
-
-### OQ-6: Rollout scope — pilot only, or all 12 podcast repos?
-**Affects**: Sortie 13
-**Question**: Does this mission stop after the `confessions` pilot, or roll `CAST.md` generation out
-to all 12 podcast repos carrying a `cast:` block?
-**Source**: `REQUIREMENTS-cast-md-changes.md` §6 step 4 (line 380), §7 `PC-3`/`PC-4`/`PC-6` (lines 403–410)
-**Why blocking**: Sortie 13's exit criteria assert that no repo outside `confessions` was modified. If
-the full rollout is in scope, WU-5 needs eleven more sorties and a decision on `common-voices`
-(`PC-4` — confirmed present under `~/Projects/podcasts/` and not a git repo).
-**Recommendation**: Pilot only. This mission ends at HG-2. Track the remaining 11 repos as a follow-on
-mission.
-**Rationale**: `PC-6` forbids rolling out further until the pilot's `CAST.md` is eyeballed by a human —
-a gate this mission cannot pass on its own. `PC-3` forbids cross-repo batching, so the remainder is
-eleven independent commits with no shared context: a poor fit for one mission.
-
-### OQ-7: SwiftHablare step 0 — do it now, out of band, or defer to step 7?
-**Affects**: Sortie 12, and every follow-on mission that reaches step 7
-**Question**: The §5 diamond (`SwiftEchada → SwiftVoxAlta → SwiftHablare → SwiftProyecto 4.x` vs.
-`SwiftEchada → SwiftProyecto 5.x`) makes SwiftPM resolution fail outright at step 7. Deleting
-SwiftHablare's phantom `SwiftProyecto` dependency dissolves it. Do we do that now as a separate
-patch release, or leave it for whoever runs step 7?
-**Source**: `REQUIREMENTS-cast-md-changes.md` §5 "Diamond dependency" (lines 282–300) and §9 Q10 (lines 484–486)
-**Why blocking**: It is **not** blocking for Sortie 12 — verified: `Package.swift` keeps the
-SwiftProyecto floor at `4.8.1`, so nothing this mission ships can trip the diamond, and Sortie 12's
-exit criteria now assert that. It **is** blocking for planning: if the answer is "defer", the step-7
-follow-on mission needs five sequenced releases across four repos instead of one, and that has to be
-budgeted now rather than discovered later.
-**Recommendation**: Do it now, out of band, as an independent SwiftHablare patch release — not as a
-sortie in this mission.
-**Rationale**: Verified phantom: `pkg/SwiftHablare/Package.swift:65-66,74` declares the dependency and
-wires the product into a target, while `grep -rn SwiftProyecto Sources Tests` returns nothing. Removal
-is a manifest-only, source-zero-impact patch that shrinks every downstream graph and is worth doing
-regardless. Bundling it into this mission would violate the standing constraint that no sortie touches
-another repo.
-
-### OQ-8: Who runs the pilot against the live `confessions` content repo?
-**Affects**: Sortie 13
-**Question**: Sortie 13 executes real commands and creates a real commit in
-`~/Projects/podcasts/confessions`, a live content repo outside this worktree. Is an autonomous agent
-authorised to do that, or does a human run the pilot with the agent only producing the checklist?
-**Source**: `REQUIREMENTS-cast-md-changes.md` §7 `PC-1` (line 399) says the rollout is performed by the
-commands, not by hand; `PC-6` (lines 408–410) requires human eyeballing. `EC-7`'s rationale (lines
-171–176) spells out the silent-desync failure mode if seeding goes wrong.
-**Why blocking**: The sortie is either dispatched to an agent with write access to a content repo, or
-rewritten as a human runbook. The exit criteria differ, and so does the blast radius: a bad seed
-silently desynchronises three characters' `.vox` files from their stated `voicePrompt`, with no error
-and no diff to notice.
-**Recommendation**: Agent-executed, but commit-only and push-never — exactly as Sortie 13 is written
-(clean tree precondition, SHA-256 assertion on `PROJECT.md`, single-file commit, no push). HG-2 is the
-human review, and `git revert` is a one-liner if it is wrong.
-**Rationale**: `PC-1` explicitly wants the commands to do the rollout rather than hand-editing, and
-`PC-2`'s separate-commits rule exists precisely so this is revertible. The residual risk is bounded by
-the no-push rule: nothing leaves the machine before HG-2.
+### OQ-9: `Appearance` shape — one LoRA per character, or many?
+**Affects**: HG-0, and therefore every sortie
+**Owner**: **SwiftReparto** (`RQ-Q2`), not this mission — recorded here because HG-0 gates on it
+**Question**: SwiftReparto `RQ-5` reserves `appearance: { portrait, lora, triggerWord }` — a single
+adapter per character. SwiftSemblanzas' own `REQUIREMENTS.md` §4.1 models `LoRAAsset` with `rank`,
+`steps`, `checksum`, `defaultScale`, `version`, and `compatibleEngines`, and one character may
+accumulate several across retrainings and base-model changes. If the real shape is `[LoRAAsset]`,
+`RQ-5` is wrong.
+**Why it matters here**: adding a field to a released schema is routine; **changing a field's shape
+is a breaking change to a file format that by then exists in 12 content repos.** This mission
+consumes SwiftReparto 1.0.0 and inherits whatever it ships.
+**Recommendation**: SwiftSemblanzas' author answers before SwiftReparto tags 1.0.0. If the answer is
+uncertain, model `appearance.loras` as an array from the start — an array of one is cheap, and a
+scalar that needs to become an array is not.
 
 ---
 
@@ -755,11 +707,13 @@ Not open questions — decided, but each sortie owner should know them.
 
 | Risk | Impact here | Mitigation in this plan |
 |---|---|---|
-| **Diamond dependency** (§5) | None. Verified: `Package.swift` pins SwiftProyecto `.upToNextMajor(from: "4.8.1")` and this mission never raises it, so SwiftHablare's `4.0.0..<5.0.0` stays satisfiable | Sortie 12 exit criteria assert the floor is unchanged. OQ-7 decides the out-of-band fix. (The first draft said "the current 4.6.1 floor" — it is 4.8.1) |
-| **Transition-window type ambiguity** — both modules export `CastMember` **and `Gender`** until SwiftProyecto 5.0 | Every file importing both modules is a latent compile error. `CharacterProfile.gender` silently changes module | Targeted imports in the standing constraints; Sortie 1 task 6 pins the four in-repo `Gender` sites; Sortie 9 task 4 sweeps the suite; `Docs/gotchas.md` records it in Sortie 10 |
-| **`X-1` — `CastWriter` prunes** (`apps/Produciesta`) | Not this repo's code, but `EC-8`'s additive-only guarantee is the contract Produciesta must conform to | Sortie 4 proves additive-only with an idempotency test, giving Produciesta a reference behaviour to match |
+| **Diamond dependency** (§5) | None. Verified: `Package.swift` pins SwiftProyecto `.upToNextMajor(from: "4.8.1")` and this mission never raises it, so SwiftHablare's `4.0.0..<5.0.0` stays satisfiable. **SwiftReparto does not participate** — it has zero `intrusive-memory` dependencies, so Sortie 1 adds no edges to that graph | Sortie 12 exit criteria assert the floor is unchanged. OQ-7 resolved: fix out of band |
+| **Transition-window type ambiguity** — `SwiftProyecto` and **`SwiftReparto`** both export `CastMember` and `Gender` until SwiftProyecto 5.0 (step 8) | Every file importing both modules is a latent compile error. `CharacterProfile.gender` silently changes module, and it is public API that `ProduciestaCore` already links | Targeted imports in the standing constraints; Sortie 1 task 4 pins the four in-repo `Gender` sites unqualified; Sortie 9 task 4 sweeps the suite; `Docs/gotchas.md` records it in Sortie 10 |
+| **HG-0 is a hard external block** | SwiftReparto does not exist. No sortie in this mission can start until someone creates the repo, runs its mission, and tags 1.0.0. X-2 means a local checkout will not substitute | HG-0 gate criteria; WU-1 preamble states it in the first paragraph |
+| **`RQ-Q2` / OQ-9 lands in a released file format** | If `appearance` ships the wrong shape, fixing it later is a breaking change to files already committed across 12 content repos | OQ-9 recommends answering before SwiftReparto tags, and defaulting to an array if unsure |
+| **`X-1` — `CastWriter` prunes** (`apps/Produciesta`) | Not this repo's code, but the additive-only guarantee (`RQ-14`/`EC-8`) is the contract Produciesta must conform to | `RQ-14` makes it the shared library's behaviour rather than a per-consumer convention; Sortie 2 task 4 keeps a local never-prunes regression test; Sortie 4 proves idempotency end to end |
 | **Issue #44/#55 class** — field-by-field front matter rebuild deletes unknown keys (`introFile`) and corrupts nested ones (`episodes_index` → `NSDictionary.description` dump; 309 lines → 103) | Directly reproducible by `EC-10` if it rebuilds instead of excising | Sortie 6 task 2 reuses the already-proven `ProjectCastWriteBack.applying(cast: [], to:)`; Sorties 4, 6, and 8 assert SHA-256 identity |
-| **Dependency-table drift** — `DependencyVersions.swift` is generated and CI-drift-checked | Adding `universal` changes it; an uncommitted regeneration produces a permanent CI warning | Sortie 2 task 2 and Sortie 12 task 3 |
+| **Dependency-table drift** — `DependencyVersions.swift` is generated and CI-drift-checked | Adding SwiftReparto and dropping SwiftProyecto from the library target changes it; an uncommitted regeneration produces a permanent CI warning | Sortie 1 task 5 and Sortie 12 task 3 |
 
 ---
 
@@ -771,18 +725,18 @@ Every item below was verified against the source before changing.
 |---|---|---|---|
 | 1 | No mention of `Sources/EchadaCLICore/ProjectCastWriteBack.swift` | It is the shared surgical write-back used by all three `generate` stages, and its `applying(cast: [], to:)` already implements `EC-10`'s excision | WU-2 preamble, Sortie 4 task 4, Sortie 6 task 2, Sortie 7 task 3 |
 | 2 | "Remove the `parser.write(frontMatter:body:to:)` call at `GenerateCastCommand.swift:171`" | No such call exists. The write is `ProjectCastWriteBack.write(cast:to:using:)` at `:172` | Sortie 4 task 4 |
-| 3 | `replacingCastBlock` at `ProjectMarkdownParser.swift:346` | It is at `:352` (`renderCast` at `:280` was correct) | Sortie 2 task 5 |
+| 3 | `replacingCastBlock` at `ProjectMarkdownParser.swift:346` | It is at `:352` (`renderCast` at `:280` was correct) | Ported by SwiftReparto (`RQ-10`), not by this mission |
 | 4 | "Sortie 12 ships against the current `4.6.1` floor" | The floor is `4.8.1` | Risk table, WU-5 preamble |
 | 5 | Sortie 12 task 2: run `/toggle-sibling-libraries` | `Package.swift` has no `sibling()` helper and no local path deps — already release-shaped. The task was a no-op that could only cause churn | Sortie 12 task 2 inverted into an assertion |
 | 6 | Sortie 12 included tag / PR / merge / GitHub release | Publication is a human action; an agent must not push or merge | Split: Sortie 12 = prep, HG-1 = human publish gate |
 | 7 | Sortie 9: "`make test` exits 0 with zero skipped tests" | Unachievable — `ModelBackedGenerationTests:159,221,262` are `.enabled(if:)`-gated on TTS weights / Foundation Models and predate this mission | Sortie 9 exit criteria now allow exactly those three and forbid new gates |
-| 8 | No task for the generated dependency table | Adding `universal` changes `Generated/DependencyVersions.swift`, which `make verify-deps` drift-checks in CI | Sortie 2 task 2, Sortie 12 task 3 |
-| 9 | `EC-19`'s eight docs only | `Docs/dependencies.md` and `CLAUDE.md` rule 4 ("Library depends only on SwiftProyecto") are both invalidated by Sortie 2 | Sortie 10 tasks 2–3 |
+| 8 | No task for the generated dependency table | Swapping SwiftProyecto for SwiftReparto on the library target changes `Generated/DependencyVersions.swift`, which `make verify-deps` drift-checks in CI | Sortie 1 task 5, Sortie 12 task 3 |
+| 9 | `EC-19`'s eight docs only | `Docs/dependencies.md` and `CLAUDE.md` rule 4 ("Library depends only on SwiftProyecto") are both invalidated by Sortie 1 | Sortie 10 tasks 2–3 |
 | 10 | `EC-21`'s ten test files only | `CLIWiringTests.swift` asserts the subcommand tree that Sorties 5–6 change | Sortie 5 task 6, Sortie 6 task 7, Sortie 9 task 2 |
 | 11 | Sortie 5 entry criterion: "Sortie 4 exit criteria met" | `EC-9` verification depends on the parser and the legacy reader, not on the `generate cast` rewiring. Ordering is build-serialization, not data dependency | Sortie 5 entry criteria; § Parallelism |
 | 12 | WU-4: "no intra-layer parallelism identified" | Sorties 10 and 11 have disjoint file sets and neither builds — genuinely parallel-safe | Work Units table, § Parallelism |
 | 13 | Sortie 1 exit: `grep -c 'import SwiftEchada' pkg/SwiftProyecto/Sources -r` returns `0` | That path does not exist inside this worktree, and `grep -c -r` prints per-file counts, not `0`. The criterion could never pass | Replaced with `git status --porcelain` lists nothing outside this repo |
-| 14 | Requirements §10: "`Gender` has zero references outside `CastMember.swift`" carried forward unexamined | True within SwiftProyecto only. SwiftEchada uses `Gender` at four sites, one of which is public API (`CharacterProfile.gender`) | Sortie 1 task 6, § Decision consequences, risk table |
+| 14 | Requirements §10: "`Gender` has zero references outside `CastMember.swift`" carried forward unexamined | True within SwiftProyecto only. SwiftEchada uses `Gender` at four sites, one of which is public API (`CharacterProfile.gender`) | Sortie 1 task 4, § Decision consequences, risk table |
 | 15 | Seeding fidelity described generically | `confessions` has no `actor`/`gender`/`language`/`portrait`; a naive emitter would write `null`s and change the data | Sortie 4 task 3 and its exit criterion |
 | 16 | Vague doc exit criteria ("contains no instruction to…") | Not machine-verifiable | Sorties 10 and 11 now require an enumerated, justified list in the completion notes |
 | 17 | Fixtures unnamed | Round-trip and `EC-11` criteria referenced "a fixture" with no path | `Fixtures/confessions-shaped-CAST.md` and `Fixtures/confessions-PROJECT.md` named and pinned |
@@ -796,12 +750,12 @@ Every in-scope requirement maps to at least one sortie. **No requirement is unco
 
 | Req | Sortie(s) | Req | Sortie(s) |
 |---|---|---|---|
-| EC-1 | 1 | EC-12 | 4, 7 |
-| EC-2 | 1, 2 | EC-13 | 4, 7, 8 |
-| EC-3 | 2 | EC-14 | 7 |
-| EC-4 | 2 | EC-15 | 8 |
-| EC-5 | 1 | EC-16 | 7 |
-| EC-6 | 3 | EC-17 | 7 |
+| EC-1 … EC-5 | **out of scope** → SwiftReparto `RQ-1`…`RQ-18`, gated by HG-0 | EC-12 | 4, 7 |
+| EC-1a | 1 | EC-13 | 4, 7, 8 |
+| EC-1b | 1 | EC-14 | 7 |
+| EC-1c | 2 | EC-15 | 8 |
+| — | — | EC-16 | 7 |
+| EC-6 | 3 | EC-17 | 2, 7 |
 | EC-7 | 4 | EC-18 | 2, 8 |
 | EC-8 | 4 | EC-19 | 10 |
 | EC-9 | 5 | EC-20 | 11 |
@@ -820,9 +774,11 @@ Every in-scope requirement maps to at least one sortie. **No requirement is unco
 |--------|-------|
 | Work units | 5 |
 | Total sorties | 13 |
-| Human gates | 2 (HG-1 publish, HG-2 pilot review) |
-| Requirements in scope | 26 (`EC-1`…`EC-22`, `PC-1`, `PC-2`, `PC-5`, `PC-6`) |
+| Human gates | **3** (HG-0 SwiftReparto published, HG-1 publish this release, HG-2 pilot review) |
+| Requirements in scope | 24 (`EC-1a`…`EC-1c`, `EC-6`…`EC-22`, `PC-1`, `PC-2`, `PC-5`, `PC-6`) |
+| Requirements moved out | 5 (`EC-1`…`EC-5` → SwiftReparto `RQ-1`…`RQ-18`) |
 | Requirements with no covering sortie | 0 |
-| Atomic tasks | 84 |
-| Open questions | 8 (6 carried forward, 2 new) |
+| Atomic tasks | ~78 |
+| Open questions | **1** (`OQ-9`, owned by SwiftReparto); 8 resolved 2026-08-01 |
+| Blocked on | **SwiftReparto 1.0.0, which does not exist yet.** Nothing here starts until HG-0 passes |
 | Dependency structure | layers 0 → 4; one parallel-safe pair (Sortie 10 ∥ Sortie 11); all other ordering is a genuine data or build dependency |
