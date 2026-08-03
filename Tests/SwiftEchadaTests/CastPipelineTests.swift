@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import SwiftProyecto
+import SwiftReparto
 import Testing
 
 @testable import EchadaCLICore
@@ -71,14 +72,18 @@ struct CastPipelineTests {
     try await cmd.run()
 
     // Stage 0 (bootstrap) + Stage 1 (`generate cast`) ran for real: PROJECT.md
-    // now exists with a populated cast list.
+    // now exists, and the discovered roster was written to CAST.md beside it
+    // (never into PROJECT.md itself).
     #expect(FileManager.default.fileExists(atPath: projectFile.path))
     let (frontMatter, _) = try ProjectMarkdownParser().parse(fileURL: projectFile)
-    #expect(frontMatter.cast?.map(\.character) == ["MAYA", "NOAH"])
+    #expect(frontMatter.cast == nil)
+    let castFile = projectDir.appendingPathComponent("CAST.md")
+    let roster = try CastMarkdownParser().parse(fileURL: castFile).cast
+    #expect(roster.map(\.character) == ["MAYA", "NOAH"])
 
     // Nothing from the model-backed stages ran: no voicePrompts were written...
-    for member in frontMatter.cast ?? [] {
-      #expect(member.voiceDescription == nil)
+    for member in roster {
+      #expect(member.voicePrompt == nil)
       #expect(member.voices.isEmpty)
     }
     // ...and `generate vox` never got far enough to create its output directory.
@@ -119,18 +124,22 @@ struct CastPipelineTests {
       episodesDir: "episodes",
       filePattern: FilePattern("*.fountain"),
       cast: [
-        CastMember(character: "GHOST", actor: "Stale Actor"),
-        CastMember(character: "MAYA", actor: "Existing Actor"),
+        ProyectoCastMember(character: "GHOST", actor: "Stale Actor"),
+        ProyectoCastMember(character: "MAYA", actor: "Existing Actor"),
       ]
     )
     try ProjectMarkdownParser().write(frontMatter: seededFrontMatter, body: "", to: projectFile)
 
-    // Without --force: default merge only adds newly-discovered characters;
-    // GHOST (no longer in the source) is left in place.
+    let castFile = projectDir.appendingPathComponent("CAST.md")
+    let projectBefore = try String(contentsOf: projectFile, encoding: .utf8)
+
+    // Without --force: the absent CAST.md is seeded from PROJECT.md's legacy
+    // `cast:` block and the default merge only adds newly-discovered
+    // characters; GHOST (no longer in the source) is left in place.
     let withoutForce = try CastCommand.parse(["--project", projectFile.path, "--dry-run"])
     try await withoutForce.run()
-    let (afterDefault, _) = try ProjectMarkdownParser().parse(fileURL: projectFile)
-    #expect(afterDefault.cast?.map(\.character).sorted() == ["GHOST", "MAYA", "NOAH"])
+    let afterDefault = try CastMarkdownParser().parse(fileURL: castFile).cast
+    #expect(afterDefault.map(\.character).sorted() == ["GHOST", "MAYA", "NOAH"])
 
     // With --force: the orchestrator's cascading force reaches the cast
     // stage, which re-syncs to exactly what's discovered now -- GHOST drops.
@@ -138,13 +147,17 @@ struct CastPipelineTests {
       "--project", projectFile.path, "--dry-run", "--force",
     ])
     try await withForce.run()
-    let (afterForce, _) = try ProjectMarkdownParser().parse(fileURL: projectFile)
-    #expect(afterForce.cast?.map(\.character).sorted() == ["MAYA", "NOAH"])
+    let afterForce = try CastMarkdownParser().parse(fileURL: castFile).cast
+    #expect(afterForce.map(\.character).sorted() == ["MAYA", "NOAH"])
 
     // MAYA's downstream fields survive the re-sync (force preserves fields
     // for characters that persist -- it only drops those that vanished).
-    let maya = afterForce.cast?.first { $0.character == "MAYA" }
+    let maya = afterForce.first { $0.character == "MAYA" }
     #expect(maya?.actor == "Existing Actor")
+
+    // PROJECT.md (legacy `cast:` block included) is never touched by the
+    // cast stage.
+    #expect(try String(contentsOf: projectFile, encoding: .utf8) == projectBefore)
   }
 
   @Test(

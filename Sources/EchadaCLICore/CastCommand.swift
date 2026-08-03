@@ -39,7 +39,9 @@ public struct CastCommand: AsyncParsableCommand {
       afterward.
 
       Step 1 — `generate cast`: heuristically discovers character names from the \
-      screenplay source and merges them into PROJECT.md's `cast:` list.
+      screenplay source and merges them into the project's CAST.md roster \
+      (seeded from a legacy `cast:` block in PROJECT.md when CAST.md is absent; \
+      PROJECT.md itself is never modified by this stage).
 
       Step 2 — `generate prompt`: writes a `voicePrompt` for each cast member \
       from their dialogue, using the on-device Foundation Model.
@@ -55,7 +57,7 @@ public struct CastCommand: AsyncParsableCommand {
       Cross-stage flags: `--character` forwards to the prompt and vox stages; \
       `--tts-model`, `--language`, and `--accent` forward to the vox stage. \
       `--dry-run` performs the offline bootstrap and cast-discovery steps (writing \
-      the discovered cast to PROJECT.md) but stops before the model-backed prompt \
+      the discovered cast to CAST.md) but stops before the model-backed prompt \
       and vox stages.
 
       Example:
@@ -123,6 +125,9 @@ public struct CastCommand: AsyncParsableCommand {
     fflush(stdout)
     var castStage = GenerateCastCommand()
     castStage.project = project
+    // Property wrappers on a directly-constructed command are only realized by
+    // parsing or assignment — every property must be set before run() reads it.
+    castStage.cast = "CAST.md"
     castStage.force = force
     castStage.dryRun = false  // cast is offline/cheap; run it for real so the
     // discovered cast is written before the model stages.
