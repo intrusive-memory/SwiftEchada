@@ -9,6 +9,63 @@ All notable changes to SwiftEchada will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-08-03
+
+### Changed — Breaking
+
+- **Cast data moves out of PROJECT.md into its own file, CAST.md** (the CAST.md
+  extraction). `PROJECT.md` is [SwiftProyecto](https://github.com/intrusive-memory/SwiftProyecto)'s
+  config file — project identity, episode discovery (`episodesDir`,
+  `filePattern`), and `tts` config. `CAST.md` is
+  [SwiftReparto](https://github.com/intrusive-memory/SwiftReparto)'s config
+  file — the cast roster (`character`, `actor`, `gender`, `language`,
+  `voicePrompt`, `voices`) plus a free markdown body preserved byte-for-byte.
+  All three `generate` stages (`cast`, `prompt`, `vox`) now read and write the
+  roster in CAST.md; `.vox` output paths are recorded under `voices.voxalta`
+  in CAST.md, relative to its directory. SwiftReparto is the single writer of
+  CAST.md — `echada` mutates a `CastDocument` and hands it back, never
+  building YAML or splicing text itself.
+
+- **`PROJECT.md`'s `cast:` block is now read-only legacy.** It is consulted
+  only through `LegacyProjectCastReader` — to seed a brand-new CAST.md
+  verbatim (voice prompts, bios, and voice pointers included) and to power
+  `verify cast`. Nothing writes it except `echada prune cast`'s excision. A
+  PROJECT.md without a `cast:` key is the expected end state, not an error.
+  The reader is deleted at SwiftProyecto 5.0, when `cast:` leaves the
+  PROJECT.md schema entirely.
+
+- **The library target depends only on SwiftReparto.** The
+  `SwiftEchada → SwiftProyecto` dependency edge is gone: SwiftProyecto (4.8.1)
+  survives on `EchadaCLICore` alone, for project-level PROJECT.md fields.
+  SwiftReparto is a leaf with no `intrusive-memory` dependencies, so no
+  package cycle around cast data is possible. `CharacterProfile.gender` and
+  `CharacterMerger`'s rosters are now SwiftReparto's `Gender`/`CastMember`
+  (previously SwiftProyecto's); the enum cases and YAML wire format are
+  unchanged, but consumers that named the module in source must import
+  SwiftReparto. `CastMember.voices` is now `[String: [String]]` (scalar wire
+  form still decodes), the legacy `voiceDescription:` key still decodes into
+  `voicePrompt`, and undeclared per-member keys (`bio:`, the reserved
+  `appearance.portrait`) are preserved verbatim through `extraKeys`.
+
+### Added
+
+- **`echada verify cast`** — read-only migration gate. Compares the CAST.md
+  roster against the legacy `cast:` block in PROJECT.md and reports
+  membership divergences, per-field mismatches on matched characters, and
+  `.vox` pointers that do not resolve on disk. Never writes either file;
+  exits non-zero on any divergence so it can gate CI or a rollout loop.
+- **`echada prune cast`** — explicit, gated removal of the migrated legacy
+  `cast:` block from PROJECT.md. Requires CAST.md to exist beside PROJECT.md
+  and the `verify cast` check to pass; excises only the `cast:` line span,
+  preserving every other byte of the file. Idempotent, supports `--dry-run`,
+  and is never invoked by any other command. Migration is therefore two-phase
+  and non-destructive: `generate cast` (create/seed CAST.md) →
+  `verify cast` (human gate) → `prune cast` (remove the legacy block).
+- **`--cast <filename>` flag** on every roster-touching command
+  (`cast`, `generate cast|prompt|vox`, `verify cast`, `prune cast`). Default
+  `CAST.md`; a bare filename resolved beside `--project` — path separators
+  are rejected.
+
 ## [0.17.0] - 2026-07-31
 
 ### Changed

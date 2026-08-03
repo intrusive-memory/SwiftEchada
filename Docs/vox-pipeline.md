@@ -134,13 +134,15 @@ Phase B (Base model loaded once)
 ```
 
 **Skip conditions**:
-- No `voiceDescription` on CastMember → skip
+- No `voicePrompt` on CastMember → skip
 - `.vox` file already exists AND `--force-regenerate` not set → skip
 - Error during generation → log, skip, continue batch
 
-**File locations**: `<project-dir>/voices/<SANITIZED_NAME>.vox`
+**File locations**: `voices/<SANITIZED_NAME>.vox`, beside `CAST.md`
 - Spaces in character names → underscores
-- Path stored in `CastMember.voices["voxalta"]`
+- Path recorded under `voices.voxalta` in **CAST.md** (`CastMember.voices["voxalta"]`),
+  relative to CAST.md's directory. The roster write-back goes through
+  SwiftReparto's `CastMarkdownGenerator` — PROJECT.md is never touched
 
 ---
 
@@ -170,7 +172,7 @@ audio/qwen3-tts-1.7b-sample.wav
 
 | Context | Resolution Order |
 |---------|-----------------|
-| `echada cast` | `--tts-model` flag > `tts.model` in PROJECT.md frontmatter > `"1.7b"` |
+| `echada cast` / `echada generate vox` | `--tts-model` flag > `tts.model` in PROJECT.md frontmatter (project-level config — read-only) > `"1.7b"` |
 | `echada voice` | `--tts-model` flag > `"1.7b"` |
 | `echada test-voice` | `--tts-model` flag > `"1.7b"` |
 
