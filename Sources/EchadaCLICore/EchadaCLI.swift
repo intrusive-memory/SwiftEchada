@@ -29,11 +29,16 @@ public struct EchadaCLI: AsyncParsableCommand {
       Read-only checks live under the `verify` namespace — `echada verify \
       cast` compares CAST.md against the legacy `cast:` block in PROJECT.md \
       and exits non-zero on any divergence, without writing anything.
+
+      The explicit cleanup step lives under the `prune` namespace — `echada \
+      prune cast` strips the migrated legacy `cast:` block from PROJECT.md \
+      once `verify cast` passes, leaving every other byte untouched. It is \
+      never run automatically.
       """,
     version: EchadaCLI.versionReport,
     subcommands: [
       VoiceCommand.self, CastCommand.self, GenerateCommand.self,
-      VerifyCommand.self, TestVoiceCommand.self,
+      VerifyCommand.self, PruneCommand.self, TestVoiceCommand.self,
     ]
   )
 

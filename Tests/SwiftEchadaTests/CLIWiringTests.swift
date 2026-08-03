@@ -13,6 +13,8 @@ import Testing
 ///     │   └── vox
 ///     ├── verify
 ///     │   └── cast  (read-only migration gate, EC-9)
+///     ├── prune
+///     │   └── cast  (explicit legacy `cast:` removal, EC-10)
 ///     ├── cast      (pipeline orchestrator)
 ///     ├── voice
 ///     └── test-voice (hidden)
@@ -72,6 +74,24 @@ struct CLIWiringTests {
     #expect(rendered.contains("verify"))
   }
 
+  @Test("EchadaCLI.subcommands contains prune, making `prune cast` reachable from the root")
+  func rootSubcommandsContainPrune() {
+    let names = Set(
+      EchadaCLI.configuration.subcommands.map {
+        $0.configuration.commandName ?? String(describing: $0)
+      })
+    #expect(names.contains("prune"))
+    // Also confirm by identity, not just by name string.
+    let identifiers = Set(EchadaCLI.configuration.subcommands.map(ObjectIdentifier.init))
+    #expect(identifiers.contains(ObjectIdentifier(PruneCommand.self)))
+  }
+
+  @Test("Root --help output lists the prune verb")
+  func rootHelpListsPrune() {
+    let rendered = EchadaCLI.helpMessage()
+    #expect(rendered.contains("prune"))
+  }
+
   // MARK: - `generate` container wiring
 
   @Test("GenerateCommand's subcommands are exactly cast/prompt/vox, with no default")
@@ -106,6 +126,21 @@ struct CLIWiringTests {
 
     let identifiers = Set(VerifyCommand.configuration.subcommands.map(ObjectIdentifier.init))
     #expect(identifiers == [ObjectIdentifier(VerifyCastCommand.self)])
+  }
+
+  // MARK: - `prune` container wiring
+
+  @Test("PruneCommand's subcommands are exactly cast, with no default")
+  func pruneContainerSubcommandsExactlyCast() {
+    #expect(PruneCommand.configuration.defaultSubcommand == nil)
+
+    let names = PruneCommand.configuration.subcommands.map {
+      $0.configuration.commandName ?? String(describing: $0)
+    }
+    #expect(names == ["cast"])
+
+    let identifiers = Set(PruneCommand.configuration.subcommands.map(ObjectIdentifier.init))
+    #expect(identifiers == [ObjectIdentifier(PruneCastCommand.self)])
   }
 
   // MARK: - Non-empty abstract/discussion, mentioning inputs/outputs
@@ -156,6 +191,16 @@ struct CLIWiringTests {
         discussion: VerifyCastCommand.configuration.discussion,
         mustMention: ["CAST.md", "PROJECT.md", ".vox"]
       ),
+      (
+        name: "prune", abstract: PruneCommand.configuration.abstract,
+        discussion: PruneCommand.configuration.discussion,
+        mustMention: ["PROJECT.md", "CAST.md", "cast", "verify"]
+      ),
+      (
+        name: "prune cast", abstract: PruneCastCommand.configuration.abstract,
+        discussion: PruneCastCommand.configuration.discussion,
+        mustMention: ["PROJECT.md", "CAST.md", "verify", "--dry-run"]
+      ),
     ] as [(name: String, abstract: String, discussion: String, mustMention: [String])]
   )
   func commandHasNonEmptyDocumentation(
@@ -189,6 +234,8 @@ struct CLIWiringTests {
       (name: "vox", type: GenerateVoxCommand.self as ParsableCommand.Type),
       (name: "verify", type: VerifyCommand.self as ParsableCommand.Type),
       (name: "cast", type: VerifyCastCommand.self as ParsableCommand.Type),
+      (name: "prune", type: PruneCommand.self as ParsableCommand.Type),
+      (name: "cast", type: PruneCastCommand.self as ParsableCommand.Type),
     ] as [(name: String, type: ParsableCommand.Type)]
   )
   func helpRenderingContainsNameAndDiscussion(
