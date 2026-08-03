@@ -1,5 +1,5 @@
 import Foundation
-import SwiftProyecto
+import SwiftReparto
 import Testing
 
 @testable import EchadaCLICore
@@ -68,7 +68,7 @@ struct NonEnglishPassthroughTests {
   func baseDescriptionCastableForAllNonEnglish() {
     let member = CastMember(
       character: "NARRATOR",
-      voiceDescription: "a warm, measured narrator",
+      voicePrompt: "a warm, measured narrator",
       voices: [:]
     )
     #expect(castableLanguages(for: member, requestedLanguages: Self.languages) == Self.languages)
@@ -78,7 +78,7 @@ struct NonEnglishPassthroughTests {
   func localizedVoiceCastableForItsLanguage(_ language: String) {
     let member = CastMember(
       character: "NARRATOR",
-      voiceDescription: nil,
+      voicePrompt: nil,
       voices: [language: ["localized \(language) voice"]]
     )
     #expect(castableLanguages(for: member, requestedLanguages: [language]) == [language])
@@ -90,7 +90,7 @@ struct NonEnglishPassthroughTests {
   func localizedPromptSelectedPerLanguage(_ language: String) {
     let member = CastMember(
       character: "NARRATOR",
-      voiceDescription: "base english prompt",
+      voicePrompt: "base english prompt",
       voices: [language: ["prompt for \(language)"]]
     )
     #expect(localizedVoicePrompt(for: member, language: language) == "prompt for \(language)")
@@ -101,7 +101,7 @@ struct NonEnglishPassthroughTests {
     // e.g. a request for "pt-BR" picks up a documented voices["pt"] entry.
     let member = CastMember(
       character: "NARRATOR",
-      voiceDescription: nil,
+      voicePrompt: nil,
       voices: [pair.base: ["prompt for \(pair.base)"]]
     )
     #expect(localizedVoicePrompt(for: member, language: pair.regional) == "prompt for \(pair.base)")

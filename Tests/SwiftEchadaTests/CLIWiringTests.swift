@@ -174,12 +174,12 @@ struct CLIWiringTests {
       (
         name: "generate prompt", abstract: GeneratePromptCommand.configuration.abstract,
         discussion: GeneratePromptCommand.configuration.discussion,
-        mustMention: ["PROJECT.md", "voicePrompt"]
+        mustMention: ["PROJECT.md", "CAST.md", "voicePrompt", "echada generate cast"]
       ),
       (
         name: "generate vox", abstract: GenerateVoxCommand.configuration.abstract,
         discussion: GenerateVoxCommand.configuration.discussion,
-        mustMention: ["PROJECT.md", "voicePrompt", ".vox"]
+        mustMention: ["PROJECT.md", "CAST.md", "voicePrompt", ".vox", "echada generate cast"]
       ),
       (
         name: "verify", abstract: VerifyCommand.configuration.abstract,
@@ -267,18 +267,30 @@ struct CLIWiringTests {
     #expect(rendered.contains(firstDiscussionWords))
   }
 
+  // MARK: - `--cast` option surface (EC-13)
+
+  @Test("Rendered --help for generate prompt and generate vox lists --cast")
+  func generatePromptAndVoxHelpListCastOption() {
+    for type in [GeneratePromptCommand.self as ParsableCommand.Type, GenerateVoxCommand.self] {
+      let rendered = EchadaCLI.helpMessage(for: type)
+      #expect(rendered.contains("--cast"), "\(type) --help should list --cast")
+    }
+  }
+
   // MARK: - Thin parse wiring test
 
   @Test("GeneratePromptCommand parses its full flag surface")
   func generatePromptCommandParses() throws {
     let cmd = try GeneratePromptCommand.parse([
       "--project", "PROJECT.md",
+      "--cast", "ROSTER.md",
       "--character", "ALICE",
       "--force",
       "--dry-run",
       "--verbose",
     ])
     #expect(cmd.project == "PROJECT.md")
+    #expect(cmd.cast == "ROSTER.md")
     #expect(cmd.character == "ALICE")
     #expect(cmd.force)
     #expect(cmd.dryRun)
@@ -289,9 +301,20 @@ struct CLIWiringTests {
   func generatePromptCommandParsesWithDefaults() throws {
     let cmd = try GeneratePromptCommand.parse(["--project", "PROJECT.md"])
     #expect(cmd.project == "PROJECT.md")
+    #expect(cmd.cast == "CAST.md")
     #expect(cmd.character == nil)
     #expect(!cmd.force)
     #expect(!cmd.dryRun)
     #expect(!cmd.verbose)
+  }
+
+  @Test("GenerateVoxCommand's --cast defaults to CAST.md and accepts an override")
+  func generateVoxCommandCastOptionParses() throws {
+    let defaulted = try GenerateVoxCommand.parse(["--project", "PROJECT.md"])
+    #expect(defaulted.cast == "CAST.md")
+    let overridden = try GenerateVoxCommand.parse([
+      "--project", "PROJECT.md", "--cast", "ROSTER.md",
+    ])
+    #expect(overridden.cast == "ROSTER.md")
   }
 }

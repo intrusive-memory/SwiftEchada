@@ -145,6 +145,9 @@ public struct CastCommand: AsyncParsableCommand {
     fflush(stdout)
     var promptStage = GeneratePromptCommand()
     promptStage.project = project
+    // Property wrappers on a directly-constructed command are only realized by
+    // parsing or assignment — every property must be set before run() reads it.
+    promptStage.cast = "CAST.md"
     promptStage.character = character
     promptStage.force = force
     promptStage.dryRun = false
@@ -156,6 +159,8 @@ public struct CastCommand: AsyncParsableCommand {
     fflush(stdout)
     var voxStage = GenerateVoxCommand()
     voxStage.project = project
+    // Same property-wrapper realization rule as above.
+    voxStage.cast = "CAST.md"
     voxStage.character = character
     voxStage.ttsModel = ttsModel
     voxStage.language = language

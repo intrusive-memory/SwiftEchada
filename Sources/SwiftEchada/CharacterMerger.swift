@@ -9,7 +9,7 @@ public struct CharacterMerger: Sendable {
   ///
   /// - Parameters:
   ///   - extracted: Character lists from each screenplay file.
-  ///   - existingCast: Existing cast from PROJECT.md (may contain voice assignments).
+  ///   - existingCast: Existing roster (from CAST.md; may contain voice assignments).
   /// - Returns: Unified, deduplicated, alphabetically sorted cast list.
   public func merge(
     extracted: [[CharacterInfo]],

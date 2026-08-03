@@ -149,13 +149,15 @@ public struct PruneCastCommand: AsyncParsableCommand {
 
     var prefix = 0
     while prefix < originalLines.count && prefix < prunedLines.count
-      && originalLines[prefix] == prunedLines[prefix] {
+      && originalLines[prefix] == prunedLines[prefix]
+    {
       prefix += 1
     }
     var suffix = 0
     while suffix < originalLines.count - prefix && suffix < prunedLines.count - prefix
       && originalLines[originalLines.count - 1 - suffix]
-        == prunedLines[prunedLines.count - 1 - suffix] {
+        == prunedLines[prunedLines.count - 1 - suffix]
+    {
       suffix += 1
     }
 

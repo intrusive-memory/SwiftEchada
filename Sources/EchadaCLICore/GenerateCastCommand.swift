@@ -169,7 +169,9 @@ public struct GenerateCastCommand: AsyncParsableCommand {
       let legacy = try LegacyProjectCastReader.readCast(fileURL: fileURL)
       document = CastDocument(cast: legacy)
       if !legacy.isEmpty {
-        print("\nSeeding \(cast) from the legacy `cast:` block in \(project) (\(legacy.count) member(s)).")
+        print(
+          "\nSeeding \(cast) from the legacy `cast:` block in \(project) (\(legacy.count) member(s))."
+        )
       }
     }
 
