@@ -1,11 +1,24 @@
 import Foundation
 import SwiftProyecto
 
-/// Surgical `cast:` write-back into PROJECT.md, shared by the three `generate`
-/// stages (`cast`, `prompt`, `vox`).
+// LEGACY-CAST-WRITE: delete at SwiftProyecto 5.0 (migration step 7), together
+// with the LEGACY-CAST-READ path in LegacyProjectCastReader.swift.
+//
+// The generate stages no longer write PROJECT.md at all — the roster lives in
+// CAST.md (Sortie 7). Once SwiftProyecto 5.0 ships with `cast:` gone from the
+// PROJECT.md schema, `prune cast` has nothing left to excise and this file must
+// be deleted, not repurposed.
+
+/// Surgical `cast:` excision from PROJECT.md.
 ///
-/// All three stages mutate **only** the `cast:` block, so all three must leave
-/// every other byte of the file untouched. Re-serializing the whole front matter
+/// **Sole remaining caller: `echada prune cast`** (``PruneCastCommand``), which
+/// passes an empty roster to remove the legacy `cast:` block. The `generate`
+/// stages (`cast`, `prompt`, `vox`) formerly shared this seam for write-back but
+/// now read and write `CAST.md` via SwiftReparto's `CastMarkdownParser` and
+/// never touch PROJECT.md's cast. Do not add new callers.
+///
+/// The splice mutates **only** the `cast:` line span and leaves every other
+/// byte of the file untouched. Re-serializing the whole front matter
 /// from the typed model does not achieve that: `ProjectMarkdownParser.generate`
 /// is a hand-rolled, field-by-field YAML emitter, and anything it does not know
 /// how to write is lost or mangled on the way out.

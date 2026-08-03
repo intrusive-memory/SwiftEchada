@@ -25,11 +25,20 @@ public struct EchadaCLI: AsyncParsableCommand {
       `echada generate cast`, `echada generate prompt`, and `echada generate \
       vox` — for per-stage control. See `echada cast --help` for the full \
       pipeline and its cascading `--force`.
+
+      Read-only checks live under the `verify` namespace — `echada verify \
+      cast` compares CAST.md against the legacy `cast:` block in PROJECT.md \
+      and exits non-zero on any divergence, without writing anything.
+
+      The explicit cleanup step lives under the `prune` namespace — `echada \
+      prune cast` strips the migrated legacy `cast:` block from PROJECT.md \
+      once `verify cast` passes, leaving every other byte untouched. It is \
+      never run automatically.
       """,
     version: EchadaCLI.versionReport,
     subcommands: [
       VoiceCommand.self, CastCommand.self, GenerateCommand.self,
-      TestVoiceCommand.self,
+      VerifyCommand.self, PruneCommand.self, TestVoiceCommand.self,
     ]
   )
 

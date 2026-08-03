@@ -1,16 +1,31 @@
 import ArgumentParser
 import Foundation
 import SwiftProyecto
+import SwiftReparto
 
 /// `echada generate vox` — synthesize on-device voices for cast members from
-/// their voice prompts in PROJECT.md.
+/// their voice prompts in CAST.md.
+///
+/// ## The roster lives in CAST.md; PROJECT.md is read-only here
+///
+/// The cast is read from — and written back to — `CAST.md`, beside
+/// `PROJECT.md`, through SwiftReparto's `CastMarkdownParser` (EC-12).
+/// `PROJECT.md` is still consulted read-only for `title` and `tts.model`, but
+/// its legacy `cast:` block is never touched. When `CAST.md` is absent this
+/// command fails rather than creating it — only `echada generate cast` creates
+/// the roster (EC-14).
 public struct GenerateVoxCommand: AsyncParsableCommand {
   public static let configuration = CommandConfiguration(
     commandName: "vox",
-    abstract: "Generate on-device voices for cast members from their voice prompts in PROJECT.md.",
+    abstract: "Generate on-device voices for cast members from their voice prompts in CAST.md.",
     discussion: """
-      Consumes each cast member's `voicePrompt` in PROJECT.md and produces a `.vox` \
-      voice file, recorded under `voices.voxalta` in PROJECT.md.
+      Consumes each cast member's `voicePrompt` in CAST.md and produces a `.vox` \
+      voice file under `voices/` beside CAST.md, recorded under the member's \
+      `voices.voxalta` in CAST.md (paths relative to CAST.md's directory).
+
+      PROJECT.md is read-only here — `title` and `tts.model` only — and is never \
+      modified. When CAST.md is absent this command fails — run \
+      `echada generate cast` first to create it.
 
       Idempotency: members whose `.vox` already holds the requested variant \
       (TTS model + language) are skipped unless `--force-regenerate` is passed, \
@@ -23,6 +38,13 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
 
   @Option(name: .long, help: "Path to PROJECT.md file.")
   public var project: String = "PROJECT.md"
+
+  @Option(
+    name: .long,
+    help:
+      "Filename of the cast roster (default: CAST.md). A bare filename only — it always lives in --project's directory, so path separators are rejected."
+  )
+  public var cast: String = "CAST.md"
 
   @Flag(name: .long, help: "Regenerate voices even if .vox files already exist.")
   public var forceRegenerate: Bool = false
@@ -93,6 +115,16 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
       throw ValidationError("Project file not found: \(project)")
     }
     let projectDir = fileURL.deletingLastPathComponent()
+    let castURL = try GenerateCastCommand.resolveCastFile(named: cast, in: projectDir)
+
+    // EC-14: the roster must already exist — this command never creates it.
+    guard FileManager.default.fileExists(atPath: castURL.path) else {
+      throw ValidationError(
+        "Cast file not found: \(castURL.path). `generate vox` reads the roster from \(cast) "
+          + "and never creates it — run `echada generate cast` first.")
+    }
+
+    // PROJECT.md is read-only here: `title` and `tts.model` only (EC-12).
     let parser = ProjectMarkdownParser()
     let (frontMatter, _) = try parser.parse(fileURL: fileURL)
 
@@ -110,23 +142,27 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
 
     let languages = try resolvedLanguages()
 
-    guard let cast = frontMatter.cast, !cast.isEmpty else {
-      throw ValidationError("No cast members found in \(project).")
+    let castParser = CastMarkdownParser()
+    var document = try castParser.parse(fileURL: castURL)
+    let roster = document.cast
+    guard !roster.isEmpty else {
+      throw ValidationError(
+        "No cast members found in \(cast). Run `echada generate cast` to discover them.")
     }
 
     // Filter cast to a single character if requested
-    let targetCast: [CastMember]
+    let targetCast: [SwiftReparto.CastMember]
     if let characterName = character {
-      targetCast = cast.filter {
+      targetCast = roster.filter {
         $0.character.localizedCaseInsensitiveCompare(characterName) == .orderedSame
       }
       guard !targetCast.isEmpty else {
         throw ValidationError(
-          "Character '\(characterName)' not found in cast. Available: \(cast.map(\.character).joined(separator: ", "))"
+          "Character '\(characterName)' not found in cast. Available: \(roster.map(\.character).joined(separator: ", "))"
         )
       }
     } else {
-      targetCast = cast
+      targetCast = roster
     }
 
     print("Project: \(frontMatter.title)")
@@ -139,7 +175,7 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
     let accentSuffix = resolvedAccentValue.map { "  (accent: \($0))" } ?? ""
     let languagesDesc =
       languages.isEmpty
-      ? "per-character (from PROJECT.md `language`, default en)"
+      ? "per-character (from \(cast) `language`, default en)"
       : languages.joined(separator: ", ")
     print("Languages: \(languagesDesc)\(accentSuffix)")
     if forceRegenerate { print("Force regenerate: yes") }
@@ -149,7 +185,7 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
     if dryRun {
       print("Cast voice prompts:")
       for member in targetCast {
-        let desc = member.voiceDescription ?? "(empty — will skip)"
+        let desc = member.voicePrompt ?? "(empty — will skip)"
         print("  \(member.character): \(desc)")
       }
       if let accentValue = resolvedAccentValue {
@@ -164,8 +200,10 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
     print("Loading VoxAlta models (this may take a moment)...")
     fflush(stdout)
 
+    // `.vox` output lives in `voices/` beside CAST.md, and the paths recorded
+    // in `voices.voxalta` resolve relative to CAST.md's directory (EC-16).
     let generator = CastVoiceGenerator(
-      projectDirectory: projectDir,
+      castDirectory: castURL.deletingLastPathComponent(),
       forceRegenerate: forceRegenerate,
       verbose: verbose,
       ttsModelVariant: effectiveTTSModel,
@@ -190,26 +228,21 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
     }
 
     // Merge filtered results back into the full cast list
-    let finalCast: [CastMember]
+    let finalCast: [SwiftReparto.CastMember]
     if character != nil {
       let updatedByName = Dictionary(
         genResult.updatedCast.map { ($0.character, $0) },
         uniquingKeysWith: { _, last in last }
       )
-      finalCast = cast.map { updatedByName[$0.character] ?? $0 }
+      finalCast = roster.map { updatedByName[$0.character] ?? $0 }
     } else {
       finalCast = genResult.updatedCast
     }
 
-    // Write updated PROJECT.md.
-    //
-    // Surgical write-back: splice only the `cast:` block and leave every other
-    // byte untouched. Re-serializing the whole front matter — even via
-    // `withCast(_:)`, which does preserve the in-memory model — still routes
-    // through the hand-rolled emitter in `ProjectMarkdownParser.generate`, which
-    // deletes keys it doesn't know and corrupts the structure of nested unknown
-    // ones. See ``ProjectCastWriteBack`` (issues #44, #55).
-    try ProjectCastWriteBack.write(cast: finalCast, to: fileURL, using: parser)
-    print("\nWritten to \(project)")
+    // Write the updated roster back to CAST.md through the one serializer
+    // allowed to emit it (SwiftReparto's CastMarkdownParser).
+    document.cast = finalCast
+    try castParser.write(document: document, to: castURL)
+    print("\nWritten to \(castURL.path)")
   }
 }

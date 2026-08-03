@@ -6,16 +6,18 @@ type: project
 
 Universal project documentation for AI agents. Agent-specific files: [CLAUDE.md](CLAUDE.md), [GEMINI.md](GEMINI.md).
 
-**Version**: 0.17.0-dev | **Swift**: 6.2 | **Platforms**: macOS 26+, iOS 26+
+**Version**: 1.0.0 | **Swift**: 6.2 | **Platforms**: macOS 26+, iOS 26+
 
 ---
 
 ## What Is This?
 
-SwiftEchada generates on-device custom voices from text prompts and manages cast data in PROJECT.md files for screenplay projects.
+SwiftEchada generates on-device custom voices from text prompts and manages cast data in CAST.md files for screenplay projects.
 
-- **Library** (`SwiftEchada`): Pure data types -- `CharacterProfile`, `CharacterInfo`, `CharacterMerger`. Depends only on SwiftProyecto. No ML.
-- **CLI** (`echada`): Voice generation via Qwen3-TTS. Depends on SwiftVoxAlta, MLX, vox-format.
+**Ownership split (v1.0.0)**: `PROJECT.md` is [SwiftProyecto](https://github.com/intrusive-memory/SwiftProyecto)'s config file (project identity, episode discovery, `tts` config). `CAST.md` is [SwiftReparto](https://github.com/intrusive-memory/SwiftReparto)'s config file (cast roster, voice prompts, voice pointers). SwiftEchada is a consumer of both: it creates voice assets and records where they went — in `CAST.md`. The legacy `cast:` block in `PROJECT.md` is read-only; nothing writes it except `echada prune cast`, which removes it.
+
+- **Library** (`SwiftEchada`): Pure data types -- `CharacterProfile`, `CharacterInfo`, `CharacterMerger`. Depends only on SwiftReparto (a leaf package: `CastMember`, `Gender`, `CastDocument`, `CastMarkdownParser`). No ML.
+- **CLI** (`echada` / `EchadaCLICore`): Voice generation via Qwen3-TTS. Depends on SwiftVoxAlta, MLX, vox-format — and keeps SwiftProyecto for project-level `PROJECT.md` fields (`title`, `episodesDir`, `filePattern`, `tts.model`).
 
 ## Build and Test (30-second version)
 
@@ -34,17 +36,24 @@ Full details: [Docs/build-and-test.md](Docs/build-and-test.md)
 | Command | Description |
 |---------|-------------|
 | `echada` (no subcommand) | Prints help. There is **no** default subcommand — invoke a command explicitly. |
-| `echada cast` | Full pipeline: bootstrap PROJECT.md (if absent) → `generate cast` → `generate prompt` → `generate vox`. Idempotent; single cascading `--force`. |
-| `echada generate cast` | Heuristically discover cast members from the screenplay source (no LLM) and merge into PROJECT.md's `cast:` list |
-| `echada generate prompt` | Examine the screenplay source material and write a `voicePrompt` for each cast member in PROJECT.md, via the on-device Foundation Model |
-| `echada generate vox` | Generate `.vox` voice identities for all cast members from their `voicePrompt` in PROJECT.md — this is what `echada cast` used to do before the restructure |
-| `echada voice <prompt>` | Generate a single `.vox` from a text description (no PROJECT.md required) |
+| `echada cast` | Full pipeline: bootstrap PROJECT.md and CAST.md (if absent) → `generate cast` → `generate prompt` → `generate vox`. Idempotent; single cascading `--force`. |
+| `echada generate cast` | Heuristically discover cast members from the screenplay source (no LLM) and merge into the CAST.md roster (seeded from a legacy `cast:` block in PROJECT.md when CAST.md is absent) |
+| `echada generate prompt` | Examine the screenplay source material and write a `voicePrompt` for each cast member in CAST.md, via the on-device Foundation Model |
+| `echada generate vox` | Generate `.vox` voice identities for all cast members from their `voicePrompt` in CAST.md — this is what `echada cast` used to do before the restructure |
+| `echada verify cast` | Read-only migration gate: compare CAST.md against the legacy `cast:` in PROJECT.md and report divergences (membership, field mismatches, dangling `.vox` pointers). Never writes; non-zero exit on divergence |
+| `echada prune cast` | Strip the migrated legacy `cast:` block from PROJECT.md. Explicit-only, gated on `verify cast` passing and CAST.md existing; surgical excision leaves every other byte intact |
+| `echada voice <prompt>` | Generate a single `.vox` from a text description (no PROJECT.md/CAST.md required) |
 | `echada test-voice` (hidden) | Integration test helper — fixed NARRATOR profile |
 
+All `cast`-touching commands take `--cast <filename>` (default `CAST.md`) — a
+bare filename resolved beside `--project`, never a path.
+
 Typical flow: `echada cast` runs the whole pipeline in one step, or run each
-stage standalone in order — `echada generate cast` (scripts → cast list) →
-`echada generate prompt` (cast list → voice briefs) → `echada generate vox`
-(briefs → `.vox`).
+stage standalone in order — `echada generate cast` (scripts → CAST.md roster) →
+`echada generate prompt` (roster → voice briefs) → `echada generate vox`
+(briefs → `.vox`). Migration off a legacy `PROJECT.md` `cast:` block:
+`echada generate cast` (seeds CAST.md) → `echada verify cast` (human gate) →
+`echada prune cast` (removes the legacy block).
 
 **Breaking change (v0.16.0):** the old standalone `echada prompt` was removed
 (use `echada generate prompt`); the old `.vox`-only `echada cast` is now
@@ -57,9 +66,13 @@ Full CLI reference: [Docs/api.md](Docs/api.md#cli-echada)
 ## Architecture at a Glance
 
 ```
-Library:  SwiftEchada --> SwiftProyecto (pure data types, no ML)
-CLI:      echada --> SwiftEchada + SwiftVoxAlta + MLX + vox-format
+Library:  SwiftEchada --> SwiftReparto (CAST.md schema; pure data types, no ML)
+CLI:      echada --> EchadaCLICore --> SwiftEchada + SwiftReparto + SwiftProyecto + SwiftVoxAlta + MLX + vox-format
 ```
+
+SwiftReparto is a leaf (no `intrusive-memory` deps) and is the **only** writer
+of `CAST.md` — consumers mutate a `CastDocument` and hand it back. SwiftProyecto
+appears only in `EchadaCLICore`, for project-level `PROJECT.md` fields.
 
 Voice generation uses a **two-phase pipeline** to avoid GPU OOM:
 1. **Phase A**: VoiceDesign 1.7B generates candidate WAVs
@@ -101,8 +114,9 @@ graphify explain "decideVoxGeneration"     # plain-language node explanation
 
 1. **Use the Makefile** -- `make build`, `make test`, never `swift build`/`swift test`
 2. **Test scheme is `SwiftEchada-Package`** -- not `SwiftEchada`
-3. **Targeted imports in CLI** -- `import struct SwiftEchada.CharacterProfile` (module/type name collision)
-4. **Library has no ML deps** -- all voice generation is CLI-only
-5. **No default subcommand** -- bare `echada` prints help; run `echada cast` for the full pipeline. `extract` and `download` were removed
+3. **Targeted imports in CLI** -- `import struct SwiftEchada.CharacterProfile` (module/type name collision); fully qualify `SwiftReparto.CastMember` in files that also import SwiftProyecto (see [Docs/gotchas.md](Docs/gotchas.md))
+4. **Library depends only on SwiftReparto, no ML deps** -- all voice generation is CLI-only; SwiftProyecto is CLI-only too
+5. **CAST.md is the cast roster** -- generate stages read/write CAST.md; PROJECT.md's legacy `cast:` is read-only and only `echada prune cast` removes it
+6. **No default subcommand** -- bare `echada` prints help; run `echada cast` for the full pipeline. `extract` and `download` were removed
 
 More: [Docs/gotchas.md](Docs/gotchas.md)

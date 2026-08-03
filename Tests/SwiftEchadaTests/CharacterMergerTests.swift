@@ -1,4 +1,4 @@
-import SwiftProyecto
+import SwiftReparto
 import Testing
 
 @testable import SwiftEchada
@@ -91,5 +91,49 @@ struct CharacterMergerTests {
     #expect(result.count == 2)
     #expect(result.contains(where: { $0.character == "OLD_CHAR" }))
     #expect(result.contains(where: { $0.character == "NEW_CHAR" }))
+  }
+
+  /// Regression guard for the CastWriter bug (X-1): a merge driven by a single
+  /// screenplay's discovered characters must NEVER prune the existing roster.
+  /// One discovered character against a twelve-character existing cast must
+  /// yield twelve members, every one of them intact.
+  @Test func mergingOneDiscoveryAgainstTwelveExistingNeverPrunes() {
+    let existing = (1...12).map { index in
+      CastMember(
+        character: "CHARACTER_\(index)",
+        actor: "Actor \(index)",
+        voicePrompt: "Prompt \(index)",
+        voices: ["apple": ["voice-\(index)"]]
+      )
+    }
+    let extracted: [[CharacterInfo]] = [
+      [CharacterInfo(name: "CHARACTER_5", description: "Only one in this episode")]
+    ]
+    let result = merger.merge(extracted: extracted, existingCast: existing)
+    #expect(result.count == 12)
+    for index in 1...12 {
+      let member = result.first(where: { $0.character == "CHARACTER_\(index)" })
+      #expect(member != nil)
+      #expect(member?.actor == "Actor \(index)")
+      #expect(member?.voicePrompt == "Prompt \(index)")
+      #expect(member?.voices == ["apple": ["voice-\(index)"]])
+    }
+  }
+
+  /// The reconciliation seam is SwiftReparto's `merging(_:)` (RQ-14), which
+  /// gap-fills: a matched existing member missing `voicePrompt` gains the
+  /// discovered voice description, while fields it already has are untouched.
+  @Test func matchedExistingMemberGainsMissingVoicePrompt() {
+    let existing = [
+      CastMember(character: "NARRATOR", actor: "John", voices: ["apple": ["ava"]])
+    ]
+    let extracted: [[CharacterInfo]] = [
+      [CharacterInfo(name: "NARRATOR", voiceDescription: "Deep warm baritone")]
+    ]
+    let result = merger.merge(extracted: extracted, existingCast: existing)
+    #expect(result.count == 1)
+    #expect(result[0].voicePrompt == "Deep warm baritone")
+    #expect(result[0].actor == "John")
+    #expect(result[0].voices == ["apple": ["ava"]])
   }
 }

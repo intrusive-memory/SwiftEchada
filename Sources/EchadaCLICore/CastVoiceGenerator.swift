@@ -2,7 +2,7 @@ import Foundation
 @preconcurrency import MLX
 @preconcurrency import MLXAudioTTS
 @preconcurrency import MLXLMCommon
-import SwiftProyecto
+import SwiftReparto
 import SwiftVoxAlta
 @preconcurrency import VoxFormat
 
@@ -111,7 +111,7 @@ enum VoxGenerationDecision: Equatable {
 ///
 /// - Returns: The localized prompt stored under the exact tag, else under its
 ///   base subtag, else `nil` when neither key exists. (Does not fall through to
-///   `voiceDescription` — callers layer that fallback themselves.)
+///   `voicePrompt` — callers layer that fallback themselves.)
 func localizedVoicePrompt(for member: CastMember, language: String) -> String? {
   if let exact = member.voice(for: language) {
     return exact
@@ -154,7 +154,7 @@ func castingLanguages(for member: CastMember, explicitLanguages: [String]) -> [S
 ///   - `localizedVoicePrompt(for:language:)` returns a non-nil value (a localized
 ///     voice prompt is stored under `L` or its base subtag — so `es-MX` matches a
 ///     documented `voices["es"]` entry), OR
-///   - `member.voiceDescription` is non-empty (a base prompt exists that can be
+///   - `member.voicePrompt` is non-empty (a base prompt exists that can be
 ///     used as a fallback for any language).
 ///
 /// This function is side-effect-free and requires no model — safe to call from
@@ -167,7 +167,7 @@ func castingLanguages(for member: CastMember, explicitLanguages: [String]) -> [S
 /// - Returns: The subset of `requestedLanguages` that the member can be cast
 ///   for. An empty array means the member should be skipped entirely.
 func castableLanguages(for member: CastMember, requestedLanguages: [String]) -> [String] {
-  let hasBasePrompt = member.voiceDescription.map { !$0.isEmpty } ?? false
+  let hasBasePrompt = member.voicePrompt.map { !$0.isEmpty } ?? false
   return requestedLanguages.filter { language in
     localizedVoicePrompt(for: member, language: language) != nil || hasBasePrompt
   }
@@ -235,7 +235,12 @@ struct CastVoiceGenerator {
     let voxURL: URL
   }
 
-  private let projectDirectory: URL
+  /// The directory containing `CAST.md`. `.vox` bundles are written under
+  /// `voices/` inside it, and every path recorded in `voices.voxalta` resolves
+  /// relative to it (EC-16). Per OQ-1 the cast file always sits beside
+  /// PROJECT.md, so this is also the project directory — but the CAST.md
+  /// directory is the defining anchor.
+  private let castDirectory: URL
   private let forceRegenerate: Bool
   private let verbose: Bool
   private let ttsModelVariant: String
@@ -255,12 +260,12 @@ struct CastVoiceGenerator {
   private let accent: String?
 
   init(
-    projectDirectory: URL, forceRegenerate: Bool = false, verbose: Bool = false,
+    castDirectory: URL, forceRegenerate: Bool = false, verbose: Bool = false,
     ttsModelVariant: String = Qwen3TTSModelRepo.base1_7B.slug,
     languages: [String] = [],
     accent: String? = nil
   ) {
-    self.projectDirectory = projectDirectory
+    self.castDirectory = castDirectory
     self.forceRegenerate = forceRegenerate
     self.verbose = verbose
     self.ttsModelVariant = ttsModelVariant
@@ -287,9 +292,9 @@ struct CastVoiceGenerator {
 
   /// Generate .vox files for each cast member with a non-empty voice prompt.
   ///
-  /// Members without a `voiceDescription` (or with an empty one) are silently skipped.
+  /// Members without a `voicePrompt` (or with an empty one) are silently skipped.
   func generate(cast: [CastMember]) async throws -> GenerateResult {
-    let voicesDir = projectDirectory.appending(path: "voices")
+    let voicesDir = castDirectory.appending(path: "voices")
     try FileManager.default.createDirectory(at: voicesDir, withIntermediateDirectories: true)
 
     let modelManager = VoxAltaModelManager()
@@ -302,7 +307,7 @@ struct CastVoiceGenerator {
 
     for (index, member) in cast.enumerated() {
       // Skip members with no castable language — use castableLanguages() so that a member
-      // with only localized voices (e.g. voices["es"]) but no voiceDescription is NOT skipped.
+      // with only localized voices (e.g. voices["es"]) but no voicePrompt is NOT skipped.
       // Each member's casting language(s) come from --language when set, else its own
       // member.language (so a single `echada cast` voices each character in its own tongue).
       let castable = castableLanguages(
@@ -319,7 +324,7 @@ struct CastVoiceGenerator {
 
       let sanitizedName = member.character.replacingOccurrences(of: " ", with: "_")
       let voxPath = "voices/\(sanitizedName).vox"
-      let voxURL = projectDirectory.appending(path: voxPath)
+      let voxURL = castDirectory.appending(path: voxPath)
 
       let fileExists = FileManager.default.fileExists(atPath: voxURL.path)
       let decision = decideVoxGeneration(
@@ -386,17 +391,17 @@ struct CastVoiceGenerator {
       // One candidate per (member, language). Each language uses a same-language
       // reference sentence so the clone prompt is extracted from matching audio.
       // Prompt selection is per-language: use the localized voice prompt when available,
-      // falling back to the base voiceDescription.
+      // falling back to the base voicePrompt.
       for language in castingLanguages(for: item.member, explicitLanguages: explicitLanguages) {
         // Select the prompt for this specific language, then compose --accent onto it.
         // localizedVoicePrompt(for:language:) tries the exact tag then its base subtag
         // (so es-MX picks up a documented voices["es"] entry), and returns nil only when
         // no localized prompt exists at all — at which point we fall back to
-        // voiceDescription. If neither exists (castableLanguages already filtered this
+        // voicePrompt. If neither exists (castableLanguages already filtered this
         // member in), skip this language gracefully.
         guard
           let selectedPrompt = localizedVoicePrompt(for: item.member, language: language)
-            ?? item.member.voiceDescription
+            ?? item.member.voicePrompt
         else {
           if verbose {
             print(

@@ -1,11 +1,10 @@
 import Foundation
-import SwiftProyecto
+import SwiftReparto
 import Testing
 
-@testable import SwiftEchada
-
-/// Tests that complex voice prompts survive the full pipeline from PROJECT.md YAML
-/// through to the voice design instruction sent to the TTS model.
+/// Tests that complex voice prompts survive the full pipeline from CAST.md YAML
+/// through parse and re-serialization — the exact seam the `generate` stages
+/// read the roster through since the CAST.md extraction (EC-12).
 ///
 /// Regression test for: voicePrompt field was silently dropped during CastMember
 /// deserialization (CodingKeys mismatch), causing all voices to be generated with
@@ -18,10 +17,7 @@ struct VoicePromptRoundTripTests {
   @Test func voicePromptFieldSurvivesYAMLParsing() throws {
     let yaml = """
       ---
-      type: project
-      title: Test
-      author: Test
-      created: 2026-01-01T00:00:00Z
+      type: cast
       cast:
         - character: MITCH
           voicePrompt: "A warm, sardonic American male voice in his late 40s, smooth baritone with dry wit."
@@ -30,18 +26,17 @@ struct VoicePromptRoundTripTests {
       ---
       """
 
-    let parser = ProjectMarkdownParser()
-    let (frontMatter, _) = try parser.parse(content: yaml)
+    let document = try CastMarkdownParser().parse(content: yaml)
 
-    let cast = try #require(frontMatter.cast)
+    let cast = document.cast
     #expect(cast.count == 1)
 
     let mitch = cast[0]
     #expect(mitch.character == "MITCH")
 
-    // This is the critical assertion: voiceDescription must NOT be nil
+    // This is the critical assertion: voicePrompt must NOT be nil
     let prompt = try #require(
-      mitch.voiceDescription,
+      mitch.voicePrompt,
       "voicePrompt was silently dropped during YAML parsing — CodingKeys mismatch")
     #expect(prompt.contains("sardonic"))
     #expect(prompt.contains("baritone"))
@@ -50,10 +45,7 @@ struct VoicePromptRoundTripTests {
   @Test func voiceDescriptionFieldAlsoWorks() throws {
     let yaml = """
       ---
-      type: project
-      title: Test
-      author: Test
-      created: 2026-01-01T00:00:00Z
+      type: cast
       cast:
         - character: GILD
           voiceDescription: "A gruff detective voice, deep baritone."
@@ -62,15 +54,15 @@ struct VoicePromptRoundTripTests {
       ---
       """
 
-    let parser = ProjectMarkdownParser()
-    let (frontMatter, _) = try parser.parse(content: yaml)
+    let document = try CastMarkdownParser().parse(content: yaml)
 
-    let cast = try #require(frontMatter.cast)
-    let gild = cast[0]
+    let gild = try #require(document.cast.first)
     let prompt = try #require(
-      gild.voiceDescription,
+      gild.voicePrompt,
       "Legacy voiceDescription field should still be parsed")
     #expect(prompt.contains("gruff"))
+    // The alias reads back through both spellings.
+    #expect(gild.voiceDescription == gild.voicePrompt)
   }
 
   // MARK: - Serialization round-trip
@@ -78,10 +70,7 @@ struct VoicePromptRoundTripTests {
   @Test func voicePromptSurvivesWriteAndReparse() throws {
     let yaml = """
       ---
-      type: project
-      title: Test
-      author: Test
-      created: 2026-01-01T00:00:00Z
+      type: cast
       cast:
         - character: BILLY
           voicePrompt: "A flamboyant, theatrical gay male voice in his mid 40s, born into wealth. Bright, warm tenor with dramatic flair."
@@ -90,20 +79,20 @@ struct VoicePromptRoundTripTests {
       ---
       """
 
-    let parser = ProjectMarkdownParser()
+    let parser = CastMarkdownParser()
 
     // Parse original
-    let (frontMatter, body) = try parser.parse(content: yaml)
-    let originalPrompt = try #require(frontMatter.cast?.first?.voiceDescription)
+    let document = try parser.parse(content: yaml)
+    let originalPrompt = try #require(document.cast.first?.voicePrompt)
     #expect(originalPrompt.contains("flamboyant"))
 
-    // Re-serialize
-    let regenerated = parser.generate(frontMatter: frontMatter, body: body)
+    // Re-serialize through the one writer allowed to emit CAST.md (D8)
+    let regenerated = try parser.generate(document: document)
 
     // Re-parse the regenerated content
-    let (reparsed, _) = try parser.parse(content: regenerated)
+    let reparsed = try parser.parse(content: regenerated)
     let roundTrippedPrompt = try #require(
-      reparsed.cast?.first?.voiceDescription,
+      reparsed.cast.first?.voicePrompt,
       "voicePrompt must survive write → re-parse round-trip")
     #expect(
       roundTrippedPrompt.contains("flamboyant"),

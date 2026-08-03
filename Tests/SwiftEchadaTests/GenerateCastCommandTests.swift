@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import SwiftProyecto
+import SwiftReparto
 import Testing
 
 @testable import EchadaCLICore
@@ -11,6 +12,10 @@ import Testing
 /// Everything here runs against fixture Fountain text and temp-directory
 /// PROJECT.md files -- no LLM/ML model is ever invoked, matching the
 /// heuristic-only, no-model contract of both `generate cast` and the bootstrap.
+///
+/// Since the CAST.md extraction (Sortie 4), `generate cast` writes the roster to
+/// `CAST.md` beside PROJECT.md and never modifies PROJECT.md itself. A legacy
+/// `cast:` block in PROJECT.md seeds the first CAST.md write (EC-7).
 @Suite("GenerateCastCommand + PROJECT.md bootstrap — offline")
 struct GenerateCastCommandTests {
 
@@ -57,10 +62,11 @@ struct GenerateCastCommandTests {
   // MARK: - Fixture helpers
 
   /// Builds a fresh temp-directory project: an `episodes/` subfolder containing
-  /// the given scripts, and a PROJECT.md with the given (optional) existing cast.
-  /// Returns the PROJECT.md URL. Caller removes the parent directory via `defer`.
+  /// the given scripts, and a PROJECT.md with the given (optional) legacy
+  /// `cast:` block. Returns the PROJECT.md URL. Caller removes the parent
+  /// directory via `defer`.
   private func makeProject(
-    cast: [CastMember]? = nil,
+    cast: [ProyectoCastMember]? = nil,
     scripts: [String: String] = [:]
   ) throws -> URL {
     let dir = FileManager.default.temporaryDirectory
@@ -86,40 +92,52 @@ struct GenerateCastCommandTests {
     return projectURL
   }
 
-  private func readCast(_ url: URL) throws -> [CastMember] {
-    try ProjectMarkdownParser().parse(fileURL: url).0.cast ?? []
+  static func castURL(besides projectURL: URL) -> URL {
+    projectURL.deletingLastPathComponent().appendingPathComponent("CAST.md")
+  }
+
+  /// Reads the roster out of the CAST.md beside the given PROJECT.md.
+  static func readCast(besides projectURL: URL) throws -> [SwiftReparto.CastMember] {
+    try CastMarkdownParser().parse(fileURL: castURL(besides: projectURL)).cast
   }
 
   // MARK: - Discovery: names found, sorted, and de-duplicated
 
-  @Test("Discovers characters across scripts, de-duplicated and sorted, with no other fields set")
+  @Test(
+    "Discovers characters across scripts into CAST.md, de-duplicated and sorted, with no other fields set"
+  )
   func discoversCharactersSortedAndUnique() async throws {
     let url = try makeProject(
       cast: nil,
       scripts: ["ep1.fountain": Self.episodeOne, "ep2.fountain": Self.episodeTwo])
     defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+    let projectBefore = try String(contentsOf: url, encoding: .utf8)
 
     let cmd = try GenerateCastCommand.parse(["--project", url.path])
     try await cmd.run()
 
-    let cast = try readCast(url)
+    let cast = try Self.readCast(besides: url)
     // ALICE, BOB, DAVE -- BOB appears in both scripts but must not be duplicated.
     #expect(cast.map(\.character) == ["ALICE", "BOB", "DAVE"])
     for member in cast {
       #expect(member.actor == nil)
-      #expect(member.voiceDescription == nil)
+      #expect(member.voicePrompt == nil)
       #expect(member.voices.isEmpty)
       #expect(member.language == nil)
     }
+
+    // PROJECT.md is read-only to this command.
+    #expect(try String(contentsOf: url, encoding: .utf8) == projectBefore)
   }
 
   // MARK: - Default merge: no clobbering of downstream fields
 
   @Test(
-    "Default merge adds newly-discovered characters without touching existing downstream fields")
+    "Default merge seeds the legacy cast, adds newly-discovered characters, and touches no existing field"
+  )
   func defaultMergePreservesExistingFields() async throws {
     let existing = [
-      CastMember(
+      ProyectoCastMember(
         character: "ALICE",
         actor: "Jane",
         voiceDescription: "A warm, measured female narrator.",
@@ -127,26 +145,28 @@ struct GenerateCastCommandTests {
         language: "en"
       ),
       // EVE is not discovered by either script this run -- default merge must not drop it.
-      CastMember(character: "EVE", actor: "Existing Actor"),
+      ProyectoCastMember(character: "EVE", actor: "Existing Actor"),
     ]
     let url = try makeProject(
       cast: existing,
       scripts: ["ep1.fountain": Self.episodeOne, "ep2.fountain": Self.episodeTwo])
     defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+    let projectBefore = try String(contentsOf: url, encoding: .utf8)
 
     let cmd = try GenerateCastCommand.parse(["--project", url.path])
     try await cmd.run()
 
-    let cast = try readCast(url)
+    let cast = try Self.readCast(besides: url)
     let byName = Dictionary(uniqueKeysWithValues: cast.map { ($0.character, $0) })
 
-    // Union of existing + discovered: ALICE, BOB, DAVE, EVE.
-    #expect(cast.map(\.character) == ["ALICE", "BOB", "DAVE", "EVE"])
+    // Seeded legacy order first (ALICE, EVE), then newly-discovered appended
+    // in sorted order (BOB, DAVE). Additive merge never reorders the roster.
+    #expect(cast.map(\.character) == ["ALICE", "EVE", "BOB", "DAVE"])
 
     // ALICE's downstream fields must survive untouched.
     let alice = try #require(byName["ALICE"])
     #expect(alice.actor == "Jane")
-    #expect(alice.voiceDescription == "A warm, measured female narrator.")
+    #expect(alice.voicePrompt == "A warm, measured female narrator.")
     #expect(alice.voices == ["voxalta": ["alice.vox"]])
     #expect(alice.language == "en")
 
@@ -158,6 +178,9 @@ struct GenerateCastCommandTests {
     let bob = try #require(byName["BOB"])
     #expect(bob.actor == nil)
     #expect(bob.voices.isEmpty)
+
+    // The legacy `cast:` block in PROJECT.md is left byte-for-byte in place.
+    #expect(try String(contentsOf: url, encoding: .utf8) == projectBefore)
   }
 
   // MARK: - --force: re-sync to discovered set, keep fields for survivors, drop the rest
@@ -167,14 +190,14 @@ struct GenerateCastCommandTests {
   )
   func forceResyncsAndDropsMissingCharacters() async throws {
     let existing = [
-      CastMember(
+      ProyectoCastMember(
         character: "ALICE",
         actor: "Jane",
         voiceDescription: "A warm, measured female narrator.",
         voices: ["voxalta": ["alice.vox"]],
         language: "en"
       ),
-      CastMember(character: "EVE", actor: "Existing Actor"),
+      ProyectoCastMember(character: "EVE", actor: "Existing Actor"),
     ]
     let url = try makeProject(
       cast: existing,
@@ -184,7 +207,7 @@ struct GenerateCastCommandTests {
     let cmd = try GenerateCastCommand.parse(["--project", url.path, "--force"])
     try await cmd.run()
 
-    let cast = try readCast(url)
+    let cast = try Self.readCast(besides: url)
     let byName = Dictionary(uniqueKeysWithValues: cast.map { ($0.character, $0) })
 
     // Only what's discovered this run survives -- EVE is dropped.
@@ -194,7 +217,7 @@ struct GenerateCastCommandTests {
     // ALICE persists and keeps her downstream fields.
     let alice = try #require(byName["ALICE"])
     #expect(alice.actor == "Jane")
-    #expect(alice.voiceDescription == "A warm, measured female narrator.")
+    #expect(alice.voicePrompt == "A warm, measured female narrator.")
     #expect(alice.voices == ["voxalta": ["alice.vox"]])
     #expect(alice.language == "en")
 
@@ -206,9 +229,9 @@ struct GenerateCastCommandTests {
 
   // MARK: - --dry-run writes nothing
 
-  @Test("--dry-run previews discovered characters and writes nothing")
+  @Test("--dry-run previews the roster and writes neither CAST.md nor PROJECT.md")
   func dryRunWritesNothing() async throws {
-    let existing = [CastMember(character: "ALICE", actor: "Jane")]
+    let existing = [ProyectoCastMember(character: "ALICE", actor: "Jane")]
     let url = try makeProject(
       cast: existing,
       scripts: ["ep1.fountain": Self.episodeOne, "ep2.fountain": Self.episodeTwo])
@@ -220,11 +243,12 @@ struct GenerateCastCommandTests {
 
     let after = try String(contentsOf: url, encoding: .utf8)
     #expect(before == after)
+    #expect(!FileManager.default.fileExists(atPath: Self.castURL(besides: url).path))
   }
 
   @Test("--dry-run combined with --force still writes nothing")
   func dryRunWithForceWritesNothing() async throws {
-    let existing = [CastMember(character: "ALICE", actor: "Jane")]
+    let existing = [ProyectoCastMember(character: "ALICE", actor: "Jane")]
     let url = try makeProject(
       cast: existing,
       scripts: ["ep1.fountain": Self.episodeOne])
@@ -236,6 +260,7 @@ struct GenerateCastCommandTests {
 
     let after = try String(contentsOf: url, encoding: .utf8)
     #expect(before == after)
+    #expect(!FileManager.default.fileExists(atPath: Self.castURL(besides: url).path))
   }
 
   // MARK: - Empty / no-scripts path errors cleanly
@@ -259,7 +284,7 @@ struct GenerateCastCommandTests {
     await #expect(throws: ValidationError.self) { try await cmd.run() }
   }
 
-  @Test("Scripts with zero character cues leave PROJECT.md unchanged (no throw)")
+  @Test("Scripts with zero character cues and no legacy cast create no CAST.md (no throw)")
   func zeroCharactersDiscoveredLeavesProjectUnchanged() async throws {
     let url = try makeProject(cast: nil, scripts: ["empty.fountain": Self.noCharactersScript])
     defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
@@ -270,25 +295,62 @@ struct GenerateCastCommandTests {
 
     let after = try String(contentsOf: url, encoding: .utf8)
     #expect(before == after)
+    #expect(!FileManager.default.fileExists(atPath: Self.castURL(besides: url).path))
   }
 
-  @Test("--force with zero discovered characters clears a now-fully-stale cast")
+  @Test("--force with zero discovered characters writes an empty roster to CAST.md")
   func forceWithZeroCharactersClearsStaleCast() async throws {
-    // Existing cast is entirely stale: the only script has no character cues,
-    // so a --force re-sync ("exactly the characters found" = none) must empty
-    // the cast rather than leaving the old entries in place.
+    // The legacy cast is entirely stale: the only script has no character cues,
+    // so a --force re-sync ("exactly the characters found" = none) must produce
+    // an empty roster rather than carrying the stale entries into CAST.md.
     let existing = [
-      CastMember(character: "ALICE", actor: "Jane"),
-      CastMember(character: "EVE", actor: "Existing Actor"),
+      ProyectoCastMember(character: "ALICE", actor: "Jane"),
+      ProyectoCastMember(character: "EVE", actor: "Existing Actor"),
     ]
     let url = try makeProject(
       cast: existing, scripts: ["empty.fountain": Self.noCharactersScript])
     defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+    let projectBefore = try String(contentsOf: url, encoding: .utf8)
 
     let cmd = try GenerateCastCommand.parse(["--project", url.path, "--force"])
     try await cmd.run()
 
-    #expect(try readCast(url).isEmpty)
+    #expect(try Self.readCast(besides: url).isEmpty)
+    // The legacy block in PROJECT.md itself is still never touched.
+    #expect(try String(contentsOf: url, encoding: .utf8) == projectBefore)
+  }
+
+  // MARK: - --cast filename override (EC-13, OQ-1)
+
+  @Test("--cast overrides the filename inside the project directory")
+  func castOptionOverridesFilename() async throws {
+    let url = try makeProject(cast: nil, scripts: ["ep1.fountain": Self.episodeOne])
+    defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+
+    let cmd = try GenerateCastCommand.parse(["--project", url.path, "--cast", "ROSTER.md"])
+    try await cmd.run()
+
+    let rosterURL = url.deletingLastPathComponent().appendingPathComponent("ROSTER.md")
+    let document = try CastMarkdownParser().parse(fileURL: rosterURL)
+    #expect(document.cast.map(\.character) == ["ALICE", "BOB"])
+    #expect(!FileManager.default.fileExists(atPath: Self.castURL(besides: url).path))
+  }
+
+  @Test(
+    "--cast rejects values with path separators or that escape the project directory",
+    arguments: ["sub/CAST.md", "../CAST.md", "..", ".", "", "/tmp/CAST.md", "a\\b.md"])
+  func castOptionRejectsPathTraversal(value: String) async throws {
+    let url = try makeProject(cast: nil, scripts: ["ep1.fountain": Self.episodeOne])
+    defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+
+    let cmd = try GenerateCastCommand.parse(["--project", url.path, "--cast", value])
+    await #expect(throws: ValidationError.self) { try await cmd.run() }
+  }
+
+  @Test("generate cast --help lists the --cast option")
+  func helpListsCastOption() {
+    let help = GenerateCastCommand.helpMessage()
+    #expect(help.contains("--cast"))
   }
 }
 
@@ -299,7 +361,9 @@ struct GenerateCastCommandTests {
 /// `CastCommand`'s public `run()`. `--dry-run` is used throughout so the
 /// pipeline never reaches the model-backed prompt/vox stages -- the bootstrap
 /// and cast-discovery steps are offline and run for real under `--dry-run`
-/// (per `CastCommand`'s documented contract), then execution stops.
+/// (per `CastCommand`'s documented contract), then execution stops. The cast
+/// stage writes its roster to CAST.md beside the (possibly just-bootstrapped)
+/// PROJECT.md.
 @Suite("CastCommand PROJECT.md bootstrap — offline")
 struct CastCommandBootstrapTests {
 
@@ -331,9 +395,10 @@ struct CastCommandBootstrapTests {
     #expect(frontMatter.episodesDir == "episodes")
     #expect(frontMatter.resolvedFilePatterns == ["*.fountain"])
 
-    // The offline cast-discovery stage also ran for real under --dry-run, so the
-    // freshly bootstrapped project should already have ALICE and BOB merged in.
-    #expect(frontMatter.cast?.map(\.character) == ["ALICE", "BOB"])
+    // The cast stage writes the roster to CAST.md, never into PROJECT.md.
+    #expect(try LegacyProjectCastReader.readCast(fileURL: projectFile).isEmpty)
+    let roster = try GenerateCastCommandTests.readCast(besides: projectFile)
+    #expect(roster.map(\.character) == ["ALICE", "BOB"])
   }
 
   @Test(
@@ -360,8 +425,9 @@ struct CastCommandBootstrapTests {
     // generate cast stage matches the scripts instead of aborting.
     #expect(frontMatter.resolvedFilePatterns.contains("*.txt"))
     // Proof the pattern is actually usable: cast discovery ran for real under
-    // --dry-run and merged the characters from the .txt script.
-    #expect(frontMatter.cast?.map(\.character) == ["ALICE", "BOB"])
+    // --dry-run and wrote the characters from the .txt script to CAST.md.
+    let roster = try GenerateCastCommandTests.readCast(besides: projectFile)
+    #expect(roster.map(\.character) == ["ALICE", "BOB"])
   }
 
   @Test("Bootstrap falls back to '.' for episodesDir when no episodes/ subdirectory exists")
@@ -419,15 +485,21 @@ struct CastCommandBootstrapTests {
     // must NOT suppress scaffolding the project the caller asked for here.
     try await cmd.run()
 
-    // The requested project was scaffolded (and its offline cast discovered).
+    // The requested project was scaffolded (and its offline cast discovered
+    // into the nested directory's own CAST.md).
     #expect(FileManager.default.fileExists(atPath: requestedProjectFile.path))
     let (frontMatter, _) = try ProjectMarkdownParser().parse(fileURL: requestedProjectFile)
     #expect(frontMatter.title == "Nested")
-    #expect(frontMatter.cast?.map(\.character) == ["ALICE", "BOB"])
+    let roster = try GenerateCastCommandTests.readCast(besides: requestedProjectFile)
+    #expect(roster.map(\.character) == ["ALICE", "BOB"])
 
-    // The unrelated ancestor is left byte-for-byte untouched.
+    // The unrelated ancestor is left byte-for-byte untouched, and no CAST.md
+    // appears beside it.
     let ancestorAfter = try String(contentsOf: ancestorProjectFile, encoding: .utf8)
     #expect(ancestorAfter == ancestorOriginal)
+    #expect(
+      !FileManager.default.fileExists(
+        atPath: GenerateCastCommandTests.castURL(besides: ancestorProjectFile).path))
   }
 
   @Test("An existing PROJECT.md in the project's own directory is left in place, not overwritten")
@@ -487,15 +559,19 @@ struct CastCommandBootstrapTests {
     )
     let projectFile = base.appendingPathComponent("PROJECT.md")
     try ProjectMarkdownParser().write(frontMatter: existingFrontMatter, body: "", to: projectFile)
+    let originalContents = try String(contentsOf: projectFile, encoding: .utf8)
 
     let cmd = try CastCommand.parse(["--project", projectFile.path, "--dry-run"])
     try await cmd.run()
 
-    let (frontMatter, _) = try ProjectMarkdownParser().parse(fileURL: projectFile)
-    // Title/author/episodesDir untouched by bootstrap (it was already present).
-    #expect(frontMatter.title == "My Existing Project")
-    #expect(frontMatter.author == "Somebody")
-    // The cast-discovery stage still ran for real under --dry-run and merged in ALICE/BOB.
-    #expect(frontMatter.cast?.map(\.character) == ["ALICE", "BOB"])
+    // PROJECT.md is byte-for-byte untouched -- bootstrap skipped it (already
+    // present) and the cast stage never writes it.
+    let afterContents = try String(contentsOf: projectFile, encoding: .utf8)
+    #expect(afterContents == originalContents)
+
+    // The cast-discovery stage still ran for real under --dry-run and wrote
+    // ALICE/BOB to CAST.md.
+    let roster = try GenerateCastCommandTests.readCast(besides: projectFile)
+    #expect(roster.map(\.character) == ["ALICE", "BOB"])
   }
 }

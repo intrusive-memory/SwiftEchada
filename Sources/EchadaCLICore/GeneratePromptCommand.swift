@@ -1,14 +1,24 @@
 import ArgumentParser
 import Foundation
 import SwiftProyecto
+import SwiftReparto
 
 /// `echada generate prompt` — examine the screenplay source material and write
-/// a `voicePrompt` for each cast member in PROJECT.md.
+/// a `voicePrompt` for each cast member in CAST.md.
 ///
 /// This is the inverse of `generate vox`: where `vox` consumes each member's
 /// `voicePrompt` to lock a `.vox`, `prompt` reads the episode scripts, gathers
 /// what each character actually says (and how), and asks the on-device
 /// Foundation Model to write the voice-design brief that `vox` will later use.
+///
+/// ## The roster lives in CAST.md; PROJECT.md is read-only here
+///
+/// The cast is read from — and written back to — `CAST.md`, beside
+/// `PROJECT.md`, through SwiftReparto's `CastMarkdownParser` (EC-12).
+/// `PROJECT.md` is still consulted read-only for `title`, `description`,
+/// `genre`, `episodesDir`, and `filePattern`, but its legacy `cast:` block is
+/// never touched. When `CAST.md` is absent this command fails rather than
+/// creating it — only `echada generate cast` creates the roster (EC-14).
 ///
 /// Characters are processed one at a time, in cast order. By default a member
 /// that already has a `voicePrompt` is left untouched; `--force` regenerates all.
@@ -16,12 +26,17 @@ public struct GeneratePromptCommand: AsyncParsableCommand {
   public static let configuration = CommandConfiguration(
     commandName: "prompt",
     abstract:
-      "Examine the source material and write a voicePrompt for each cast member in PROJECT.md.",
+      "Examine the source material and write a voicePrompt for each cast member in CAST.md.",
     discussion: """
       Consumes the project's screenplay source material (via `episodesDir`/`filePattern` \
       in PROJECT.md) and each cast member's dialogue within it, and produces a \
       `voicePrompt` per member — written by the on-device Foundation Model from the \
       gathered dialogue evidence.
+
+      The roster is read from, and written back to, CAST.md (beside PROJECT.md); \
+      PROJECT.md itself is read-only here (`title`, `episodesDir`, `filePattern`) and \
+      is never modified. When CAST.md is absent this command fails — run \
+      `echada generate cast` first to create it.
 
       Idempotency: by default, only members with an empty `voicePrompt` are filled in; \
       members that already have one are left untouched. Pass `--force` to regenerate \
@@ -34,6 +49,13 @@ public struct GeneratePromptCommand: AsyncParsableCommand {
 
   @Option(name: .long, help: "Path to PROJECT.md file.")
   public var project: String = "PROJECT.md"
+
+  @Option(
+    name: .long,
+    help:
+      "Filename of the cast roster (default: CAST.md). A bare filename only — it always lives in --project's directory, so path separators are rejected."
+  )
+  public var cast: String = "CAST.md"
 
   @Option(name: .long, help: "Generate a voice prompt for a single character (by name).")
   public var character: String?
@@ -58,26 +80,41 @@ public struct GeneratePromptCommand: AsyncParsableCommand {
       throw ValidationError("Project file not found: \(project)")
     }
     let projectDir = fileURL.deletingLastPathComponent()
+    let castURL = try GenerateCastCommand.resolveCastFile(named: cast, in: projectDir)
+
+    // EC-14: the roster must already exist — this command never creates it.
+    guard FileManager.default.fileExists(atPath: castURL.path) else {
+      throw ValidationError(
+        "Cast file not found: \(castURL.path). `generate prompt` reads the roster from \(cast) "
+          + "and never creates it — run `echada generate cast` first.")
+    }
+
+    // PROJECT.md is read-only here: `title`/`description`/`genre` feed the
+    // synthesizer and `episodesDir`/`filePattern` locate the scripts (EC-12).
     let parser = ProjectMarkdownParser()
     let (frontMatter, _) = try parser.parse(fileURL: fileURL)
 
-    guard let cast = frontMatter.cast, !cast.isEmpty else {
-      throw ValidationError("No cast members found in \(project).")
+    let castParser = CastMarkdownParser()
+    var document = try castParser.parse(fileURL: castURL)
+    let roster = document.cast
+    guard !roster.isEmpty else {
+      throw ValidationError(
+        "No cast members found in \(cast). Run `echada generate cast` to discover them.")
     }
 
     // Resolve the target cast (all, or a single --character filter).
-    let targetCast: [CastMember]
+    let targetCast: [SwiftReparto.CastMember]
     if let characterName = character {
-      targetCast = cast.filter {
+      targetCast = roster.filter {
         $0.character.localizedCaseInsensitiveCompare(characterName) == .orderedSame
       }
       guard !targetCast.isEmpty else {
         throw ValidationError(
-          "Character '\(characterName)' not found in cast. Available: \(cast.map(\.character).joined(separator: ", "))"
+          "Character '\(characterName)' not found in cast. Available: \(roster.map(\.character).joined(separator: ", "))"
         )
       }
     } else {
-      targetCast = cast
+      targetCast = roster
     }
 
     // Locate and load the source material once.
@@ -125,7 +162,7 @@ public struct GeneratePromptCommand: AsyncParsableCommand {
       try VoicePromptSynthesizer.requireAvailable()
     }
 
-    var updatedByName: [String: CastMember] = [:]
+    var updatedByName: [String: SwiftReparto.CastMember] = [:]
     var generatedCount = 0
     var keptCount = 0
     var skippedCount = 0
@@ -134,7 +171,7 @@ public struct GeneratePromptCommand: AsyncParsableCommand {
     for member in targetCast {
       // Respect existing prompts unless --force.
       let hasPrompt =
-        member.voiceDescription.map { !$0.trimmingCharacters(in: .whitespaces).isEmpty } ?? false
+        member.voicePrompt.map { !$0.trimmingCharacters(in: .whitespaces).isEmpty } ?? false
       if hasPrompt && !force {
         print("  \(member.character): kept existing voice prompt (use --force to regenerate)")
         keptCount += 1
@@ -187,7 +224,7 @@ public struct GeneratePromptCommand: AsyncParsableCommand {
       }
 
       var updated = member
-      updated.voiceDescription = prompt
+      updated.voicePrompt = prompt
       updatedByName[member.character] = updated
       generatedCount += 1
       print("  \(member.character): \(prompt)")
@@ -204,17 +241,15 @@ public struct GeneratePromptCommand: AsyncParsableCommand {
     }
 
     guard generatedCount > 0 else {
-      print("\nNo voice prompts generated — \(project) left unchanged.")
+      print("\nNo voice prompts generated — \(cast) left unchanged.")
       return
     }
 
-    // Merge updated members back into the full cast, preserving order and any
-    // members outside the target filter.
-    let finalCast = cast.map { updatedByName[$0.character] ?? $0 }
-
-    // Surgical write-back: splice only the `cast:` block and leave every other
-    // byte of PROJECT.md untouched. See ``ProjectCastWriteBack`` (issues #44, #55).
-    try ProjectCastWriteBack.write(cast: finalCast, to: fileURL, using: parser)
-    print("\nWritten to \(project)")
+    // Merge updated members back into the full roster, preserving order and any
+    // members outside the target filter, then write CAST.md through the one
+    // serializer allowed to emit it (SwiftReparto's CastMarkdownParser).
+    document.cast = roster.map { updatedByName[$0.character] ?? $0 }
+    try castParser.write(document: document, to: castURL)
+    print("\nWritten to \(castURL.path)")
   }
 }

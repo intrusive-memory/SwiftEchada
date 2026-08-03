@@ -10,18 +10,27 @@ type: reference
 
 ```
 SwiftEchada (library)
-└── SwiftProyecto (branch: development)
+└── SwiftReparto (0.1.0+)          ← CAST.md schema. A leaf: no intrusive-memory deps.
 
-echada (CLI executable)
+EchadaCLICore (CLI library) / echada (executable)
 ├── SwiftEchada (library)
-├── SwiftVoxAlta (branch: development)
+├── SwiftReparto (0.1.0+)
+├── SwiftProyecto (4.8.1+)         ← PROJECT.md only: title, episodesDir, filePattern, tts.model
+├── SwiftVoxAlta (0.14.1+)
 │   └── vox-format, mlx-audio-swift, mlx-swift (transitive)
-├── swift-argument-parser (1.3.0+)
-├── mlx-swift (0.21.0+)
-├── mlx-swift-lm (branch: main)
-├── mlx-audio-swift (branch: development)
-└── vox-format (0.3.0+)
+├── swift-argument-parser (1.7.1+)
+├── mlx-swift (0.31.3+)
+├── mlx-swift-lm (3.31.3+)
+├── mlx-audio-swift (0.10.0+)
+└── vox-format (0.4.1+)
 ```
+
+**The ownership split (v1.0.0)**: SwiftReparto owns `CAST.md` (schema, parser,
+serializer) and is the library target's **only** dependency. SwiftProyecto owns
+`PROJECT.md` and left the library target entirely — it survives on
+`EchadaCLICore` alone, for project-level configuration fields. Because
+SwiftReparto declares no dependency on any `intrusive-memory` package, no
+package cycle involving cast data is possible by construction.
 
 ---
 
@@ -31,33 +40,24 @@ echada (CLI executable)
 
 | Package | Pin | Purpose | Key Types |
 |---------|-----|---------|-----------|
-| [SwiftProyecto](https://github.com/intrusive-memory/SwiftProyecto) | `branch: development` | PROJECT.md parsing, cast management | `Gender`, `CastMember`, `ProjectMarkdownParser`, `ProjectFrontMatter` |
+| [SwiftReparto](https://github.com/intrusive-memory/SwiftReparto) | `from: "0.1.0"` | CAST.md schema, parse, serialize | `CastMember`, `Gender`, `CastDocument`, `CastMarkdownParser`, `CastMarkdownGenerator`, `ProjectCastImporter` |
 
 ### CLI-Only Dependencies
 
 | Package | Pin | Purpose | Key Types |
 |---------|-----|---------|-----------|
-| [SwiftVoxAlta](https://github.com/intrusive-memory/SwiftVoxAlta) | `branch: development` | On-device voice generation | `VoxAltaModelManager`, `VoiceLockManager`, `VoxExporter`, `Qwen3TTSModelRepo` |
-| [swift-argument-parser](https://github.com/apple/swift-argument-parser) | `from: "1.3.0"` | CLI argument parsing | `AsyncParsableCommand`, `CommandConfiguration` |
-| [mlx-swift](https://github.com/ml-explore/mlx-swift) | `from: "0.21.0"` | MLX framework (GPU compute) | `MLXArray`, `Stream`, `Memory` |
-| [mlx-swift-lm](https://github.com/ml-explore/mlx-swift-examples) | `branch: main` | Language model commons | `GenerateParameters` |
-| [mlx-audio-swift](https://github.com/intrusive-memory/mlx-audio-swift) | `branch: development` | Qwen3-TTS voice synthesis | `Qwen3TTSModel`, `AudioConversion` |
-| [vox-format](https://github.com/intrusive-memory/vox-format) | `from: "0.3.0"` | .vox archive format | `VoxFile`, `VoxManifest`, `VoxManifest.Provenance` |
+| [SwiftProyecto](https://github.com/intrusive-memory/SwiftProyecto) | `from: "4.8.1"` | PROJECT.md parsing (project-level fields only) | `ProjectMarkdownParser`, `ProjectFrontMatter`, `ProjectService` |
+| [SwiftVoxAlta](https://github.com/intrusive-memory/SwiftVoxAlta) | `from: "0.14.1"` | On-device voice generation | `VoxAltaModelManager`, `VoiceLockManager`, `VoxExporter`, `Qwen3TTSModelRepo` |
+| [swift-argument-parser](https://github.com/apple/swift-argument-parser) | `from: "1.7.1"` | CLI argument parsing | `AsyncParsableCommand`, `CommandConfiguration` |
+| [mlx-swift](https://github.com/ml-explore/mlx-swift) | `from: "0.31.3"` | MLX framework (GPU compute) | `MLXArray`, `Stream`, `Memory` |
+| [mlx-swift-lm](https://github.com/ml-explore/mlx-swift-lm) | `from: "3.31.3"` | Language model commons | `GenerateParameters` |
+| [mlx-audio-swift](https://github.com/intrusive-memory/mlx-audio-swift) | `from: "0.10.0"` | Qwen3-TTS voice synthesis | `Qwen3TTSModel`, `AudioConversion` |
+| [vox-format](https://github.com/intrusive-memory/vox-format) | `from: "0.4.1"` | .vox archive format | `VoxFile`, `VoxManifest`, `VoxManifest.Provenance` |
 
----
-
-## Branch Pins vs Semver
-
-Several dependencies use `branch:` pins instead of semver because they're in active development:
-
-| Package | Pin Type | Reason |
-|---------|----------|--------|
-| SwiftProyecto | `branch: development` | Co-developed; API evolving |
-| SwiftVoxAlta | `branch: development` | Co-developed; API evolving |
-| mlx-swift-lm | `branch: main` | No stable release matching our needs |
-| mlx-audio-swift | `branch: development` | Co-developed; API evolving |
-
-These will switch to semver pins once APIs stabilize.
+All pins are `.upToNextMajor` semver ranges — no `branch:` pins remain in the
+manifest. `mlx-audio-swift` is kept in lockstep with the range SwiftVoxAlta
+declares; bump both together when SwiftVoxAlta adopts a newer mlx-audio-swift
+line.
 
 ---
 
@@ -74,12 +74,30 @@ For integration tests and cross-repo development:
 
 ## Key Types from Dependencies
 
-### From SwiftProyecto
+### From SwiftReparto (library + CLI)
 
-- **`Gender`**: Enum (`.male`, `.female`, `.nonBinary`, `.notSpecified`)
-- **`CastMember`**: Struct with `character`, `actor?`, `gender?`, `voiceDescription?`, `voices: [String: String]`
+- **`CastMember`**: Struct with `character`, `actor?`, `gender?`, `language?`,
+  `voicePrompt?` (legacy alias `voiceDescription` still decodes),
+  `voices: [String: [String]]`, and `extraKeys` (undeclared per-member keys such
+  as `bio:` or the reserved `appearance.portrait`, preserved verbatim)
+- **`Gender`**: Enum (`.male`, `.female`, `.nonBinary`, `.notSpecified`) —
+  `CharacterProfile.gender`'s type since the CAST.md extraction
+- **`CastDocument`**: `type: cast` front matter + `cast: [CastMember]` + opaque
+  markdown body (re-emitted byte-for-byte)
+- **`CastMarkdownParser`**: Parses a CAST.md into a `CastDocument`
+- **`CastMarkdownGenerator`**: The **only** CAST.md serializer anywhere — no
+  consumer builds YAML or splices text
+- **`ProjectCastImporter`**: Decodes a legacy `cast:` block out of a PROJECT.md
+  (used via `EchadaCLICore`'s `LegacyProjectCastReader`, read-only)
+
+### From SwiftProyecto (CLI only)
+
 - **`ProjectMarkdownParser`**: Parses PROJECT.md frontmatter + body
-- **`ProjectFrontMatter`**: Decoded YAML frontmatter including `tts` config
+- **`ProjectFrontMatter`**: Decoded YAML frontmatter — `title`, `episodesDir`,
+  `filePattern`, `tts` config. Its `cast` model is legacy: `echada` never reads
+  cast through it (that goes through `LegacyProjectCastReader` → SwiftReparto)
+  and never writes it (except `prune cast`'s surgical excision)
+- **`ProjectService`**: Directory analysis for PROJECT.md bootstrap
 
 ### From SwiftVoxAlta
 
