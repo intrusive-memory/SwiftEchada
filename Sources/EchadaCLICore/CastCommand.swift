@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import SwiftProyecto
+import SwiftReparto
 
 /// `echada cast` — the meta-orchestrator.
 ///
@@ -11,8 +12,9 @@ import SwiftProyecto
 ///
 /// Step 0 bootstraps a `PROJECT.md` when one is absent (no LLM — the scaffolding
 /// is inferred heuristically from the surrounding directory via
-/// `ProjectService.analyzeForGeneration(at:)`). The three generative stages are
-/// then invoked in order. Each stage is independently idempotent — `generate
+/// `ProjectService.analyzeForGeneration(at:)`) and then ensures the `CAST.md`
+/// roster beside it (seeded from a legacy `cast:` block when present; EC-15).
+/// The three generative stages are then invoked in order. Each stage is independently idempotent — `generate
 /// cast` adds only newly-discovered characters, `generate prompt` fills only
 /// empty `voicePrompt`s, and `generate vox` skips `.vox` variants that already
 /// exist — so re-running `echada cast` only fills the remaining gaps.
@@ -36,7 +38,9 @@ public struct CastCommand: AsyncParsableCommand {
       surrounding directory (inferred title, author, `episodesDir`, and \
       `filePattern`) with NO LLM involved. An existing project detected nearby \
       is left untouched. The inferred fields are plain YAML and freely editable \
-      afterward.
+      afterward. The `--cast` roster file (default CAST.md) is then ensured \
+      beside PROJECT.md — seeded from a legacy `cast:` block when one is \
+      present, created empty otherwise; an existing roster is left untouched.
 
       Step 1 — `generate cast`: heuristically discovers character names from the \
       screenplay source and merges them into the project's CAST.md roster \
@@ -54,7 +58,8 @@ public struct CastCommand: AsyncParsableCommand {
       stage's own force flag (cast re-sync, prompt overwrite, vox regenerate); for \
       per-stage control use the standalone `echada generate <stage>` subcommands.
 
-      Cross-stage flags: `--character` forwards to the prompt and vox stages; \
+      Cross-stage flags: `--cast` (roster filename, default CAST.md) forwards to \
+      all three stages; `--character` forwards to the prompt and vox stages; \
       `--tts-model`, `--language`, and `--accent` forward to the vox stage. \
       `--dry-run` performs the offline bootstrap and cast-discovery steps (writing \
       the discovered cast to CAST.md) but stops before the model-backed prompt \
@@ -67,6 +72,13 @@ public struct CastCommand: AsyncParsableCommand {
 
   @Option(name: .long, help: "Path to PROJECT.md file (created if absent).")
   public var project: String = "PROJECT.md"
+
+  @Option(
+    name: .long,
+    help:
+      "Filename of the cast roster (default: CAST.md; created if absent). A bare filename only — it always lives in --project's directory, so path separators are rejected. Forwarded to every stage."
+  )
+  public var cast: String = "CAST.md"
 
   @Option(
     name: .long,
@@ -117,8 +129,10 @@ public struct CastCommand: AsyncParsableCommand {
     let fileURL = URL(fileURLWithPath: project)
     let projectDir = Self.resolveProjectDirectory(for: fileURL)
 
-    // Step 0: ensure a PROJECT.md exists (bootstrap without an LLM when absent).
+    // Step 0: ensure a PROJECT.md exists (bootstrap without an LLM when absent),
+    // then ensure the CAST.md roster beside it (EC-15).
     try ensureProjectMarkdown(at: fileURL, projectDir: projectDir)
+    try ensureCastMarkdown(projectFile: fileURL, projectDir: projectDir)
 
     // Step 1: discover cast from the screenplay source (offline, heuristic).
     print("\n== Stage 1/3: generate cast ==")
@@ -127,7 +141,7 @@ public struct CastCommand: AsyncParsableCommand {
     castStage.project = project
     // Property wrappers on a directly-constructed command are only realized by
     // parsing or assignment — every property must be set before run() reads it.
-    castStage.cast = "CAST.md"
+    castStage.cast = cast
     castStage.force = force
     castStage.dryRun = false  // cast is offline/cheap; run it for real so the
     // discovered cast is written before the model stages.
@@ -147,7 +161,7 @@ public struct CastCommand: AsyncParsableCommand {
     promptStage.project = project
     // Property wrappers on a directly-constructed command are only realized by
     // parsing or assignment — every property must be set before run() reads it.
-    promptStage.cast = "CAST.md"
+    promptStage.cast = cast
     promptStage.character = character
     promptStage.force = force
     promptStage.dryRun = false
@@ -160,7 +174,7 @@ public struct CastCommand: AsyncParsableCommand {
     var voxStage = GenerateVoxCommand()
     voxStage.project = project
     // Same property-wrapper realization rule as above.
-    voxStage.cast = "CAST.md"
+    voxStage.cast = cast
     voxStage.character = character
     voxStage.ttsModel = ttsModel
     voxStage.language = language
@@ -221,6 +235,39 @@ public struct CastCommand: AsyncParsableCommand {
 
     try ProjectMarkdownParser().write(frontMatter: frontMatter, body: "", to: fileURL)
     print("Bootstrapped \(project) (title: \"\(title)\", episodesDir: \(episodesDir)).")
+  }
+
+  /// Ensures the `--cast` roster file exists beside `PROJECT.md` (EC-15),
+  /// seeding it verbatim from a legacy `cast:` block in `PROJECT.md` when one
+  /// is present (EC-7) and creating an empty roster otherwise.
+  ///
+  /// An existing cast file is authoritative and left byte-untouched — this
+  /// bootstrap only ever *creates*, never rewrites (EC-18). PROJECT.md is
+  /// read-only here: seeding copies the legacy block but never strips it —
+  /// removal belongs exclusively to `echada prune cast`, which this
+  /// orchestrator never invokes, by construction.
+  private func ensureCastMarkdown(projectFile: URL, projectDir: URL) throws {
+    // Resolve (and validate) the --cast filename up front, so a bad override
+    // fails before any stage runs. Same filename-only rule as the stages.
+    let castURL = try GenerateCastCommand.resolveCastFile(named: cast, in: projectDir)
+
+    // Already present — authoritative, leave every byte alone.
+    guard !FileManager.default.fileExists(atPath: castURL.path) else { return }
+
+    // No project file at the literal --project path (e.g. it deferred to a
+    // sibling PROJECT.md): let Stage 1 surface its actionable error rather
+    // than guessing which project to seed from.
+    guard FileManager.default.fileExists(atPath: projectFile.path) else { return }
+
+    let legacy = try LegacyProjectCastReader.readCast(fileURL: projectFile)
+    try CastMarkdownParser().write(document: CastDocument(cast: legacy), to: castURL)
+    if legacy.isEmpty {
+      print("Bootstrapped \(cast) (empty roster — `generate cast` fills it next).")
+    } else {
+      print(
+        "Bootstrapped \(cast) — seeded from the legacy `cast:` block in \(project) (\(legacy.count) member(s))."
+      )
+    }
   }
 
   /// Resolves the project directory for analysis/discovery. A relative

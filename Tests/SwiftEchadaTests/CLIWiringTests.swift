@@ -277,6 +277,20 @@ struct CLIWiringTests {
     }
   }
 
+  @Test("Rendered --help for the cast orchestrator lists --cast (EC-15 cascade)")
+  func castOrchestratorHelpListsCastOption() {
+    let rendered = EchadaCLI.helpMessage(for: CastCommand.self)
+    #expect(rendered.contains("--cast"), "echada cast --help should list --cast")
+  }
+
+  @Test("CastCommand's --cast defaults to CAST.md and accepts an override")
+  func castCommandCastOptionParses() throws {
+    let defaulted = try CastCommand.parse([])
+    #expect(defaulted.cast == "CAST.md")
+    let overridden = try CastCommand.parse(["--cast", "ROSTER.md"])
+    #expect(overridden.cast == "ROSTER.md")
+  }
+
   // MARK: - Thin parse wiring test
 
   @Test("GeneratePromptCommand parses its full flag surface")
