@@ -1,4 +1,4 @@
-import SwiftProyecto
+import SwiftReparto
 
 /// Merges extracted character lists from multiple screenplay files into a unified cast list.
 public struct CharacterMerger: Sendable {
@@ -50,7 +50,7 @@ public struct CharacterMerger: Sendable {
             character: info.name,
             actor: nil,
             gender: nil,
-            voiceDescription: info.voiceDescription,
+            voicePrompt: info.voiceDescription,
             voices: [:]
           ))
       }

@@ -1,4 +1,4 @@
-import SwiftProyecto
+import SwiftReparto
 import Testing
 
 @testable import SwiftEchada
