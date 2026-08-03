@@ -1,5 +1,4 @@
 import Foundation
-import SwiftProyecto
 import Testing
 
 @testable import SwiftEchada

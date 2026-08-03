@@ -238,8 +238,9 @@ struct ModelBackedGenerationTests {
     // 1) PROJECT.md was bootstrapped — and stays cast-free: the roster's home
     //    is CAST.md (Sortie 7).
     #expect(FileManager.default.fileExists(atPath: projectFile.path))
-    let (frontMatter, _) = try ProjectMarkdownParser().parse(fileURL: projectFile)
-    #expect(frontMatter.cast == nil)
+    #expect(
+      try LegacyProjectCastReader.readCast(fileURL: projectFile).isEmpty,
+      "PROJECT.md must stay cast-free — the roster's home is CAST.md")
 
     // 2) Cast populated heuristically from the screenplay, into CAST.md.
     let castFile = projectDir.appendingPathComponent("CAST.md")

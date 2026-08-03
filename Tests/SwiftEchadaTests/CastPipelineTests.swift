@@ -75,8 +75,9 @@ struct CastPipelineTests {
     // now exists, and the discovered roster was written to CAST.md beside it
     // (never into PROJECT.md itself).
     #expect(FileManager.default.fileExists(atPath: projectFile.path))
-    let (frontMatter, _) = try ProjectMarkdownParser().parse(fileURL: projectFile)
-    #expect(frontMatter.cast == nil)
+    #expect(
+      try LegacyProjectCastReader.readCast(fileURL: projectFile).isEmpty,
+      "PROJECT.md must stay cast-free — the roster's home is CAST.md")
     let castFile = projectDir.appendingPathComponent("CAST.md")
     let roster = try CastMarkdownParser().parse(fileURL: castFile).cast
     #expect(roster.map(\.character) == ["MAYA", "NOAH"])

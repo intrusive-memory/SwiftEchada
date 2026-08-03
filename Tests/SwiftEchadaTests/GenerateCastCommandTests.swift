@@ -396,7 +396,7 @@ struct CastCommandBootstrapTests {
     #expect(frontMatter.resolvedFilePatterns == ["*.fountain"])
 
     // The cast stage writes the roster to CAST.md, never into PROJECT.md.
-    #expect(frontMatter.cast == nil)
+    #expect(try LegacyProjectCastReader.readCast(fileURL: projectFile).isEmpty)
     let roster = try GenerateCastCommandTests.readCast(besides: projectFile)
     #expect(roster.map(\.character) == ["ALICE", "BOB"])
   }
