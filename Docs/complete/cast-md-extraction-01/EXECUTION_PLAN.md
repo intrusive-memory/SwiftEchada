@@ -1,6 +1,9 @@
 ---
 type: execution-plan
 target_version: 1.0.0
+state: completed
+updated: 2026-09-25
+mission: cast-md-extraction-01
 ---
 
 # EXECUTION_PLAN.md — SwiftEchada: CAST.md Extraction
