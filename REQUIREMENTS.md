@@ -2,9 +2,9 @@
 type: requirements
 state: draft
 created: 2026-09-25
-updated: 2026-09-25
+updated: 2026-10-19
 target_version: 1.1.0
-controlling_doc: ../SwiftSemblanzas/REQUIREMENTS.md (§5, "The character record")
+controlling_doc: dossier-format docs/DOSSIER-FORMAT.md (https://github.com/intrusive-memory/dossier-format)
 depends_on: SwiftReparto 0.2.0 (../SwiftReparto/REQUIREMENTS.md)
 ---
 
@@ -14,13 +14,18 @@ Today every `.vox` file goes into one flat `voices/` folder next to `CAST.md`.
 The file name is the character's name with spaces replaced by underscores:
 `voices/THE_PRACTITIONER.vox`.
 
-The character record (SwiftSemblanzas §5) gives each cast member their own
-directory, named exactly after them, which holds all of that character's
-assets. This document moves voice files into it:
+The character record, a `.dossier` bundle (dossier-format
+`docs/DOSSIER-FORMAT.md`), gives each cast member their own directory, named
+exactly after them, which holds all of that character's assets. This document
+moves voice files into it:
 
 ```
-characters/THE PRACTITIONER/voice/THE PRACTITIONER.vox
+characters/THE PRACTITIONER.dossier/voice/THE PRACTITIONER.vox
 ```
+
+*Updated 2026-10-19:* the record moved from SwiftSemblanzas §5 to
+dossier-format; directories end in `.dossier`; sample names and variants
+follow dossier-format §4 and §8.2.
 
 It also adds the playable voice samples the character dossier needs.
 
@@ -63,20 +68,20 @@ rule that applies. The folder is currently hard-coded at
    Regenerate **in place**, at that exact path. Files are never moved
    silently; moving is EC-26's job.
 3. **Neither: a new member with no voice and no manifest.** Write to
-   `<charactersDir>/<CHARACTER>/voice/<CHARACTER>.vox`. `charactersDir`
+   `<charactersDir>/<CHARACTER>.dossier/voice/<CHARACTER>.vox`. `charactersDir`
    comes from PROJECT.md `personaje.charactersDir`, defaulting to
    `characters`.
 
    SwiftEchada does **not** create `manifest.json` and does **not** set the
    `manifest:` pointer. The folder it creates is picked up by the next
-   `semblanzas manifest refresh` or Personaje run, which creates the manifest
-   and sets the pointer through Reparto (SwiftSemblanzas §5.3, "Who
-   registers what").
+   SwiftDossier `refresh` or Personaje run, which adopts the orphan bundle,
+   creates the manifest and sets the pointer through Reparto (dossier-format
+   §3 adoption, §5.6).
 
 - The destination is checked before writing. It must be inside the CAST.md
   directory, or equal to an existing `voxalta` path under rule 2. If a folder
   already exists whose name differs **only by case**
-  (`characters/The Practitioner/`), the write is refused.
+  (`characters/The Practitioner.dossier/`), the write is refused.
 - **`echada voice --output` and `echada test-voice --output` are unchanged.**
   They're standalone tools that write wherever they're told.
 
@@ -97,12 +102,13 @@ rule that applies. The folder is currently hard-coded at
 
 - The paths written back (`CastVoiceGenerator.swift:344-349` and `:528-532`)
   are the EC-23 destination, relative to CAST.md, for example
-  `"characters/THE PRACTITIONER/voice/THE PRACTITIONER.vox"`.
+  `"characters/THE PRACTITIONER.dossier/voice/THE PRACTITIONER.vox"`.
 - Writes still go through Reparto's `CastDocument`, per D8/EC-18.
 - **The duplication is deliberate.** The `.vox` path appears both in
   `voices.voxalta` (SwiftEchada's contract) and in the character's manifest
-  as `kind: vox`. `voices.voxalta` stays the authority for voice resolution
-  until SwiftEchada reads manifests (EC-Q2).
+  as `kind: vox`. `voices.voxalta` is the authority for *which voice to play*;
+  the manifest is the inventory of the bundle (dossier-format §8.2, D5). A
+  mismatch is a dossier validation warning (`W-VOICE-ELSEWHERE`).
 
 ### EC-26 — `echada migrate voices`
 
@@ -163,12 +169,14 @@ voice. SwiftEchada already stores sample audio inside the `.vox` bundle
 writes it out.
 
 ```
-echada sample <CHARACTER> [--variant neutral|angry|quiet|joyful|<name>]
+echada sample <CHARACTER> [--variant neutral|<name>]
                           [--text "…"] [--model 1.7b|0.6b] [--all-variants]
 ```
 
 - **Output:** `<character dir>/voice/sample-<variant>.m4a` (AAC), where the
-  character dir is the EC-23 location.
+  character dir is the EC-23 location. A sample rendered on a model size
+  other than the `.vox`'s default adds the size: `sample-neutral-0.6b.m4a`
+  (dossier-format §4).
 - **`neutral`, the default:** export the sample already embedded in the
   `.vox`, transcoded to `.m4a`. No new synthesis is needed.
 - **Other variants:** synthesize `--text`, or the default sample line, with
@@ -177,10 +185,13 @@ echada sample <CHARACTER> [--variant neutral|angry|quiet|joyful|<name>]
   in its front matter), falling back to a fixed neutral sentence. The text
   used is printed, and in `--json` mode returned, so the manifest can record
   it as `sampleText`.
-- It doesn't write the manifest. Personaje or `semblanzas manifest refresh`
-  registers the files as `kind: voiceSample`.
-- **`--all-variants`** renders the default range set: neutral, angry, quiet,
-  joyful (SwiftSemblanzas §5.4).
+- It doesn't write the manifest. Personaje or SwiftDossier `refresh`
+  registers the files as `kind: voiceSample`; `--json` returns `variant`,
+  `model`, `language` and `sampleText` so the writer can record them.
+- **`--all-variants`** renders every entry of `voice/samples.yaml`
+  (dossier-format §10) when it exists, otherwise `neutral` on each model size
+  in the `.vox`. There is no fixed range set: range variants are the
+  character's own registers (dossier-format §8.2).
 
 ### EC-29 — Skills and docs
 
@@ -248,5 +259,5 @@ Every assumption that voices live in `voices/` gets updated:
 | # | Question | Recommendation |
 |---|----------|----------------|
 | EC-Q1 | Is this 1.1.0 or 2.0.0? The default output location changes for **new** characters. | **1.1.0.** Existing pointers are respected (EC-23 rule 2), so no existing project changes until someone runs `migrate voices`. The only script that relies on the old location is our own skill, which is updated in the same release. Choose 2.0.0 instead if you count a changed default path as breaking for the CLI. |
-| EC-Q2 | Should SwiftEchada link `SemblanzasRecord` and register `.vox` and samples in the manifest directly? | Not in 1.1.0: SwiftEchada stays independent of the image stack, and refresh picks up the files. Revisit once `SemblanzasRecord` ships, since it's Foundation + Reparto only. That would remove both the refresh step and the `voices.voxalta` duplication. |
-| EC-Q3 | Should `voice/` also hold the reference audio and the voice-design prompt history? | Yes, as `kind: voiceReference`, and only if SwiftSemblanzas §5.4 adds that kind. Out of scope for 1.1.0. |
+| EC-Q2 | Should SwiftEchada link SwiftDossier's `Dossier` and register `.vox` and samples in the manifest directly? | Not in 1.1.0: refresh picks up the files. Revisit once SwiftDossier ships (Foundation + Reparto, no image stack). It removes the refresh step; `voices.voxalta` stays, as the which-voice-to-play authority (dossier-format D5). |
+| EC-Q3 | Should `voice/` also hold the reference audio and the voice-design prompt history? | Only if dossier-format adds a kind for it; the voice prompt is already `provenance.voicePrompt` on the `vox` asset. Out of scope for 1.1.0. |
