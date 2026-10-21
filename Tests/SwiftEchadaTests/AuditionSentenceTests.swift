@@ -153,8 +153,10 @@ struct AuditionSentenceTests {
           let count = sentence.count
           #expect(count >= 15 && count <= 90, "\(code): \(count) chars in: \(sentence)")
         } else {
+          // English uses two-to-three-sentence reading-passage excerpts.
+          let maxWords = code == "en" ? 55 : 30
           let words = sentence.split(whereSeparator: \.isWhitespace).count
-          #expect(words >= 12 && words <= 30, "\(code): \(words) words in: \(sentence)")
+          #expect(words >= 12 && words <= maxWords, "\(code): \(words) words in: \(sentence)")
         }
       }
     }
@@ -180,6 +182,33 @@ struct AuditionSentenceTests {
     #expect(try AuditionSentence.auditionSentence(language: "en", variant: pool.count) == pool[0])
     #expect(
       try AuditionSentence.auditionSentence(language: "en", variant: -1) == pool[pool.count - 1])
+  }
+
+  @Test("Per-character rotation is stable and overridable")
+  func characterRotation() throws {
+    let pool = try #require(AuditionSentence.pools["en"])
+
+    // Same character, same sentence; case and padding don't matter.
+    let narrator = try AuditionSentence.auditionSentence(language: "en", character: "NARRATOR")
+    #expect(
+      try AuditionSentence.auditionSentence(language: "en", character: " narrator ") == narrator)
+    #expect(narrator == pool[AuditionSentence.rotationIndex(for: "NARRATOR") % pool.count])
+
+    // The index is a fixed function of the name, not of process state.
+    #expect(
+      AuditionSentence.rotationIndex(for: "NARRATOR")
+        == AuditionSentence.rotationIndex(for: "Narrator"))
+
+    // An explicit variant wins over the rotation.
+    #expect(
+      try AuditionSentence.auditionSentence(language: "en", character: "NARRATOR", variant: 2)
+        == pool[2])
+
+    // A cast of several names spreads across more than one sentence.
+    let names = ["NARRATOR", "ALICE", "BOB", "UNCLE FU", "HOST", "GUEST"]
+    let picks = Set(
+      try names.map { try AuditionSentence.auditionSentence(language: "en", character: $0) })
+    #expect(picks.count > 1)
   }
 
   @Test("An uncurated language throws with the supported list")

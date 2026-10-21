@@ -106,6 +106,13 @@ public struct CastCommand: AsyncParsableCommand {
   )
   public var accent: String?
 
+  @Option(
+    name: .long,
+    help:
+      "Use this audition-pool index for every character instead of rotating per character. Forwarded to `generate vox`."
+  )
+  public var auditionVariant: Int?
+
   @Flag(
     name: .long,
     help:
@@ -179,6 +186,7 @@ public struct CastCommand: AsyncParsableCommand {
     voxStage.ttsModel = ttsModel
     voxStage.language = language
     voxStage.accent = accent
+    voxStage.auditionVariant = auditionVariant
     voxStage.forceRegenerate = force
     voxStage.dryRun = false
     voxStage.verbose = verbose

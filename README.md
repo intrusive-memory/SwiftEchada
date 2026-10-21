@@ -208,13 +208,16 @@ let profile = CharacterProfile(
 
 ### Sample Sentences
 
-Voice-audition sample sentences are sourced from Apple's on-device Foundation
-Model, which produces a genuinely in-language sentence for the requested
-language. Apple Intelligence must be enabled — there is no offline fallback.
+Voice-audition sample text is curated per language, not generated. English
+draws on standard speech-science reading passages (*The North Wind and the
+Sun*, the *Rainbow Passage*, *Please Call Stella*). Each character gets a fixed
+selection chosen from its name, so its `.vox` is reproducible. Pass
+`--audition-variant N` to `echada cast` or `echada generate vox` to force one
+selection for every character.
 
 ```swift
 // In the CLI (EchadaCLICore):
-let sentence = try await FoundationModelSentence.auditionSentence(language: "es")
+let text = try AuditionSentence.auditionSentence(language: "en", character: "NARRATOR")
 ```
 
 ## Architecture

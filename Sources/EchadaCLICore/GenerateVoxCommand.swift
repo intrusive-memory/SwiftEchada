@@ -79,6 +79,13 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
   )
   public var accent: String?
 
+  @Option(
+    name: .long,
+    help:
+      "Use this audition-pool index for every character instead of rotating per character (0-based; wraps). For A/B listening tests."
+  )
+  public var auditionVariant: Int?
+
   public init() {}
 
   /// Normalizes the `--accent` flag: `nil` or whitespace-only → `nil`; otherwise trimmed.
@@ -208,7 +215,8 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
       verbose: verbose,
       ttsModelVariant: effectiveTTSModel,
       languages: languages,
-      accent: resolvedAccentValue
+      accent: resolvedAccentValue,
+      auditionVariant: auditionVariant
     )
 
     let genResult = try await generator.generate(cast: targetCast)

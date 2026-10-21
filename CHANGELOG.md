@@ -9,6 +9,26 @@ All notable changes to SwiftEchada will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **English audition text is now drawn from standard reading passages.** The
+  `en` pool is six excerpts from *The North Wind and the Sun*, the *Rainbow
+  Passage*, and *Please Call Stella*, 34-51 words each, replacing three
+  single sentences. The longer reference gives the clone embedding more to
+  lock onto.
+- **Audition text rotates per character.** Cast generation picks a pool entry
+  from a stable hash of the character name instead of always using the first
+  entry. Each character's `.vox` is still reproducible, but **regenerating an
+  existing cast with this release produces different voices**, in every
+  language.
+
+### Added
+
+- `--audition-variant N` on `echada cast` and `echada generate vox` forces one
+  audition-pool entry for every character, for A/B listening tests.
+
 ## [1.0.0] - 2026-08-03
 
 ### Changed — Breaking

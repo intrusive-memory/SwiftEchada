@@ -64,7 +64,7 @@ Swift Testing (`@Test` macro) -- not XCTest.
 | `CharacterMergerTests` | 8 | Dedup, voice preservation, alphabetical sorting |
 | `VoicePromptRoundTripTests` | 3 | YAML parse/serialize, field preservation |
 | `NonEnglishPassthroughTests` | -- | Non-English `--language` passthrough (es/pt/it/de) |
-| `AuditionSentenceTests` | 11 | Curated audition sentences: coverage, determinism, text contract |
+| `AuditionSentenceTests` | 12 | Curated audition sentences: coverage, determinism, text contract |
 
 ### Fixtures
 

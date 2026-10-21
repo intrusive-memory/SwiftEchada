@@ -149,7 +149,7 @@ CAST.md ──[SwiftReparto: CastMarkdownParser]──> CastDocument
       |     |── Phase A: Candidate Generation ────────────────────
       |     |   Load VoiceDesign 1.7B model (once for all characters)
       |     |   For each CastMember with voicePrompt:
-      |     |     1. AuditionSentence.auditionSentence(language:)  [curated, deterministic]
+      |     |     1. AuditionSentence.auditionSentence(language:character:)  [curated, per-character]
       |     |     2. Qwen3TTSModel.generate(text: sample, voice: prompt)
       |     |     3. AudioConversion.mlxArrayToWAVData() → candidateWAV
       |     |     4. GPU flush (Stream.synchronize + Memory.clearCache)
