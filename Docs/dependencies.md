@@ -15,8 +15,8 @@ SwiftEchada (library)
 EchadaCLICore (CLI library) / echada (executable)
 ├── SwiftEchada (library)
 ├── SwiftReparto (0.1.0+)
-├── SwiftProyecto (4.8.1+)         ← PROJECT.md only: title, episodesDir, filePattern, tts.model
-├── SwiftVoxAlta (0.14.1+)
+├── SwiftProyecto (5.3.2+)         ← PROJECT.md only: title, episodesDir, filePattern, tts.model
+├── SwiftVoxAlta (0.14.2+)
 │   └── vox-format, mlx-audio-swift, mlx-swift (transitive)
 ├── swift-argument-parser (1.7.1+)
 ├── mlx-swift (0.31.3+)
@@ -46,8 +46,8 @@ package cycle involving cast data is possible by construction.
 
 | Package | Pin | Purpose | Key Types |
 |---------|-----|---------|-----------|
-| [SwiftProyecto](https://github.com/intrusive-memory/SwiftProyecto) | `from: "4.8.1"` | PROJECT.md parsing (project-level fields only) | `ProjectMarkdownParser`, `ProjectFrontMatter`, `ProjectService` |
-| [SwiftVoxAlta](https://github.com/intrusive-memory/SwiftVoxAlta) | `from: "0.14.1"` | On-device voice generation | `VoxAltaModelManager`, `VoiceLockManager`, `VoxExporter`, `Qwen3TTSModelRepo` |
+| [SwiftProyecto](https://github.com/intrusive-memory/SwiftProyecto) | `from: "5.3.2"` | PROJECT.md parsing (project-level fields only) and the migration rewrite | `ProjectMarkdownParser`, `ProjectFrontMatter`, `ProjectService` |
+| [SwiftVoxAlta](https://github.com/intrusive-memory/SwiftVoxAlta) | `from: "0.14.2"` | On-device voice generation | `VoxAltaModelManager`, `VoiceLockManager`, `VoxExporter`, `Qwen3TTSModelRepo` |
 | [swift-argument-parser](https://github.com/apple/swift-argument-parser) | `from: "1.7.1"` | CLI argument parsing | `AsyncParsableCommand`, `CommandConfiguration` |
 | [mlx-swift](https://github.com/ml-explore/mlx-swift) | `from: "0.31.3"` | MLX framework (GPU compute) | `MLXArray`, `Stream`, `Memory` |
 | [mlx-swift-lm](https://github.com/ml-explore/mlx-swift-lm) | `from: "3.31.3"` | Language model commons | `GenerateParameters` |
@@ -94,9 +94,9 @@ For integration tests and cross-repo development:
 
 - **`ProjectMarkdownParser`**: Parses PROJECT.md frontmatter + body
 - **`ProjectFrontMatter`**: Decoded YAML frontmatter — `title`, `episodesDir`,
-  `filePattern`, `tts` config. Its `cast` model is legacy: `echada` never reads
-  cast through it (that goes through `LegacyProjectCastReader` → SwiftReparto)
-  and never writes it (except `prune cast`'s surgical excision)
+  `filePattern`, `tts` config. Since 5.0 it no longer models `cast:`; echada
+  reads an old block through `LegacyProjectCastReader` → SwiftReparto and
+  removes it with `removingCastBlock(in:)` during automatic migration
 - **`ProjectService`**: Directory analysis for PROJECT.md bootstrap
 
 ### From SwiftVoxAlta

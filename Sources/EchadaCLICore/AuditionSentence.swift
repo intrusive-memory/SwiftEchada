@@ -54,7 +54,8 @@ enum AuditionSentenceError: LocalizedError {
 ///
 /// ## Sentence contract
 ///
-/// Each sentence is natural, neutral, free of proper names, and free of
+/// Each sentence is natural, neutral, free of proper names (the English reading
+/// passages keep the few their published text carries), and free of
 /// quotation marks, ellipses, em dashes, and stacked punctuation (all of which
 /// destabilize Qwen3-TTS speaker conditioning). Word choice favours a broad
 /// spread of that language's consonant and vowel sounds so the audition surfaces
@@ -64,14 +65,22 @@ enum AuditionSentence {
 
   /// Curated audition sentences, keyed by ISO 639-1 code.
   ///
-  /// The first entry of each pool is the canonical sentence — the one returned
-  /// by default, which is what keeps `.vox` generation reproducible. Later
-  /// entries are alternates callers may select explicitly.
+  /// The first entry of each pool is the canonical sentence, returned when no
+  /// character is given. Cast generation rotates through the pool per character
+  /// (see ``auditionSentence(language:character:variant:)``).
   static let pools: [String: [String]] = [
+    // English draws on the three standard speech-science reading passages, two
+    // selections each: The North Wind and the Sun (the IPA's reference passage),
+    // the Rainbow Passage (Fairbanks), and Please Call Stella (Speech Accent
+    // Archive, built to surface accent). Longer than the other pools on purpose:
+    // a ~12-15 second reference gives the clone embedding more to lock onto.
     "en": [
-      "The quiet harbor filled with golden light as fishing boats drifted back toward the weathered wooden docks.",
-      "Every autumn the villagers gather bright pumpkins, share warm cider, and trade stories beside a crackling fire.",
-      "She measured the flour carefully, folded it into the batter, and slid the heavy pan into the oven.",
+      "The North Wind and the Sun were disputing which was the stronger, when a traveler came along wrapped in a warm cloak. They agreed that the one who first succeeded in making the traveler take his cloak off should be considered stronger than the other.",
+      "When the sunlight strikes raindrops in the air, they act as a prism and form a rainbow. The rainbow is a division of white light into many beautiful colors. These take the shape of a long round arch, with its path high above, and its two ends apparently beyond the horizon.",
+      "Please call Stella. Ask her to bring these things with her from the store: six spoons of fresh snow peas, five thick slabs of blue cheese, and maybe a snack for her brother Bob.",
+      "Then the North Wind blew as hard as he could, but the more he blew the more closely did the traveler fold his cloak around him, and at last the North Wind gave up the attempt. Then the Sun shined out warmly, and immediately the traveler took off his cloak.",
+      "There is, according to legend, a boiling pot of gold at one end. People look, but no one ever finds it. When a man looks for something beyond his reach, his friends say he is looking for the pot of gold at the end of the rainbow.",
+      "We also need a small plastic snake and a big toy frog for the kids. She can scoop these things into three red bags, and we will go meet her Wednesday at the train station.",
     ],
     "es": [
       "La brisa fresca del amanecer recorría el jardín mientras los pájaros cantaban entre las ramas del viejo naranjo.",
@@ -189,5 +198,29 @@ enum AuditionSentence {
     // Wrap rather than trap, and keep negatives well-defined.
     let index = ((variant % pool.count) + pool.count) % pool.count
     return pool[index]
+  }
+
+  /// Returns the audition sentence for one character, rotating through the
+  /// language's pool so a cast hears a spread of passages.
+  ///
+  /// The rotation is keyed by a stable hash of the character name, so the same
+  /// character always gets the same sentence and its `.vox` stays reproducible.
+  /// An explicit `variant` overrides the rotation for every character.
+  static func auditionSentence(
+    language rawLanguage: String, character: String, variant: Int? = nil
+  ) throws -> String {
+    try auditionSentence(language: rawLanguage, variant: variant ?? rotationIndex(for: character))
+  }
+
+  /// FNV-1a over the uppercased, trimmed name. `Hasher` is seeded per process,
+  /// so it can't be used here — the index must match across runs and machines.
+  static func rotationIndex(for character: String) -> Int {
+    let key = character.trimmingCharacters(in: .whitespaces).uppercased()
+    var hash: UInt64 = 0xcbf2_9ce4_8422_2325
+    for byte in key.utf8 {
+      hash ^= UInt64(byte)
+      hash = hash &* 0x0000_0100_0000_01b3
+    }
+    return Int(hash % 1_000_003)
   }
 }

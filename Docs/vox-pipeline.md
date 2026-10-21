@@ -187,7 +187,7 @@ Every audition sentence comes from a curated, in-language pool via
 
 | Command | Source |
 |---------|--------|
-| `echada cast` | `AuditionSentence.auditionSentence(language:)` |
+| `echada cast` / `generate vox` | `AuditionSentence.auditionSentence(language:character:variant:)` |
 | `echada voice` | `AuditionSentence.auditionSentence(language:)` |
 | `echada test-voice` | `AuditionSentence.auditionSentence(language: "en")` |
 
@@ -203,8 +203,19 @@ tool for this job:
 - **Portability** — it made `generate vox` unusable on CI and on any Mac without
   Apple Intelligence, despite the TTS pipeline having no such requirement.
 
-Selection is deterministic: a given language always yields the same sentence, so
-`.vox` generation is reproducible.
+**English uses standard reading passages.** The `en` pool is six excerpts, two
+each from *The North Wind and the Sun* (the IPA reference passage), the
+*Rainbow Passage*, and *Please Call Stella* (Speech Accent Archive). Each is
+34-51 words, about 10-15 seconds of audio, which gives the clone embedding a
+longer reference than a single sentence. Other languages keep their
+one-sentence pools.
+
+**Selection rotates per character, deterministically.** Cast generation picks
+the pool index from an FNV-1a hash of the uppercased character name, so a cast
+spreads across passages while each character always gets the same one and its
+`.vox` stays reproducible. `--audition-variant N` (on `cast` and `generate vox`)
+forces index N for every character, for A/B listening tests. `echada voice` and
+`test-voice` use the canonical entry (index 0).
 
 **Coverage is total.** Every language the TTS model supports (`TTSLanguage`: zh,
 en, de, it, pt, es, ja, ko, fr, ru) has curated sentences, so nothing that can be

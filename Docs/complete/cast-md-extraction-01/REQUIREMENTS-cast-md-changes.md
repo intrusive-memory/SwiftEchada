@@ -1,9 +1,11 @@
 ---
+state: completed
+mission: cast-md-extraction-01
 type: requirements
 title: CAST.md Extraction — Controlling Requirements
 status: draft
 created: 2026-07-26
-updated: 2026-08-01
+updated: 2026-09-25
 controlling_repo: SwiftEchada
 target_version: 1.0.0
 ---

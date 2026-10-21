@@ -9,6 +9,51 @@ All notable changes to SwiftEchada will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-10-21
+
+### Changed — Breaking
+
+- **`echada verify cast` and `echada prune cast` are removed.** Migration off a
+  legacy `PROJECT.md` `cast:` block is now automatic, so the manual gates have
+  nothing left to do. Scripts that call them will fail with an unknown-command
+  error. The `cast-voices` skill's capability probe looked for the `verify`
+  verb and must be updated to match.
+- **Older projects are migrated on first contact.** When `echada cast` or any
+  `generate` stage opens a `PROJECT.md` that still holds a `cast:` block,
+  echada copies the roster into `CAST.md` (an existing `CAST.md` keeps its
+  values; missing members are added and conflicts printed), checks that every
+  character arrived, saves the original as `PROJECT.md.bak` (or `.bak.N`), then
+  removes only the `cast:` lines and stamps `schemaVersion: 5`. Every other
+  byte of `PROJECT.md` is kept. `generate … --dry-run` describes the migration
+  without writing; `echada cast --dry-run` runs offline steps for real and
+  does migrate.
+- **Produciesta compatibility.** Produciesta builds that still read cast from
+  `PROJECT.md` (1.0.0 and earlier) find no voices in a migrated project, with
+  no error. Render migrated projects with a `CAST.md`-aware Produciesta, or
+  restore `PROJECT.md.bak` until one ships.
+- **SwiftProyecto 5.3.2+** (was 4.8.1+). SwiftProyecto 5 drops its cast model;
+  echada uses its `removingCastBlock(in:)` and `stampingSchemaVersion(in:)` for
+  the migration rewrite. `ProjectCastWriteBack` is gone.
+- **SwiftVoxAlta 0.14.2+** (was 0.14.1+).
+
+### Changed
+
+- **English audition text is now drawn from standard reading passages.** The
+  `en` pool is six excerpts from *The North Wind and the Sun*, the *Rainbow
+  Passage*, and *Please Call Stella*, 34-51 words each, replacing three
+  single sentences. The longer reference gives the clone embedding more to
+  lock onto.
+- **Audition text rotates per character.** Cast generation picks a pool entry
+  from a stable hash of the character name instead of always using the first
+  entry. Each character's `.vox` is still reproducible, but **regenerating an
+  existing cast with this release produces different voices**, in every
+  language.
+
+### Added
+
+- `--audition-variant N` on `echada cast` and `echada generate vox` forces one
+  audition-pool entry for every character, for A/B listening tests.
+
 ## [1.0.0] - 2026-08-03
 
 ### Changed — Breaking

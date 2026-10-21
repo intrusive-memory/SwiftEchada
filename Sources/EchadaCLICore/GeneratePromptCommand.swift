@@ -34,9 +34,10 @@ public struct GeneratePromptCommand: AsyncParsableCommand {
       gathered dialogue evidence.
 
       The roster is read from, and written back to, CAST.md (beside PROJECT.md); \
-      PROJECT.md itself is read-only here (`title`, `episodesDir`, `filePattern`) and \
-      is never modified. When CAST.md is absent this command fails — run \
-      `echada generate cast` first to create it.
+      PROJECT.md is read for `title`, `episodesDir`, and `filePattern`; an older \
+      PROJECT.md that still holds a `cast:` block is first migrated into CAST.md \
+      (original saved as PROJECT.md.bak). When CAST.md is absent this command \
+      fails — run `echada generate cast` first to create it.
 
       Idempotency: by default, only members with an empty `voicePrompt` are filled in; \
       members that already have one are left untouched. Pass `--force` to regenerate \
@@ -81,6 +82,10 @@ public struct GeneratePromptCommand: AsyncParsableCommand {
     }
     let projectDir = fileURL.deletingLastPathComponent()
     let castURL = try GenerateCastCommand.resolveCastFile(named: cast, in: projectDir)
+
+    // A pre-v5 project still carries its roster in PROJECT.md; move it to
+    // CAST.md before this stage reads anything.
+    try ProjectMigration.migrateIfNeeded(projectURL: fileURL, castName: cast, dryRun: dryRun)
 
     // EC-14: the roster must already exist — this command never creates it.
     guard FileManager.default.fileExists(atPath: castURL.path) else {

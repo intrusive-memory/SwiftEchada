@@ -1,18 +1,16 @@
 import Foundation
 import SwiftReparto
 
-// LEGACY-CAST-READ: delete at SwiftProyecto 5.0.
-//
-// Once SwiftProyecto 5.0 ships (with `cast:` gone from the PROJECT.md schema),
-// this file has no reason to exist and must be deleted, not repurposed.
+// The source side of automatic migration (``ProjectMigration``). SwiftProyecto
+// 5 no longer models `cast:`, so this reader is the only way echada can still
+// open a pre-v5 PROJECT.md's roster. It depends on SwiftReparto alone.
 
 /// Reads the **legacy** `cast:` block out of a `PROJECT.md`'s front matter as
 /// raw YAML, decoding straight into SwiftReparto's `[CastMember]` (EC-6).
 ///
 /// This path deliberately never touches `ProjectFrontMatter.cast`
-/// (SwiftProyecto's typed model). It exists so the rollout commands can read
-/// rosters still living inside a `PROJECT.md` without coupling to the schema
-/// that is about to lose the key. All YAML plumbing belongs to SwiftReparto's
+/// (SwiftProyecto's typed model, removed in 5.0). It exists so migration can
+/// read rosters still living inside an old `PROJECT.md`. All YAML plumbing belongs to SwiftReparto's
 /// `ProjectCastImporter` (RQ-10) — this repo adds no YAML dependency of its
 /// own, and this type adds no decoding of its own. Every `CastMember` leniency
 /// therefore applies here for free (RQ-3/RQ-4): the scalar and array `voices:`

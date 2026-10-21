@@ -44,16 +44,18 @@ public struct GenerateCastCommand: AsyncParsableCommand {
     discussion: """
       Consumes the project's episode/screenplay files (via `episodesDir`/`filePattern` \
       in PROJECT.md) and produces a merged roster in CAST.md, beside PROJECT.md. \
-      PROJECT.md itself is read-only to this command — it is never modified.
+      PROJECT.md is otherwise read-only to this command.
 
       Character discovery is purely heuristic in this version — no LLM/ML model is \
       involved. Only the `character` name is populated for newly discovered members; \
       `actor`, `gender`, `voices`, `voicePrompt`, and `language` are left empty for \
       `generate prompt` / `generate vox` (or manual editing) to fill in later.
 
-      Seeding: when CAST.md does not exist yet and PROJECT.md still carries a legacy \
-      `cast:` block, that roster seeds the new CAST.md verbatim (voice prompts, bios, \
-      and voice pointers included) before newly-discovered characters are merged on top.
+      Migration: an older PROJECT.md that still carries a `cast:` block is migrated \
+      first. Its roster moves into CAST.md verbatim (voice prompts, bios, and voice \
+      pointers included), the original is saved as PROJECT.md.bak, and the block is \
+      removed. Newly-discovered characters are then merged on top. Under `--dry-run` \
+      the migration is only described.
 
       Idempotency: by default, only newly-appearing characters are added — existing \
       roster entries (and their downstream fields) are left untouched. Pass `--force` to \
@@ -99,6 +101,10 @@ public struct GenerateCastCommand: AsyncParsableCommand {
     }
     let projectDir = fileURL.deletingLastPathComponent()
     let castURL = try Self.resolveCastFile(named: cast, in: projectDir)
+
+    // A pre-v5 project still carries its roster in PROJECT.md; move it to
+    // CAST.md before this stage reads anything.
+    try ProjectMigration.migrateIfNeeded(projectURL: fileURL, castName: cast, dryRun: dryRun)
 
     // PROJECT.md is read for `title`/`episodesDir`/`filePattern` only, and is
     // never written by this command (OQ-1, EC-8).

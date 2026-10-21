@@ -12,8 +12,8 @@ import Testing
 /// block, that roster seeds the new CAST.md verbatim -- `voicePrompt`, the
 /// undeclared `bio:` key, and the scalar `voices:` pointers all survive, and
 /// no field the legacy members never had (`gender`, `actor`, `language`,
-/// `portrait`) is invented. PROJECT.md itself is never written: its SHA-256
-/// must be identical before and after every run.
+/// `portrait`) is invented. PROJECT.md is migrated once, on the first run, and
+/// never written again.
 @Suite("generate cast — CAST.md seeding from the confessions fixture (offline)")
 struct GenerateCastSeedingTests {
 
@@ -142,10 +142,10 @@ struct GenerateCastSeedingTests {
     }
   }
 
-  // MARK: - PROJECT.md is never written
+  // MARK: - PROJECT.md is migrated once
 
-  @Test("PROJECT.md's SHA-256 is identical before and after generate cast")
-  func projectMdShaUnchanged() async throws {
+  @Test("The first run migrates PROJECT.md; later runs leave it untouched")
+  func projectMdMigratedOnce() async throws {
     let projectURL = try makeConfessionsProject()
     defer { try? FileManager.default.removeItem(at: projectURL.deletingLastPathComponent()) }
     let shaBefore = try sha256(of: projectURL)
@@ -153,12 +153,14 @@ struct GenerateCastSeedingTests {
     let cmd = try GenerateCastCommand.parse(["--project", projectURL.path])
     try await cmd.run()
 
-    #expect(try sha256(of: projectURL) == shaBefore)
+    #expect(try sha256(of: projectURL.appendingPathExtension("bak")) == shaBefore)
+    let shaMigrated = try sha256(of: projectURL)
+    #expect(shaMigrated != shaBefore)
 
-    // A second run (against the now-existing CAST.md) leaves it untouched too.
+    // A second run (against the now-existing CAST.md) leaves it untouched.
     let again = try GenerateCastCommand.parse(["--project", projectURL.path])
     try await again.run()
-    #expect(try sha256(of: projectURL) == shaBefore)
+    #expect(try sha256(of: projectURL) == shaMigrated)
   }
 
   // MARK: - Idempotency
@@ -216,8 +218,8 @@ struct GenerateCastSeedingTests {
     #expect(narrator.voicePrompt?.hasPrefix("Deep authoritative British baritone") == true)
     #expect(narrator.voices == ["voxalta": ["voices/NARRATOR.vox"]])
 
-    // PROJECT.md is still untouched, --force or not.
-    #expect(try sha256(of: projectURL) == shaBefore)
+    // PROJECT.md was migrated on the first run; --force didn't touch it again.
+    #expect(try sha256(of: projectURL.appendingPathExtension("bak")) == shaBefore)
   }
 
   // MARK: - --dry-run writes nothing

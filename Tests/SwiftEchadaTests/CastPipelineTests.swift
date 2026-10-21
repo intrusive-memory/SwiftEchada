@@ -123,19 +123,21 @@ struct CastPipelineTests {
       author: "Test",
       created: Date(timeIntervalSince1970: 0),
       episodesDir: "episodes",
-      filePattern: FilePattern("*.fountain"),
+      filePattern: FilePattern("*.fountain")
+    )
+    try LegacyProjectFixture.write(
+      frontMatter: seededFrontMatter,
       cast: [
         ProyectoCastMember(character: "GHOST", actor: "Stale Actor"),
         ProyectoCastMember(character: "MAYA", actor: "Existing Actor"),
-      ]
-    )
-    try ProjectMarkdownParser().write(frontMatter: seededFrontMatter, body: "", to: projectFile)
+      ],
+      to: projectFile)
 
     let castFile = projectDir.appendingPathComponent("CAST.md")
     let projectBefore = try String(contentsOf: projectFile, encoding: .utf8)
 
-    // Without --force: the absent CAST.md is seeded from PROJECT.md's legacy
-    // `cast:` block and the default merge only adds newly-discovered
+    // Without --force: the legacy `cast:` block migrates into the absent
+    // CAST.md (even under --dry-run, which runs the offline steps), and the default merge only adds newly-discovered
     // characters; GHOST (no longer in the source) is left in place.
     let withoutForce = try CastCommand.parse(["--project", projectFile.path, "--dry-run"])
     try await withoutForce.run()
@@ -156,9 +158,13 @@ struct CastPipelineTests {
     let maya = afterForce.first { $0.character == "MAYA" }
     #expect(maya?.actor == "Existing Actor")
 
-    // PROJECT.md (legacy `cast:` block included) is never touched by the
-    // cast stage.
-    #expect(try String(contentsOf: projectFile, encoding: .utf8) == projectBefore)
+    // The first run migrated PROJECT.md: its `cast:` block is gone and the
+    // original is kept as PROJECT.md.bak.
+    let migrated = try String(contentsOf: projectFile, encoding: .utf8)
+    #expect(!migrated.contains("cast:"))
+    #expect(migrated.contains("schemaVersion: 5"))
+    let backup = projectDir.appendingPathComponent("PROJECT.md.bak")
+    #expect(try String(contentsOf: backup, encoding: .utf8) == projectBefore)
   }
 
   @Test(

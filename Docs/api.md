@@ -182,7 +182,7 @@ never builds YAML or splices CAST.md text.
 
 The `echada` executable is a thin `@main` shim over `EchadaCLICore`, which depends on SwiftEchada, SwiftReparto, SwiftProyecto, SwiftVoxAlta, MLX, MLXAudioTTS, MLXLMCommon, VoxFormat, and ArgumentParser.
 
-**File ownership**: all cast reads and writes go to `CAST.md` (SwiftReparto). `PROJECT.md` (SwiftProyecto) supplies project-level fields — `title`, `episodesDir`, `filePattern`, `tts.model` — and its legacy `cast:` block is read-only (`LegacyProjectCastReader`, for seeding and `verify cast`); the only command that writes it is `prune cast`, which removes the block.
+**File ownership**: all cast reads and writes go to `CAST.md` (SwiftReparto). `PROJECT.md` (SwiftProyecto) supplies project-level fields — `title`, `episodesDir`, `filePattern`, `tts.model` — and is written only by automatic migration: when it still holds a legacy `cast:` block, the first generate stage to open it moves the roster into `CAST.md`, saves `PROJECT.md.bak`, removes the block, and stamps `schemaVersion: 5`.
 
 ### Commands
 
@@ -193,13 +193,11 @@ a command explicitly.
 |---------|-------------|
 | `cast` | Meta / orchestrator: bootstrap PROJECT.md + CAST.md, then run `generate cast` → `generate prompt` → `generate vox` |
 | `generate` | Container for the three individual pipeline stages (`cast`, `prompt`, `vox`); no default subcommand |
-| `verify` | Container for report-only migration gates; `verify cast` compares CAST.md against PROJECT.md's legacy `cast:` |
-| `prune` | Container for explicit legacy-data removal; `prune cast` strips the migrated `cast:` block from PROJECT.md |
 | `voice` | Generate a single .vox voice file from a text prompt |
 | `test-voice` | Hidden — generate a test .vox file for integration testing |
 
 **The `--cast` flag**: every roster-touching command (`cast`, `generate cast`,
-`generate prompt`, `generate vox`, `verify cast`, `prune cast`) accepts
+`generate prompt`, `generate vox`) accepts
 `--cast <filename>` (default `CAST.md`). It is a **bare filename only** — the
 roster always lives in `--project`'s directory, and path separators are
 rejected.
@@ -308,45 +306,22 @@ echada generate vox [--project <path>] [--cast <filename>] [--force-regenerate]
 | `--language` | `en` (repeatable) | BCP-47 code(s) for the reference sample; repeat to cast multiple languages into one `.vox` |
 | `--accent` | none | Accent/delivery directive applied to every character's voice prompt |
 
-### `echada verify cast`
+### Automatic migration (no command)
 
-Read-only migration gate. Compares the CAST.md roster against the legacy
-`cast:` block still present in PROJECT.md and reports three divergence
-classes: characters present in one file and not the other, differing field
-values on a matched character (`actor`, `gender`, `language`, `voicePrompt`,
-`voices`, or any undeclared key such as `bio:`), and `.vox` pointers in
-CAST.md that do not resolve to an existing file (relative to CAST.md's
-directory). Neither file is ever written. Exits 0 on agreement, non-zero on
-any divergence — suitable for gating CI or a rollout loop.
+`verify cast` and `prune cast` were removed in v2.0.0. Any generate stage that
+opens a `PROJECT.md` still holding a `cast:` block migrates it first, via
+`ProjectMigration.migrateIfNeeded(projectURL:castName:dryRun:)`:
 
-```
-echada verify cast [--project <path>] [--cast <filename>]
-```
+1. Merge the legacy roster into `CAST.md` (`[CastMember].merging(_:)`: adds
+   missing members and fills empty fields, never overwrites). Field conflicts
+   are printed, and `CAST.md`'s value wins.
+2. Re-read `CAST.md`; throw `ProjectMigrationError.charactersMissingAfterTransfer`
+   if a legacy character is absent. `PROJECT.md` is untouched in that case.
+3. Copy `PROJECT.md` to `PROJECT.md.bak` (`.bak.1`, … if taken).
+4. Rewrite `PROJECT.md` with `removingCastBlock(in:)` then
+   `stampingSchemaVersion(in:)`.
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--project` | `PROJECT.md` | Path to PROJECT.md file (never written) |
-| `--cast` | `CAST.md` | Filename of the cast roster (never written); bare filename resolved beside `--project` |
-
-### `echada prune cast`
-
-Strips the migrated legacy `cast:` block from PROJECT.md — the **only**
-command anywhere in `echada` that writes PROJECT.md's cast data. Two gates
-guard the removal: CAST.md must exist beside PROJECT.md, and the
-`verify cast` check must pass. Only the `cast:` line span is excised; every
-other byte of the file is preserved verbatim. Idempotent (a `cast:`-less
-PROJECT.md reports "nothing to prune" and exits 0) and explicit-only — no
-other command ever invokes it.
-
-```
-echada prune cast [--project <path>] [--cast <filename>] [--dry-run]
-```
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--project` | `PROJECT.md` | Path to PROJECT.md file |
-| `--cast` | `CAST.md` | Filename of the cast roster (never written); bare filename resolved beside `--project` |
-| `--dry-run` | false | Print the exact removal diff without writing PROJECT.md |
+Under `generate … --dry-run` the migration is described but nothing is written.
 
 ### `echada voice`
 

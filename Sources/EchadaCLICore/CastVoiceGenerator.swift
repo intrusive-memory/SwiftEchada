@@ -259,11 +259,16 @@ struct CastVoiceGenerator {
   /// `qwenModel.generate`; never passed as `instruct:`.
   private let accent: String?
 
+  /// Forces one audition-pool index for every character. `nil` rotates per
+  /// character (see ``AuditionSentence/auditionSentence(language:character:variant:)``).
+  private let auditionVariant: Int?
+
   init(
     castDirectory: URL, forceRegenerate: Bool = false, verbose: Bool = false,
     ttsModelVariant: String = Qwen3TTSModelRepo.base1_7B.slug,
     languages: [String] = [],
-    accent: String? = nil
+    accent: String? = nil,
+    auditionVariant: Int? = nil
   ) {
     self.castDirectory = castDirectory
     self.forceRegenerate = forceRegenerate
@@ -271,6 +276,7 @@ struct CastVoiceGenerator {
     self.ttsModelVariant = ttsModelVariant
     self.explicitLanguages = languages
     self.accent = accent
+    self.auditionVariant = auditionVariant
   }
 
   /// The default model size slug.
@@ -412,11 +418,12 @@ struct CastVoiceGenerator {
         }
         let voicePrompt = composeVoicePrompt(base: selectedPrompt, accent: accent)
 
-        // The in-language audition sentence is curated and deterministic, so the
-        // same voice prompt reproduces the same .vox embedding. An unsupported
-        // language propagates out to abort the whole run rather than being
-        // swallowed as a per-character skip below.
-        let sampleSentence = try AuditionSentence.auditionSentence(language: language)
+        // The in-language audition sentence is curated and keyed to the
+        // character, so the same voice prompt reproduces the same .vox
+        // embedding. An unsupported language propagates out to abort the whole
+        // run rather than being swallowed as a per-character skip below.
+        let sampleSentence = try AuditionSentence.auditionSentence(
+          language: language, character: item.member.character, variant: auditionVariant)
         if verbose {
           print("[verbose] Language: \(language) — prompt: \(voicePrompt)")
           print("[verbose] Language: \(language) — sample sentence: \(sampleSentence)")

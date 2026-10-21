@@ -84,11 +84,10 @@ struct GenerateCastCommandTests {
       author: "Test",
       created: Date(timeIntervalSince1970: 0),
       episodesDir: "episodes",
-      filePattern: FilePattern("*.fountain"),
-      cast: cast
+      filePattern: FilePattern("*.fountain")
     )
     let projectURL = dir.appendingPathComponent("PROJECT.md")
-    try ProjectMarkdownParser().write(frontMatter: frontMatter, body: "", to: projectURL)
+    try LegacyProjectFixture.write(frontMatter: frontMatter, cast: cast, to: projectURL)
     return projectURL
   }
 
@@ -179,8 +178,10 @@ struct GenerateCastCommandTests {
     #expect(bob.actor == nil)
     #expect(bob.voices.isEmpty)
 
-    // The legacy `cast:` block in PROJECT.md is left byte-for-byte in place.
-    #expect(try String(contentsOf: url, encoding: .utf8) == projectBefore)
+    // PROJECT.md was migrated: the `cast:` block is gone, the original kept.
+    #expect(try !String(contentsOf: url, encoding: .utf8).contains("cast:"))
+    #expect(
+      try String(contentsOf: url.appendingPathExtension("bak"), encoding: .utf8) == projectBefore)
   }
 
   // MARK: - --force: re-sync to discovered set, keep fields for survivors, drop the rest
@@ -316,8 +317,10 @@ struct GenerateCastCommandTests {
     try await cmd.run()
 
     #expect(try Self.readCast(besides: url).isEmpty)
-    // The legacy block in PROJECT.md itself is still never touched.
-    #expect(try String(contentsOf: url, encoding: .utf8) == projectBefore)
+    // PROJECT.md was migrated before the re-sync; the original is kept.
+    #expect(try !String(contentsOf: url, encoding: .utf8).contains("cast:"))
+    #expect(
+      try String(contentsOf: url.appendingPathExtension("bak"), encoding: .utf8) == projectBefore)
   }
 
   // MARK: - --cast filename override (EC-13, OQ-1)

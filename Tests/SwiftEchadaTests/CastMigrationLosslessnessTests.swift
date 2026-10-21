@@ -6,12 +6,12 @@ import Testing
 
 @testable import EchadaCLICore
 
-/// EC-11: the full migration round trip — seed CAST.md from the real 309-line
-/// `confessions/PROJECT.md` fixture, verify clean, prune the legacy `cast:`
-/// block — is lossless. The residual PROJECT.md must differ from the original
-/// by exactly the `cast:` line span: `introFile`/`outroFile`, `tts`, and the
-/// full `episodes_index` structure (the issue-#44/#55 loss classes) stay
-/// byte-identical and in their original positions, with zero reordering.
+/// EC-11: automatic migration of the real 309-line `confessions/PROJECT.md`
+/// fixture is lossless. One `generate cast` run moves the roster into CAST.md
+/// and rewrites PROJECT.md. The residual must differ from the original by
+/// exactly the `cast:` line span plus the stamped `schemaVersion: 5` line:
+/// `introFile`/`outroFile`, `tts`, and the full `episodes_index` structure (the
+/// issue-#44/#55 loss classes) stay byte-identical, with zero reordering.
 @Suite("EC-11 — cast migration losslessness on the confessions fixture (offline)")
 struct CastMigrationLosslessnessTests {
 
@@ -91,16 +91,17 @@ struct CastMigrationLosslessnessTests {
     return Array(lines[start..<end])
   }
 
-  @Test("Seed → verify → prune: residual PROJECT.md differs only by the cast: line span")
+  @Test(
+    "generate cast migrates: residual PROJECT.md differs only by the cast: span and schemaVersion")
   func migrationRoundTripIsLossless() async throws {
     let projectURL = try makeConfessionsProject()
-    defer { try? FileManager.default.removeItem(at: projectURL.deletingLastPathComponent()) }
-    let castURL = projectURL.deletingLastPathComponent().appendingPathComponent("CAST.md")
+    let dir = projectURL.deletingLastPathComponent()
+    defer { try? FileManager.default.removeItem(at: dir) }
+    let castURL = dir.appendingPathComponent("CAST.md")
 
     let original = try String(contentsOf: projectURL, encoding: .utf8)
     let originalLines = original.components(separatedBy: "\n")
 
-    // --- Step 1: seed CAST.md from the legacy cast: block.
     try await GenerateCastCommand.parse(["--project", projectURL.path]).run()
 
     // Every cast field survived into CAST.md, including bio via extraKeys.
@@ -118,38 +119,31 @@ struct CastMigrationLosslessnessTests {
     let bio = try byName["THE PRACTITIONER"]?[extra: "bio"]?.decode(String.self)
     #expect(bio?.hasPrefix("Neurodivergent (ADHD), gay Gen X developer") == true)
 
-    // --- Step 2: verification is clean.
-    let divergences = try VerifyCastCommand.collectDivergences(
-      projectURL: projectURL, castName: "CAST.md")
-    #expect(divergences.isEmpty)
-    try await VerifyCastCommand.parse(["--project", projectURL.path]).run()
-
-    // --- Step 3: prune the legacy cast: block.
-    let castShaBefore = try sha256(of: castURL)
-    try await PruneCastCommand.parse(["--project", projectURL.path]).run()
+    // The original is kept byte-for-byte as the backup.
+    let backup = dir.appendingPathComponent("PROJECT.md.bak")
+    #expect(try String(contentsOf: backup, encoding: .utf8) == original)
 
     let residual = try String(contentsOf: projectURL, encoding: .utf8)
     let residualLines = residual.components(separatedBy: "\n")
 
-    // The residual differs from the original by exactly the cast: line span —
-    // byte-for-byte equality against the original with that span spliced out.
+    // Byte-for-byte: the original with the cast: span removed and
+    // `schemaVersion: 5` inserted right after the opening `---`.
     let castSpan = try #require(Self.castLineSpan(in: originalLines))
     var expectedLines = originalLines
     expectedLines.removeSubrange(castSpan)
+    let opening = try #require(expectedLines.firstIndex(of: "---"))
+    expectedLines.insert("schemaVersion: 5", at: opening + 1)
     #expect(residual == expectedLines.joined(separator: "\n"))
-
-    // No cast: key survives, at any indentation depth's top level.
     #expect(!residualLines.contains { $0.hasPrefix("cast:") })
 
-    // The emitter-forgotten keys (issue #44) are intact — same bytes, same
-    // positions (they precede the cast block, so their indexes are unchanged).
+    // The emitter-forgotten keys (issue #44) are intact, shifted by the one
+    // inserted line (they precede the cast block).
     for key in ["introFile: audio/intro.m4a", "outroFile: audio/outro.m4a"] {
-      #expect(residualLines.firstIndex(of: key) == originalLines.firstIndex(of: key), "\(key)")
+      let before = try #require(originalLines.firstIndex(of: key), "\(key)")
+      #expect(residualLines.firstIndex(of: key) == before + 1, "\(key)")
     }
 
-    // The appSections keys (issue #55) are intact: tts and the full
-    // episodes_index structure are byte-identical, in original order, shifted
-    // up by exactly the removed span — zero lines changed, zero reordering.
+    // The appSections keys (issue #55) are intact and in original order.
     let originalTts = try #require(Self.lineSpan(header: "tts:", in: originalLines))
     let residualTts = try #require(Self.lineSpan(header: "tts:", in: residualLines))
     #expect(originalTts == residualTts)
@@ -164,14 +158,13 @@ struct CastMigrationLosslessnessTests {
 
     let originalIndex = try #require(originalLines.firstIndex(of: "episodes_index:"))
     let residualIndex = try #require(residualLines.firstIndex(of: "episodes_index:"))
-    #expect(residualIndex == originalIndex - castSpan.count)
+    #expect(residualIndex == originalIndex - castSpan.count + 1)
 
-    // Prune never writes CAST.md.
-    #expect(try sha256(of: castURL) == castShaBefore)
-
-    // --- Step 4: a second prune is a clean, zero-exit no-op.
+    // A second run finds nothing to migrate and leaves PROJECT.md alone.
     let residualSha = try sha256(of: projectURL)
-    try await PruneCastCommand.parse(["--project", projectURL.path]).run()
+    try await GenerateCastCommand.parse(["--project", projectURL.path]).run()
     #expect(try sha256(of: projectURL) == residualSha)
+    #expect(
+      !FileManager.default.fileExists(atPath: dir.appendingPathComponent("PROJECT.md.bak.1").path))
   }
 }

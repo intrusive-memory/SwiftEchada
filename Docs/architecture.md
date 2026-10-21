@@ -78,14 +78,14 @@ end to end:
   The generator is the **single writer**: `echada` mutates a `CastDocument`
   value and hands it back; no consumer builds YAML or splices text.
 
-`EchadaCLICore` adds one legacy shim on top: `LegacyProjectCastReader`, which
-reads a still-present `cast:` block out of a `PROJECT.md` (via SwiftReparto's
-`ProjectCastImporter`) for seeding and verification. It is read-only; the only
-code path that ever writes `PROJECT.md`'s cast data is `echada prune cast`,
-whose excision splices out exactly the `cast:` line span
-(`ProjectCastWriteBack` with an empty roster) and leaves every other byte
-intact. Delete the shim at SwiftProyecto 5.0, when `cast:` leaves the
-PROJECT.md schema.
+`EchadaCLICore` adds automatic migration on top. `ProjectMigration` runs at the
+start of every generate stage. When `PROJECT.md` still holds a `cast:` block,
+it reads the roster with `LegacyProjectCastReader` (via SwiftReparto's
+`ProjectCastImporter`), merges it into `CAST.md` without overwriting existing
+values, checks every character arrived, backs up `PROJECT.md` to
+`PROJECT.md.bak`, and then rewrites `PROJECT.md` with SwiftProyecto 5's
+`removingCastBlock(in:)` and `stampingSchemaVersion(in:)`. Both splice text,
+so every byte outside the `cast:` lines survives.
 
 ---
 
@@ -109,19 +109,18 @@ PROJECT.md schema.
 
 | Area | Files | Role |
 |------|-------|------|
-| Entry | `EchadaCLI.swift` | Root command: `cast`, `generate`, `verify`, `prune`, `voice`, `test-voice` (hidden) |
+| Entry | `EchadaCLI.swift` | Root command: `cast`, `generate`, `voice`, `test-voice` (hidden) |
 | Pipeline orchestrator | `CastCommand.swift` | Bootstrap PROJECT.md + CAST.md, then cascade the three generate stages |
 | Generate stages | `GenerateCommand.swift`, `GenerateCastCommand.swift`, `GeneratePromptCommand.swift`, `GenerateVoxCommand.swift` | Discover roster → write voice prompts → synthesize `.vox`; all read/write CAST.md |
-| Migration gates | `VerifyCommand.swift`, `VerifyCastCommand.swift`, `PruneCommand.swift`, `PruneCastCommand.swift` | `verify cast` (read-only divergence report), `prune cast` (gated legacy `cast:` excision) |
-| Legacy shim | `LegacyProjectCastReader.swift`, `ProjectCastWriteBack.swift` | Read-only legacy `cast:` decode; surgical `cast:` line-span splice (prune only) |
+| Migration | `ProjectMigration.swift`, `LegacyProjectCastReader.swift`, `CastRosterVerifier.swift` | Automatic pre-v5 → v5 upgrade: legacy `cast:` decode, roster comparison, CAST.md merge, PROJECT.md backup + surgical rewrite |
 | Voice generation | `CastVoiceGenerator.swift`, `VoiceDesigner.swift`, `VoiceCommand.swift`, `TestVoiceCommand.swift`, `ReferenceAudioGenerator.swift` | Two-phase Qwen3-TTS pipeline and single-voice commands |
 | Prompt synthesis | `VoicePromptSynthesizer.swift`, `DialogueExtractor.swift`, `FoundationModelRetry.swift`, `SourceMaterialLocator.swift` | Foundation-Model voice briefs from screenplay dialogue |
 | Data | `AuditionSentence.swift`, `Generated/` | Curated in-language audition sentences; build-time dependency-version table |
 
 ### Tests (`Tests/SwiftEchadaTests/` -- 30 files)
 
-Library types, CLI wiring, every generate stage against CAST.md fixtures, the
-`verify cast`/`prune cast` gates, migration losslessness (byte-level
+Library types, CLI wiring, every generate stage against CAST.md fixtures, automatic
+migration, migration losslessness (byte-level
 PROJECT.md preservation), body preservation, and model-backed integration
 tests (gated on TTS-weight presence).
 
@@ -149,7 +148,7 @@ CAST.md ──[SwiftReparto: CastMarkdownParser]──> CastDocument
       |     |── Phase A: Candidate Generation ────────────────────
       |     |   Load VoiceDesign 1.7B model (once for all characters)
       |     |   For each CastMember with voicePrompt:
-      |     |     1. AuditionSentence.auditionSentence(language:)  [curated, deterministic]
+      |     |     1. AuditionSentence.auditionSentence(language:character:)  [curated, per-character]
       |     |     2. Qwen3TTSModel.generate(text: sample, voice: prompt)
       |     |     3. AudioConversion.mlxArrayToWAVData() → candidateWAV
       |     |     4. GPU flush (Stream.synchronize + Memory.clearCache)
@@ -168,20 +167,26 @@ CAST.md ──[SwiftReparto: CastMarkdownParser]──> CastDocument
       v
 Updated CAST.md ──[SwiftReparto: CastMarkdownGenerator]──> written to disk
                    (single writer; body re-emitted byte-for-byte;
-                    PROJECT.md is never touched)
+                    PROJECT.md is only written by migration)
 ```
 
-### Migration Flow (legacy `cast:` → CAST.md)
+### Migration Flow (legacy `cast:` → CAST.md, automatic)
 
 ```
-generate cast ──> CAST.md exists (seeded verbatim from legacy cast:)
+any generate stage opens PROJECT.md
+      |
+      |  no cast: block ──> nothing to do, PROJECT.md never written
+      v
+merge legacy roster into CAST.md (new file seeded verbatim; existing values kept)
       |
       v
-verify cast ────> read-only: membership, field, and .vox-pointer divergences
-      |               exit 0 = rosters agree
+re-read CAST.md: every legacy character present? ── no ──> throw, PROJECT.md untouched
+      |
       v
-prune cast ─────> excise the cast: line span from PROJECT.md (only write,
-                  gated on CAST.md existing + verify passing, idempotent)
+copy PROJECT.md → PROJECT.md.bak (.bak.N if taken)
+      |
+      v
+remove the cast: line span + stamp schemaVersion: 5 (surgical; idempotent)
 ```
 
 ### Single Voice Pipeline (`echada voice`)
@@ -243,7 +248,7 @@ narrator.vox (zip archive)
 | Library depends only on SwiftReparto | Cast schema without ML/Metal weight; SwiftReparto's leaf status makes cycles impossible |
 | SwiftProyecto is CLI-only | The CLI still needs project-level config; the library never did |
 | One writer for CAST.md | Only `CastMarkdownGenerator` serializes — prevents the field-by-field re-emission data loss class (#44/#55) |
-| Two-phase migration (`verify` → `prune`) | Non-destructive rollout with a human gate; no one-shot "move the data" command |
+| Automatic migration with a backup | Old projects upgrade on first contact; the transfer is checked before PROJECT.md changes, and `PROJECT.md.bak` keeps the original |
 | Library has no ML deps | Keeps library usable as a pure SPM dependency without Metal/MLX |
 | Two-phase vox pipeline | Avoids GPU OOM from loading VoiceDesign + Base simultaneously |
 | `SwiftEchada` is an enum | Prevents accidental instantiation; creates module/type name collision (see [gotchas](gotchas.md)) |

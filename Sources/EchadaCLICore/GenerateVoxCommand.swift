@@ -23,8 +23,9 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
       voice file under `voices/` beside CAST.md, recorded under the member's \
       `voices.voxalta` in CAST.md (paths relative to CAST.md's directory).
 
-      PROJECT.md is read-only here — `title` and `tts.model` only — and is never \
-      modified. When CAST.md is absent this command fails — run \
+      PROJECT.md is read for `title` and `tts.model`; an older PROJECT.md that \
+      still holds a `cast:` block is first migrated into CAST.md (original saved \
+      as PROJECT.md.bak). When CAST.md is absent this command fails — run \
       `echada generate cast` first to create it.
 
       Idempotency: members whose `.vox` already holds the requested variant \
@@ -79,6 +80,13 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
   )
   public var accent: String?
 
+  @Option(
+    name: .long,
+    help:
+      "Use this audition-pool index for every character instead of rotating per character (0-based; wraps). For A/B listening tests."
+  )
+  public var auditionVariant: Int?
+
   public init() {}
 
   /// Normalizes the `--accent` flag: `nil` or whitespace-only → `nil`; otherwise trimmed.
@@ -116,6 +124,10 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
     }
     let projectDir = fileURL.deletingLastPathComponent()
     let castURL = try GenerateCastCommand.resolveCastFile(named: cast, in: projectDir)
+
+    // A pre-v5 project still carries its roster in PROJECT.md; move it to
+    // CAST.md before this stage reads anything.
+    try ProjectMigration.migrateIfNeeded(projectURL: fileURL, castName: cast, dryRun: dryRun)
 
     // EC-14: the roster must already exist — this command never creates it.
     guard FileManager.default.fileExists(atPath: castURL.path) else {
@@ -208,7 +220,8 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
       verbose: verbose,
       ttsModelVariant: effectiveTTSModel,
       languages: languages,
-      accent: resolvedAccentValue
+      accent: resolvedAccentValue,
+      auditionVariant: auditionVariant
     )
 
     let genResult = try await generator.generate(cast: targetCast)

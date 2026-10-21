@@ -24,11 +24,11 @@ let package = Package(
   ],
   dependencies: [
     .package(
-      url: "https://github.com/intrusive-memory/SwiftProyecto.git", .upToNextMajor(from: "4.8.1")),
+      url: "https://github.com/intrusive-memory/SwiftProyecto.git", .upToNextMajor(from: "5.3.2")),
     .package(
       url: "https://github.com/intrusive-memory/SwiftReparto.git", .upToNextMajor(from: "0.1.0")),
     .package(
-      url: "https://github.com/intrusive-memory/SwiftVoxAlta.git", .upToNextMajor(from: "0.14.1")),
+      url: "https://github.com/intrusive-memory/SwiftVoxAlta.git", .upToNextMajor(from: "0.14.2")),
     .package(url: "https://github.com/apple/swift-argument-parser", .upToNextMajor(from: "1.7.1")),
     .package(url: "https://github.com/ml-explore/mlx-swift", .upToNextMajor(from: "0.31.3")),
     .package(url: "https://github.com/ml-explore/mlx-swift-lm", .upToNextMajor(from: "3.31.3")),
