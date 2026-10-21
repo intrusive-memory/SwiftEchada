@@ -39,13 +39,15 @@ public struct CastCommand: AsyncParsableCommand {
       `filePattern`) with NO LLM involved. An existing project detected nearby \
       is left untouched. The inferred fields are plain YAML and freely editable \
       afterward. The `--cast` roster file (default CAST.md) is then ensured \
-      beside PROJECT.md — seeded from a legacy `cast:` block when one is \
-      present, created empty otherwise; an existing roster is left untouched.
+      beside PROJECT.md. An older PROJECT.md that still holds a `cast:` block \
+      is migrated: the roster moves to CAST.md, the original is saved as \
+      PROJECT.md.bak, and the block is removed. Otherwise an empty roster is \
+      created; an existing roster is left untouched. Under `--dry-run` these \
+      offline steps, migration included, still run for real.
 
       Step 1 — `generate cast`: heuristically discovers character names from the \
       screenplay source and merges them into the project's CAST.md roster \
-      (seeded from a legacy `cast:` block in PROJECT.md when CAST.md is absent; \
-      PROJECT.md itself is never modified by this stage).
+      (PROJECT.md is read for `episodesDir`/`filePattern` only).
 
       Step 2 — `generate prompt`: writes a `voicePrompt` for each cast member \
       from their dialogue, using the on-device Foundation Model.
@@ -245,37 +247,27 @@ public struct CastCommand: AsyncParsableCommand {
     print("Bootstrapped \(project) (title: \"\(title)\", episodesDir: \(episodesDir)).")
   }
 
-  /// Ensures the `--cast` roster file exists beside `PROJECT.md` (EC-15),
-  /// seeding it verbatim from a legacy `cast:` block in `PROJECT.md` when one
-  /// is present (EC-7) and creating an empty roster otherwise.
+  /// Ensures the `--cast` roster file exists beside `PROJECT.md` (EC-15).
   ///
-  /// An existing cast file is authoritative and left byte-untouched — this
-  /// bootstrap only ever *creates*, never rewrites (EC-18). PROJECT.md is
-  /// read-only here: seeding copies the legacy block but never strips it —
-  /// removal belongs exclusively to `echada prune cast`, which this
-  /// orchestrator never invokes, by construction.
+  /// A pre-v5 `PROJECT.md` is migrated first (``ProjectMigration``), which
+  /// moves its legacy `cast:` block into the roster file. Otherwise an empty
+  /// roster is created. An existing cast file is authoritative: migration only
+  /// adds missing members and fills empty fields (EC-18).
   private func ensureCastMarkdown(projectFile: URL, projectDir: URL) throws {
     // Resolve (and validate) the --cast filename up front, so a bad override
     // fails before any stage runs. Same filename-only rule as the stages.
     let castURL = try GenerateCastCommand.resolveCastFile(named: cast, in: projectDir)
 
-    // Already present — authoritative, leave every byte alone.
-    guard !FileManager.default.fileExists(atPath: castURL.path) else { return }
-
     // No project file at the literal --project path (e.g. it deferred to a
     // sibling PROJECT.md): let Stage 1 surface its actionable error rather
-    // than guessing which project to seed from.
+    // than guessing which project to migrate.
     guard FileManager.default.fileExists(atPath: projectFile.path) else { return }
 
-    let legacy = try LegacyProjectCastReader.readCast(fileURL: projectFile)
-    try CastMarkdownParser().write(document: CastDocument(cast: legacy), to: castURL)
-    if legacy.isEmpty {
-      print("Bootstrapped \(cast) (empty roster — `generate cast` fills it next).")
-    } else {
-      print(
-        "Bootstrapped \(cast) — seeded from the legacy `cast:` block in \(project) (\(legacy.count) member(s))."
-      )
-    }
+    try ProjectMigration.migrateIfNeeded(projectURL: projectFile, castName: cast)
+
+    guard !FileManager.default.fileExists(atPath: castURL.path) else { return }
+    try CastMarkdownParser().write(document: CastDocument(cast: []), to: castURL)
+    print("Bootstrapped \(cast) (empty roster — `generate cast` fills it next).")
   }
 
   /// Resolves the project directory for analysis/discovery. A relative

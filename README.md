@@ -10,7 +10,7 @@ type: doc
 
 AI-powered cast management for screenplay projects. Generates on-device custom voices from text prompts (via [SwiftVoxAlta](https://github.com/intrusive-memory/SwiftVoxAlta)) and manages cast data in CAST.md files (via [SwiftReparto](https://github.com/intrusive-memory/SwiftReparto)).
 
-**Ownership split (v1.0.0)**: `PROJECT.md` is [SwiftProyecto](https://github.com/intrusive-memory/SwiftProyecto)'s config file — project identity, episode discovery, TTS config. `CAST.md` is SwiftReparto's config file — the cast roster, voice prompts, and `.vox` voice pointers. All `echada` generate stages read and write `CAST.md`; a legacy `cast:` block in `PROJECT.md` is treated as read-only history, consulted only to seed a new `CAST.md` and to verify the migration, and removed only by the explicit `echada prune cast` command.
+**Ownership split (v2.0.0)**: `PROJECT.md` is [SwiftProyecto](https://github.com/intrusive-memory/SwiftProyecto)'s config file — project identity, episode discovery, TTS config. `CAST.md` is SwiftReparto's config file — the cast roster, voice prompts, and `.vox` voice pointers. All `echada` generate stages read and write `CAST.md`; an older `PROJECT.md` that still has a `cast:` block is migrated into `CAST.md` automatically (see [Migrating older projects](#migrating-older-projects)).
 
 ## Requirements
 
@@ -51,8 +51,8 @@ The library target depends only on [SwiftReparto](https://github.com/intrusive-m
 
 ## CLI Usage
 
-The `echada` CLI has six top-level commands: `cast`, `generate`, `verify`,
-`prune`, `voice`, and the hidden `test-voice`. There is no default subcommand —
+The `echada` CLI has four top-level commands: `cast`, `generate`, `voice`, and
+the hidden `test-voice`. There is no default subcommand —
 running bare `echada` prints help; invoke a command explicitly.
 
 Every command that touches the cast roster accepts `--cast <filename>`
@@ -121,31 +121,26 @@ echada generate vox [--project <path>] [--cast <filename>] [--character <name>] 
   `.vox` (e.g. `--language es --language en`); `--accent` applies a delivery
   directive (e.g. `"slow southern drawl"`) to every character's voice.
 
-### `echada verify cast` and `echada prune cast` — the migration gates
+### Migrating older projects
 
-Projects that predate v1.0.0 carry their roster in PROJECT.md's `cast:`
-block. Migration is two-phase and non-destructive, with a human gate between
-generation and removal:
+Projects from before v1.0.0 keep their roster in PROJECT.md's `cast:` block.
+echada 2.0 migrates them automatically: the first time `echada cast` or any
+`generate` stage opens such a project, it
 
-```bash
-echada generate cast            # 1. seed + build CAST.md (PROJECT.md untouched)
-echada verify cast              # 2. read-only gate: rosters must agree
-echada prune cast               # 3. explicit: excise the legacy cast: block
-```
+1. copies the roster into CAST.md (an existing CAST.md wins on any field the
+   two disagree about; missing members are added and printed),
+2. checks that every character made it into CAST.md, and stops without
+   touching PROJECT.md if one didn't,
+3. saves the original as `PROJECT.md.bak` (or `.bak.1`, … if one exists),
+4. removes only the `cast:` lines and stamps `schemaVersion: 5`. Every other
+   byte of PROJECT.md is kept.
 
-- **`verify cast`** — compares CAST.md against the legacy `cast:` in
-  PROJECT.md and reports three divergence classes: characters present in one
-  file and not the other, differing field values on a matched character, and
-  `.vox` pointers in CAST.md that do not resolve to a file on disk. It never
-  writes either file; it exits 0 on agreement and non-zero on any divergence,
-  so it can gate CI or a rollout loop.
-- **`prune cast`** — removes the legacy `cast:` block from PROJECT.md, the
-  only write to PROJECT.md's cast data anywhere in `echada`. Two gates guard
-  it: CAST.md must exist beside PROJECT.md, and `verify cast` must pass. Only
-  the `cast:` line span is excised — every other byte of the file survives
-  verbatim. Idempotent (`cast:`-less PROJECT.md exits 0), explicit-only (no
-  other command ever invokes it), and `--dry-run` prints the removal diff
-  without writing.
+`generate … --dry-run` describes the migration without doing it. `echada cast
+--dry-run` runs the offline steps for real, so it does migrate.
+
+> **Produciesta compatibility:** a Produciesta build that still reads cast from
+> PROJECT.md finds no voices in a migrated project. Render migrated projects
+> with a CAST.md-aware Produciesta, or restore `PROJECT.md.bak` until you can.
 
 ### Generate a Voice
 

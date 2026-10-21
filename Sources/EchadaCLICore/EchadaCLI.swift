@@ -26,19 +26,15 @@ public struct EchadaCLI: AsyncParsableCommand {
       vox` — for per-stage control. See `echada cast --help` for the full \
       pipeline and its cascading `--force`.
 
-      Read-only checks live under the `verify` namespace — `echada verify \
-      cast` compares CAST.md against the legacy `cast:` block in PROJECT.md \
-      and exits non-zero on any divergence, without writing anything.
-
-      The explicit cleanup step lives under the `prune` namespace — `echada \
-      prune cast` strips the migrated legacy `cast:` block from PROJECT.md \
-      once `verify cast` passes, leaving every other byte untouched. It is \
-      never run automatically.
+      Older projects migrate automatically. When a stage opens a PROJECT.md \
+      that still holds a `cast:` block (schema v4 and earlier), echada moves \
+      the roster into CAST.md, checks that every character arrived, saves the \
+      original as PROJECT.md.bak, then removes the `cast:` block and stamps \
+      `schemaVersion: 5`. Every other byte of PROJECT.md is kept.
       """,
     version: EchadaCLI.versionReport,
     subcommands: [
-      VoiceCommand.self, CastCommand.self, GenerateCommand.self,
-      VerifyCommand.self, PruneCommand.self, TestVoiceCommand.self,
+      VoiceCommand.self, CastCommand.self, GenerateCommand.self, TestVoiceCommand.self,
     ]
   )
 

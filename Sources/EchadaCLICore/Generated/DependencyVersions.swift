@@ -18,9 +18,9 @@ enum DependencyVersions {
 
   /// Declared in Package.swift, in manifest order.
   static let direct: [Direct] = [
-    Direct(name: "SwiftProyecto", requirement: "4.8.1 ..< 5.0.0", resolved: "4.8.1"),
+    Direct(name: "SwiftProyecto", requirement: "5.3.2 ..< 6.0.0", resolved: "5.3.2"),
     Direct(name: "SwiftReparto", requirement: "0.1.0 ..< 1.0.0", resolved: "0.1.0"),
-    Direct(name: "SwiftVoxAlta", requirement: "0.14.1 ..< 1.0.0", resolved: "0.14.2"),
+    Direct(name: "SwiftVoxAlta", requirement: "0.14.2 ..< 1.0.0", resolved: "0.14.2"),
     Direct(name: "swift-argument-parser", requirement: "1.7.1 ..< 2.0.0", resolved: "1.8.2"),
     Direct(name: "mlx-swift", requirement: "0.31.3 ..< 1.0.0", resolved: "0.31.3"),
     Direct(name: "mlx-swift-lm", requirement: "3.31.3 ..< 4.0.0", resolved: "3.31.3"),
@@ -30,7 +30,7 @@ enum DependencyVersions {
 
   /// Pulled in transitively, sorted by package identity.
   static let transitive: [(name: String, resolved: String)] = [
-    (name: "glosa-av", resolved: "0.8.0"),
+    (name: "glosa-av", resolved: "0.9.0"),
     (name: "progress.swift", resolved: "0.4.0"),
     (name: "swift-asn1", resolved: "1.7.1"),
     (name: "swift-cmark", resolved: "0.8.0"),
@@ -41,9 +41,9 @@ enum DependencyVersions {
     (name: "swift-syntax", resolved: "600.0.1"),
     (name: "swift-tokenizers", resolved: "0.7.1"),
     (name: "swiftacervo", resolved: "0.25.0"),
-    (name: "swiftcompartido", resolved: "7.2.4"),
+    (name: "swiftcompartido", resolved: "7.4.0"),
     (name: "swifthablare", resolved: "6.3.0"),
-    (name: "swifttuberia", resolved: "0.8.0"),
+    (name: "swifttuberia", resolved: "0.9.0"),
     (name: "textbundle", resolved: "1.0.7"),
     (name: "universal", resolved: "5.3.0"),
     (name: "yams", resolved: "6.2.2"),

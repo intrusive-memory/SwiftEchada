@@ -2,13 +2,13 @@
 type: requirements
 state: draft
 created: 2026-09-25
-updated: 2026-10-19
-target_version: 1.1.0
+updated: 2026-10-21
+target_version: 2.1.0
 controlling_doc: dossier-format docs/DOSSIER-FORMAT.md (https://github.com/intrusive-memory/dossier-format)
 depends_on: SwiftReparto 0.2.0 (../SwiftReparto/REQUIREMENTS.md)
 ---
 
-# SwiftEchada 1.1.0 — Voices Move Into the Character Record
+# SwiftEchada 2.1.0 — Voices Move Into the Character Record
 
 Today every `.vox` file goes into one flat `voices/` folder next to `CAST.md`.
 The file name is the character's name with spaces replaced by underscores:
@@ -22,6 +22,14 @@ moves voice files into it:
 ```
 characters/THE PRACTITIONER.dossier/voice/THE PRACTITIONER.vox
 ```
+
+*Updated 2026-10-21:* retargeted from 1.1.0 to 2.1.0. SwiftEchada 2.0.0
+took SwiftProyecto 5, removed `echada verify cast` and `echada prune cast`, and
+made migration off a legacy `cast:` block automatic (`ProjectMigration`).
+**EC-27 needs rescoping:** the command it extends is gone, and its checks now
+belong in `CastRosterVerifier` and `ProjectMigration`. The
+`VerifyCastCommandTests` and `PruneCastCommandTests` fixtures it cites were
+replaced by `ProjectMigrationTests`.
 
 *Updated 2026-10-19:* the record moved from SwiftSemblanzas §5 to
 dossier-format; directories end in `.dossier`; sample names and variants
@@ -244,7 +252,7 @@ Every assumption that voices live in `voices/` gets updated:
 ## 3. Rollout
 
 1. **SwiftReparto 0.2.0** ships `role`, `manifest` and `canonicalName`.
-2. **SwiftEchada 1.1.0** ships EC-23 to EC-30.
+2. **SwiftEchada 2.1.0** ships EC-23 to EC-30.
 3. **Pilot on `podcasts/granville`**, which already has a `CAST.md`:
    `reparto canonicalize`, then `echada migrate voices`, `--apply`, and
    `echada verify cast`. Then regenerate one episode and compare its audio.
@@ -258,6 +266,6 @@ Every assumption that voices live in `voices/` gets updated:
 
 | # | Question | Recommendation |
 |---|----------|----------------|
-| EC-Q1 | Is this 1.1.0 or 2.0.0? The default output location changes for **new** characters. | **1.1.0.** Existing pointers are respected (EC-23 rule 2), so no existing project changes until someone runs `migrate voices`. The only script that relies on the old location is our own skill, which is updated in the same release. Choose 2.0.0 instead if you count a changed default path as breaking for the CLI. |
-| EC-Q2 | Should SwiftEchada link SwiftDossier's `Dossier` and register `.vox` and samples in the manifest directly? | Not in 1.1.0: refresh picks up the files. Revisit once SwiftDossier ships (Foundation + Reparto, no image stack). It removes the refresh step; `voices.voxalta` stays, as the which-voice-to-play authority (dossier-format D5). |
-| EC-Q3 | Should `voice/` also hold the reference audio and the voice-design prompt history? | Only if dossier-format adds a kind for it; the voice prompt is already `provenance.voicePrompt` on the `vox` asset. Out of scope for 1.1.0. |
+| EC-Q1 | Is this 2.1.0 or 3.0.0? The default output location changes for **new** characters. | **2.1.0.** Existing pointers are respected (EC-23 rule 2), so no existing project changes until someone runs `migrate voices`. The only script that relies on the old location is our own skill, which is updated in the same release. Choose 3.0.0 instead if you count a changed default path as breaking for the CLI. |
+| EC-Q2 | Should SwiftEchada link SwiftDossier's `Dossier` and register `.vox` and samples in the manifest directly? | Not in 2.1.0: refresh picks up the files. Revisit once SwiftDossier ships (Foundation + Reparto, no image stack). It removes the refresh step; `voices.voxalta` stays, as the which-voice-to-play authority (dossier-format D5). |
+| EC-Q3 | Should `voice/` also hold the reference audio and the voice-design prompt history? | Only if dossier-format adds a kind for it; the voice prompt is already `provenance.voicePrompt` on the `vox` asset. Out of scope for 2.1.0. |
