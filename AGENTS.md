@@ -84,7 +84,7 @@ Full architecture: [Docs/architecture.md](Docs/architecture.md)
 ## Queryable Codemap
 
 A prebuilt [graphify](https://pypi.org/project/graphifyy/) knowledge graph of this
-codebase lives in [`graphify-out/`](graphify-out/) — 322 nodes · 524 edges across 14
+codebase lives in [`graphify-out/`](graphify-out/) — 843 nodes · 1411 edges across 59
 communities, mapping how the library, CLI, tests, and fixtures connect. **Prefer
 querying it before grepping** when answering architecture or "what connects to what"
 questions:
