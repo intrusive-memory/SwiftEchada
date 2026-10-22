@@ -17,9 +17,8 @@ folded in), removing cast discovery (Part C), and a library an app can link
 *Updated 2026-10-21:* SwiftEchada **2.0.0 shipped today** (removed `verify
 cast` and `prune cast`; automatic `cast:` migration). The voice requirements
 (EC-23..EC-30) are now maintained in `REQUIREMENTS.md` on `development`,
-targeting 2.1.0. *2026-10-22:* moved to `development`. 2.1.0 was stopped
-before release; the next release is **3.0.0** and carries Parts A–C together
-with the SwiftLlavero work (PR #61).
+targeting 2.1.0. *2026-10-22:* moved to `development`. 2.1.0 shipped (PR #61,
+SwiftLlavero + macOS 27) without them; **3.0.0** carries Parts A–C.
 
 ## Part A: amendments to EC-23..EC-30 — done
 

@@ -221,6 +221,35 @@ struct GenerateVoxCommandTests {
   /// holds the requested variant the skip-existing path still records the
   /// pointer — and the path written into CAST.md must resolve to an existing
   /// file relative to CAST.md's directory.
+  /// EC-23 "an existing pointer is respected" + its EC-30 test: a dossier
+  /// voice that already holds the requested variant is skipped, its pointer
+  /// is untouched, and nothing appears under `voices/` — with a `manifest:`
+  /// (rule 1) and without one (rule 2, in place).
+  @Test(
+    "A dossier voice survives generate vox: pointer unchanged, nothing under voices/",
+    arguments: [true, false])
+  func dossierVoiceSurvivesGenerateVox(withManifest: Bool) async throws {
+    let path = "characters/SHANE.dossier/voice/SHANE.vox"
+    var member = SwiftReparto.CastMember(
+      character: "SHANE", voicePrompt: "A dry, laconic drawl.", voices: ["voxalta": [path]])
+    if withManifest { member.manifest = "characters/SHANE.dossier/manifest.json" }
+    let url = try writeProject(castMembers: [member])
+    let projectDir = url.deletingLastPathComponent()
+    defer { try? FileManager.default.removeItem(at: projectDir) }
+    try writeSyntheticVox(
+      at: projectDir.appendingPathComponent(path), variant: "1.7b",
+      modelId: "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-bf16")
+
+    try await GenerateVoxCommand.parse(["--project", url.path, "--tts-model", "1.7b"]).run()
+
+    let roster = try CastMarkdownParser().parse(
+      fileURL: projectDir.appendingPathComponent("CAST.md")
+    ).cast
+    #expect(roster.first?.voices["voxalta"] == [path])
+    #expect(
+      !FileManager.default.fileExists(atPath: projectDir.appendingPathComponent("voices").path))
+  }
+
   @Test("A .vox path written into CAST.md is the dossier location, CAST-relative (EC-23, EC-25)")
   func voxPathInCastMdResolvesRelativeToCastDirectory() async throws {
     let member = SwiftReparto.CastMember(

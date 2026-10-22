@@ -75,41 +75,76 @@ public struct CharacterEvidence: Codable, Sendable, Equatable {
 
 ---
 
-### `CharacterInfo` (struct)
+## Voice library (`EchadaVoice`)
 
-A character extracted from a screenplay file.
+What an app links to build and play character voices (Personaje Part B). No
+ArgumentParser and no PROJECT.md reader in its dependency closure. It writes
+`.vox` and `.m4a` files only; CAST.md goes through SwiftReparto and
+`manifest.json` through SwiftDossier.
+
+### `VoiceBuilder` (struct)
 
 ```swift
-public struct CharacterInfo: Codable, Sendable, Equatable {
-    public let name: String
-    public let description: String?
-    public let voiceDescription: String?
+public struct VoiceBuilder: Sendable {
+    public init(castDirectory: URL, charactersDir: String = "characters")
 
-    public init(name:description:voiceDescription:)
+    public func location(for member: CastMember) throws -> VoiceLocation
+
+    // EC-P6: one design, locked with each size, one .vox.
+    public func buildVoice(for member: CastMember, language: String = "en", accent: String? = nil,
+                           models: [VoiceModelSize] = [.large, .small],
+                           progress: @Sendable (VoiceBuildProgress) -> Void = { _ in })
+        async throws -> VoiceBuildResult
+
+    // EC-P7: candidates to play, then lock the chosen one.
+    public func audition(for member: CastMember, language: String = "en", accent: String? = nil,
+                         count: Int = 3, progress: …) async throws -> [VoiceAudition]
+    public func lock(_ audition: VoiceAudition, for member: CastMember,
+                     models: [VoiceModelSize] = [.large, .small], progress: …)
+        async throws -> VoiceBuildResult
+
+    // EC-P8 / EC-28: voice/sample-<variant>[-<model>].m4a.
+    public func renderSample(for member: CastMember, variant: String = "neutral", text: String? = nil,
+                             model: VoiceModelSize = .large, language: String? = nil,
+                             sampleLine: String? = nil, instruct: String? = nil, progress: …)
+        async throws -> VoiceSample
+
+    public static func modelSizes(inVoxAt url: URL) throws -> [VoiceModelSize]
+    public static func sampleFileName(variant: String, model: VoiceModelSize) -> String
 }
 ```
 
----
+- `VoiceModelSize`: `.large` (`"1.7b"`, the default) and `.small` (`"0.6b"`).
+- `VoiceBuildProgress`: `.designing(index:count:)`, `.locking(size)`, `.writing(relativePath:)`, `.renderingSample(variant:model:)`.
+- `VoiceBuildResult`: `location`, `models`, `sampleText`, and `updating(_ member:)` to set `voices.voxalta`.
+- `VoiceSample` (Codable): `variant`, `model`, `language`, `sampleText`, `relativePath`.
+- Every call loads the models it needs and unloads them before returning,
+  including on error, and checks `Task.checkCancellation()` between steps.
+  Models come from the shared SwiftAcervo directory, so the host needs the
+  `group.intrusive-memory.models` App Group (EC-P10).
 
-### `CharacterMerger` (struct)
-
-Merges extracted character lists from multiple screenplay files into a unified cast list (`[SwiftReparto.CastMember]`, i.e. a CAST.md roster). Deduplicates by name (case-insensitive), preserves existing voice/actor assignments, and sorts alphabetically.
+### `VoiceLocation` (struct) — EC-23, EC-24
 
 ```swift
-public struct CharacterMerger: Sendable {
-    public init()
+public struct VoiceLocation: Equatable, Sendable {
+    public enum Rule { case manifest, existingPointer, newDossier }
+    public let relativePath: String   // relative to CAST.md's directory
+    public let url: URL
+    public let rule: Rule
 
-    public func merge(
-        extracted: [[CharacterInfo]],
-        existingCast: [CastMember]?   // SwiftReparto.CastMember
-    ) -> [CastMember]
+    public static func resolve(for member: CastMember, castDirectory: URL,
+                               charactersDir: String = "characters",
+                               fileManager: FileManager = .default) throws -> VoiceLocation
+    public static func fileName(for character: String) throws -> String
 }
 ```
 
-**Algorithm**:
-1. Dedup the extracted lists — first occurrence of each name wins (case- and whitespace-insensitive)
-2. Delegate reconciliation to SwiftReparto's additive `CastMember.merging(_:)` (RQ-14): existing members keep every field, discovered newcomers are appended
-3. Result sorted alphabetically (case-insensitive)
+Rules, first match wins: the member's `manifest:` → `<bundle>/voice/<NAME>.vox`;
+an existing `voices.voxalta` path → that path, in place; otherwise
+`<charactersDir>/<NAME>.dossier/voice/<NAME>.vox`. `<NAME>` is
+`CastMember.canonicalName(character)` exactly. `VoiceLocationError`:
+`.invalidName`, `.nonCanonicalName` (run `reparto canonicalize`),
+`.outsideCastDirectory`, `.caseCollision`.
 
 ---
 
@@ -139,8 +174,8 @@ public struct CastMember: Codable, Sendable, Equatable, Hashable, Identifiable {
 **`portrait`**: character portraits ride in the reserved `appearance:` block
 (`appearance.portrait`), which is *not* a declared field in SwiftReparto 0.1.x —
 it is preserved losslessly through `extraKeys` for SwiftSemblanzas, and
-`echada` never invents it (`generate cast` seeding emits no `portrait:` key a
-member did not already carry).
+`echada` never invents it (migration emits no `portrait:` key a member did not
+already carry).
 
 ### `Gender` (enum)
 
@@ -191,31 +226,35 @@ a command explicitly.
 
 | Command | Description |
 |---------|-------------|
-| `cast` | Meta / orchestrator: bootstrap PROJECT.md + CAST.md, then run `generate cast` → `generate prompt` → `generate vox` |
-| `generate` | Container for the three individual pipeline stages (`cast`, `prompt`, `vox`); no default subcommand |
+| `cast` | Meta / orchestrator: bootstrap PROJECT.md + CAST.md, then run `generate prompt` → `generate vox` |
+| `generate` | Container for the two pipeline stages (`prompt`, `vox`); no default subcommand |
+| `sample` | Export playable `.m4a` samples beside a character's `.vox` (EC-28) |
+| `migrate voices` | Move existing `.vox` files into the character record (EC-26) |
+| `auth` | LLM credentials (SwiftLlavero) |
 | `voice` | Generate a single .vox voice file from a text prompt |
 | `test-voice` | Hidden — generate a test .vox file for integration testing |
 
-**The `--cast` flag**: every roster-touching command (`cast`, `generate cast`,
-`generate prompt`, `generate vox`) accepts
+**The `--cast` flag**: every roster-touching command (`cast`, `generate prompt`,
+`generate vox`, `sample`, `migrate voices`) accepts
 `--cast <filename>` (default `CAST.md`). It is a **bare filename only** — the
 roster always lives in `--project`'s directory, and path separators are
 rejected.
 
-### `echada cast` — full pipeline
+### `echada cast` — voice pipeline
 
 Bootstraps `PROJECT.md` when absent (no LLM — inferred
 title/author/`episodesDir`/`filePattern` from the surrounding directory via
 `ProjectService.analyzeForGeneration(at:)`), ensures the `--cast` roster file
 beside it (seeded from a legacy `cast:` block when present, created empty
-otherwise; an existing roster is left untouched), then runs `generate cast` →
-`generate prompt` → `generate vox` in order. Every stage is idempotent, so
-re-running only fills the gaps.
+otherwise; an existing roster is left untouched), then runs `generate prompt` →
+`generate vox` in order. Every stage is idempotent, so re-running only fills
+the gaps. echada does not discover cast members (3.0.0): an empty roster stops
+the pipeline with advice to run `personaje cast-discover`.
 
 ```
 echada cast [--project <path>] [--cast <filename>] [--character <name>]
             [--tts-model <variant>] [--language <bcp-47>]... [--accent <directive>]
-            [--force] [--dry-run] [--verbose]
+            [--llm <model>] [--force] [--dry-run] [--verbose]
 ```
 
 | Flag | Default | Description |
@@ -226,49 +265,29 @@ echada cast [--project <path>] [--cast <filename>] [--character <name>]
 | `--tts-model` | from PROJECT.md or `1.7b` | TTS model variant for the vox stage (`0.6b`, `1.7b`); forwarded to `generate vox` |
 | `--language` | `en` (repeatable) | BCP-47 code(s) for the vox stage's reference sample; forwarded to `generate vox` |
 | `--accent` | none | Accent/delivery directive applied to every character's voice in the vox stage; forwarded to `generate vox` |
-| `--force` | false | Cascading force: re-syncs the cast list, overwrites existing voice prompts, and regenerates existing `.vox` files (fans out to each stage's own force flag) |
-| `--dry-run` | false | Run the offline bootstrap + cast-discovery steps (writing the discovered cast to CAST.md), but stop before the model-backed prompt and vox stages |
+| `--llm` | `on-device` | Model for the prompt stage: `on-device`, `pcc`, or `account:model`; forwarded to `generate prompt` |
+| `--force` | false | Cascading force: overwrites existing voice prompts and regenerates existing `.vox` files (fans out to each stage's own force flag) |
+| `--dry-run` | false | Run the offline bootstrap and migration steps, but stop before the model-backed prompt and vox stages |
 | `--verbose` | false | Verbose output for every stage |
 
 ### `echada generate` (container, no default subcommand)
 
-Container for the three generative pipeline stages, each runnable standalone
+Container for the two generative pipeline stages, each runnable standalone
 for per-stage control. Running `echada generate` with no subcommand prints
 help rather than defaulting to a stage.
 
 ```
-echada generate <cast|prompt|vox>
+echada generate <prompt|vox>
 ```
-
-#### `echada generate cast`
-
-Discovers cast members from the screenplay source (heuristic only, no
-LLM/ML) and merges them into the CAST.md roster. PROJECT.md is read-only to
-this command (episode discovery config, and the legacy `cast:` block used to
-seed a brand-new CAST.md verbatim). Only newly-appearing
-characters are added by default; `--force` re-syncs to exactly the characters
-found now (matching characters keep their existing downstream fields).
-
-```
-echada generate cast [--project <path>] [--cast <filename>] [--force] [--dry-run] [--verbose]
-```
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--project` | `PROJECT.md` | Path to PROJECT.md file (never written) |
-| `--cast` | `CAST.md` | Filename of the cast roster; bare filename resolved beside `--project` |
-| `--force` | false | Re-sync the cast list to exactly the characters found in the source now |
-| `--dry-run` | false | Preview discovered characters without writing |
-| `--verbose` | false | Verbose output |
 
 #### `echada generate prompt`
 
 Examines each cast member's dialogue in the screenplay source and writes a
-`voicePrompt` into CAST.md via the on-device Foundation Model. This is the
+`voicePrompt` into CAST.md with the model chosen by `--llm` (on-device by default). This is the
 command formerly known as the standalone `echada prompt` (removed in v0.16.0).
 
 ```
-echada generate prompt [--project <path>] [--cast <filename>] [--character <name>] [--force] [--dry-run] [--verbose]
+echada generate prompt [--project <path>] [--cast <filename>] [--character <name>] [--llm <model>] [--force] [--dry-run] [--verbose]
 ```
 
 | Flag | Default | Description |
@@ -276,6 +295,7 @@ echada generate prompt [--project <path>] [--cast <filename>] [--character <name
 | `--project` | `PROJECT.md` | Path to PROJECT.md file (read-only: episode discovery config) |
 | `--cast` | `CAST.md` | Filename of the cast roster; bare filename resolved beside `--project` |
 | `--character` | all | Generate a voice prompt for a single character |
+| `--llm` | `on-device` | `on-device`, `pcc`, or any `account:model` from `echada auth` |
 | `--force` | false | Overwrite voice prompts for members that already have one (default: fill empty only) |
 | `--dry-run` | false | Preview gathered source material without calling the model or writing |
 | `--verbose` | false | Verbose output |
@@ -284,9 +304,11 @@ echada generate prompt [--project <path>] [--cast <filename>] [--character <name
 
 Synthesizes an on-device `.vox` voice for each cast member from their
 `voicePrompt`, recorded under `voices.voxalta` in CAST.md (paths relative to
-CAST.md's directory). This is the
-command formerly known as `echada cast` before it was repurposed into the
-pipeline orchestrator in v0.16.0.
+CAST.md's directory). The file goes where `VoiceLocation` says (EC-23): beside
+the member's `manifest:`, else at its existing `voices.voxalta` path, else
+`<charactersDir>/<NAME>.dossier/voice/<NAME>.vox`, where `charactersDir` is
+PROJECT.md `personaje.charactersDir` (default `characters`). `--dry-run` prints
+each destination. A member whose name isn't canonical fails alone.
 
 ```
 echada generate vox [--project <path>] [--cast <filename>] [--force-regenerate]
@@ -305,6 +327,34 @@ echada generate vox [--project <path>] [--cast <filename>] [--force-regenerate]
 | `--character` | all | Generate for single character by name |
 | `--language` | `en` (repeatable) | BCP-47 code(s) for the reference sample; repeat to cast multiple languages into one `.vox` |
 | `--accent` | none | Accent/delivery directive applied to every character's voice prompt |
+
+### `echada sample` (EC-28)
+
+```
+echada sample <CHARACTER> [--variant neutral|<name>] [--text "…"] [--model 1.7b|0.6b]
+                          [--all-variants] [--json] [--project <path>] [--cast <filename>]
+```
+
+Writes `<character dir>/voice/sample-<variant>.m4a`, adding `-0.6b` for the
+small model. `neutral` exports the `.vox`'s embedded sample (no synthesis);
+other variants, or `--text`, synthesize with the variant as the delivery
+instruction, speaking `--text`, CHARACTER.md `sampleLine`, or a fixed line.
+`--all-variants` renders `voice/samples.yaml` (dossier-format §10) when
+present, else `neutral` on each size. `--json` prints `[VoiceSample]`.
+
+### `echada migrate voices` (EC-26)
+
+```
+echada migrate voices [--project <path>] [--cast <filename>] [--apply]
+```
+
+Dry run by default: prints each member's old path → new path, skipped paths
+outside the project, and `voices/*.vox` files no member points at. `--apply`
+copies and SHA-256-verifies each file, rewrites all pointers in one CAST.md
+write, re-reads CAST.md to check them, then removes the old files; any failure
+restores CAST.md and removes the copies. Refuses non-canonical names, two
+members sharing a destination, and a destination that exists with different
+contents. Never touches `manifest.json`.
 
 ### Automatic migration (no command)
 
@@ -364,15 +414,19 @@ enum VoiceDesigner {
 
 Output: WAV Data (24kHz, 16-bit PCM, mono). Generation params: `maxTokens: 16384, temperature: 0.6, topP: 0.6, repetitionPenalty: 1.5`.
 
-### `CastVoiceGenerator` (struct)
+### `CastVoiceGenerator` (struct, `EchadaVoice`, package access)
+
+The batch generator `generate vox` uses: Phase A designs every member's
+candidate with VoiceDesign loaded once, Phase B locks them with the Base model.
 
 ```swift
-struct CastVoiceGenerator {
-    static let defaultModelSlug: String       // "1.7b"
-    static let supportedVariants: [String]    // ["0.6b", "1.7b"]
+package struct CastVoiceGenerator {
+    package static let defaultModelSlug: String       // "1.7b"
+    package static let supportedVariants: [String]    // ["0.6b", "1.7b"]
 
-    init(projectDirectory:forceRegenerate:verbose:ttsModelVariant:)
-    func generate(cast: [CastMember]) async throws -> GenerateResult
+    package init(castDirectory:charactersDir:forceRegenerate:verbose:ttsModelVariant:
+                 languages:accent:auditionVariant:log:)
+    package func generate(cast: [CastMember]) async throws -> GenerateResult
 }
 ```
 

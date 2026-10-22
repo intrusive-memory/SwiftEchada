@@ -17,7 +17,6 @@ Things that will trip you up if you don't know about them.
 ```swift
 // CORRECT
 import struct SwiftEchada.CharacterProfile
-import struct SwiftEchada.CharacterInfo
 
 // WRONG -- creates ambiguity
 import SwiftEchada
@@ -32,8 +31,8 @@ The CLI entry point uses `import enum SwiftEchada.SwiftEchada` to access the ver
 Until SwiftProyecto 5.0 removes its cast surface, **both** SwiftProyecto and
 SwiftReparto declare types named `CastMember` and `Gender`. Any file that
 imports both modules wholesale makes the bare names ambiguous — and
-`EchadaCLICore` has several such files (`CastCommand`, `GenerateCastCommand`,
-`GeneratePromptCommand`, `GenerateVoxCommand`), because they need SwiftProyecto
+`EchadaCLICore` has several such files (`CastCommand`, `GeneratePromptCommand`,
+`GenerateVoxCommand`), because they need SwiftProyecto
 for project-level fields and SwiftReparto for the roster.
 
 **Required style** in dual-import files: fully qualify the SwiftReparto types.
@@ -129,7 +128,8 @@ explicitly. The `extract` and `download` commands were removed in v0.9.2.
 **As of v0.16.0, `cast` means the full pipeline, not just `.vox` generation.**
 `echada cast` bootstraps `PROJECT.md` and the `CAST.md` roster (if absent) and
 then runs
-`generate cast` → `generate prompt` → `generate vox` in order — every stage
+`generate prompt` → `generate vox` in order (`generate cast` was removed in
+3.0.0; build the roster with `personaje cast-discover`) — every stage
 idempotent, so re-running only fills gaps. This is a breaking change: what
 `echada cast` used to do (produce `.vox` files from existing `voicePrompt`s
 only) is now `echada generate vox`, and the old standalone `echada prompt` is

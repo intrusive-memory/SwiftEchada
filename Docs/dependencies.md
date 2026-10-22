@@ -10,17 +10,26 @@ type: reference
 
 ```
 SwiftEchada (library)
-└── SwiftReparto (0.1.0+)          ← CAST.md schema. A leaf: no intrusive-memory deps.
+└── SwiftReparto (0.2.0+)          ← CAST.md schema, canonicalName. A leaf: no intrusive-memory deps.
+
+EchadaVoice (voice library an app links — no ArgumentParser, no PROJECT.md reader)
+├── SwiftEchada (library)
+├── SwiftReparto (0.2.0+)          ← manifest:, canonicalName (EC-23, EC-24)
+├── SwiftVoxAlta (0.14.2+)
+├── mlx-swift, mlx-swift-lm, mlx-audio-swift
+└── vox-format (0.4.1+)
 
 EchadaCLICore (CLI library) / echada (executable)
+├── EchadaVoice
 ├── SwiftEchada (library)
-├── SwiftReparto (0.1.0+)
+├── SwiftReparto (0.2.0+)
 ├── SwiftProyecto (5.3.2+)         ← PROJECT.md only: title, episodesDir, filePattern, tts.model
 ├── SwiftVoxAlta (0.14.2+)
 │   └── vox-format, mlx-audio-swift, mlx-swift (transitive)
 ├── SwiftLlavero (0.1.0-beta.2, 0.1.x) ← --llm models + `echada auth` credentials
 │   └── ClaudeForFoundationModels, firebase-ios-sdk (transitive)
 ├── swift-argument-parser (1.7.1+)
+├── Yams (6.2.2+)                  ← PROJECT.md `personaje:` block (charactersDir)
 ├── mlx-swift (0.31.3+)
 ├── mlx-swift-lm (3.31.3+)
 ├── mlx-audio-swift (0.10.0+)
@@ -42,7 +51,7 @@ package cycle involving cast data is possible by construction.
 
 | Package | Pin | Purpose | Key Types |
 |---------|-----|---------|-----------|
-| [SwiftReparto](https://github.com/intrusive-memory/SwiftReparto) | `from: "0.1.0"` | CAST.md schema, parse, serialize | `CastMember`, `Gender`, `CastDocument`, `CastMarkdownParser`, `CastMarkdownGenerator`, `ProjectCastImporter` |
+| [SwiftReparto](https://github.com/intrusive-memory/SwiftReparto) | `from: "0.2.0"` (branch `requirements/personaje` until 0.2.0 is tagged) | CAST.md schema, parse, serialize; canonical names | `CastMember` (`manifest`, `role`, `canonicalName`), `Gender`, `CastDocument`, `CastMarkdownParser`, `ProjectCastImporter` |
 
 ### CLI-Only Dependencies
 
@@ -51,7 +60,8 @@ package cycle involving cast data is possible by construction.
 | [SwiftProyecto](https://github.com/intrusive-memory/SwiftProyecto) | `from: "5.3.2"` | PROJECT.md parsing (project-level fields only) and the migration rewrite | `ProjectMarkdownParser`, `ProjectFrontMatter`, `ProjectService` |
 | [SwiftVoxAlta](https://github.com/intrusive-memory/SwiftVoxAlta) | `from: "0.14.2"` | On-device voice generation | `VoxAltaModelManager`, `VoiceLockManager`, `VoxExporter`, `Qwen3TTSModelRepo` |
 | [SwiftLlavero](https://github.com/intrusive-memory/SwiftLlavero) | `upToNextMinor(from: "0.1.0-beta.2")` | The `--llm` model (on-device, PCC, Claude, OpenAI-compatible, Gemini) and `echada auth` (Keychain credentials shared across tools). Beta: pinned to 0.1.x | `Llavero`, `ModelReference`, `LlaveroAuthCommand` |
-| [swift-argument-parser](https://github.com/apple/swift-argument-parser) | `from: "1.7.1"` | CLI argument parsing | `AsyncParsableCommand`, `CommandConfiguration` |
+| [swift-argument-parser](https://github.com/apple/swift-argument-parser) | `from: "1.7.1"` | CLI argument parsing (`EchadaCLICore` only, never `EchadaVoice`) | `AsyncParsableCommand`, `CommandConfiguration` |
+| [Yams](https://github.com/jpsim/Yams) | `from: "6.2.2"` | PROJECT.md `personaje:` block, `samples.yaml`, CHARACTER.md `sampleLine` | `YAMLDecoder` |
 | [mlx-swift](https://github.com/ml-explore/mlx-swift) | `from: "0.31.3"` | MLX framework (GPU compute) | `MLXArray`, `Stream`, `Memory` |
 | [mlx-swift-lm](https://github.com/ml-explore/mlx-swift-lm) | `from: "3.31.3"` | Language model commons | `GenerateParameters` |
 | [mlx-audio-swift](https://github.com/intrusive-memory/mlx-audio-swift) | `from: "0.10.0"` | Qwen3-TTS voice synthesis | `Qwen3TTSModel`, `AudioConversion` |
