@@ -159,7 +159,7 @@ echada migrate voices [--project PROJECT.md] [--cast CAST.md] [--apply]
 
 | Former EC-27 check | Now |
 |--------------------|-----|
-| Compare `role` and `manifest` as fields | `CastRosterVerifier.divergences` (`CastRosterVerifier.swift:49`, used by `ProjectMigration.swift:81`). It compares whatever `CastMember` declares, so Reparto 0.2.0's new fields are covered once Echada resolves it. EC-30 adds a test for it. |
+| Compare `role` and `manifest` as fields | **Dropped.** The only roster comparison left is `CastRosterVerifier.divergences` (`CastRosterVerifier.swift:49`, used by `ProjectMigration.swift:81`). It compares CAST.md against a legacy PROJECT.md `cast:` block, using a fixed field list (`character`, `actor`, `gender`, `language`, `voicePrompt`, …). A legacy block predates `role` and `manifest`, so there's nothing to compare them against. |
 | Paths with spaces resolve, CAST-relative | An EC-30 test on the generator and `migrate voices` |
 | Manifest/name mismatch is an error | Dropped from Reparto (its RQ-21 is withdrawn). dossier-format validation reports it as `E-NAME-MISMATCH` / `W-POINTER` (§3, §14) |
 | A member's `.vox` outside its bundle's `voice/` | dossier-format validation, `W-VOICE-ELSEWHERE` (§8.2). The `migrate voices` dry run lists it as a planned move |
@@ -242,8 +242,6 @@ Every assumption that voices live in `voices/` gets updated:
   - The `migrate voices` dry run (including the leftover-`voices/` report),
     `--apply`, and rollback on an injected failure
   - A skipped `common-voices` path
-  - `CastRosterVerifier.divergences` reporting a `role` / `manifest`
-    difference
   - `echada sample` exporting the neutral sample (not model-backed)
   - Variant synthesis, model-backed and local-only per suite convention
 
