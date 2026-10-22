@@ -31,6 +31,7 @@ enum FoundationModelRetry {
   ///
   /// - Parameters:
   ///   - prompt: The instruction handed to the model.
+  ///   - model: Which FoundationModels-backed model generates the response.
   ///   - sanitize: Normalizes raw model output into a usable string, or `nil`
   ///     when nothing usable remains.
   /// - Returns: `(result, lastError)` — `result` is the first usable string, or
@@ -39,13 +40,14 @@ enum FoundationModelRetry {
   ///   surface the real cause; it is `nil` when the last miss was empty output.
   static func sanitizedResponse(
     to prompt: String,
+    model: any LanguageModel,
     sanitize: (String) -> String?
   ) async -> (result: String?, lastError: Error?) {
     await sanitizedResponse(
       maxAttempts: maxAttempts,
       sanitize: sanitize,
       backoff: Self.defaultBackoff,
-      generate: { try await LanguageModelSession().respond(to: prompt).content }
+      generate: { try await LanguageModelSession(model: model).respond(to: prompt).content }
     )
   }
 

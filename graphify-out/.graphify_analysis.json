@@ -3,36 +3,28 @@
     "0": [
       "characterprofile",
       "codable",
-      "echadaclicore_castrosterverifier",
-      "echadaclicore_castrosterverifier_castdivergence",
-      "echadaclicore_castrosterverifier_castrosterverifier",
-      "echadaclicore_castrosterverifier_castrosterverifier_describevoices",
-      "echadaclicore_castrosterverifier_castrosterverifier_divergences",
-      "echadaclicore_castrosterverifier_castrosterverifier_fieldmismatches",
-      "echadaclicore_castrosterverifier_kind",
-      "echadaclicore_castrosterverifier_kind_danglingvoicepath",
-      "echadaclicore_castrosterverifier_kind_fieldmismatch",
-      "echadaclicore_castrosterverifier_kind_membership",
+      "echadaclicore_testvoicecommand",
       "echadaclicore_testvoicecommand_testvoicecommand",
       "echadaclicore_testvoicecommand_testvoicecommand_init",
       "echadaclicore_testvoicecommand_testvoicecommand_resolvedmodelrepo",
       "echadaclicore_testvoicecommand_testvoicecommand_run",
+      "echadaclicore_voicecommand",
+      "echadaclicore_voicedesigner",
+      "echadaclicore_voicedesigner_voicedesigner",
+      "echadaclicore_voicedesigner_voicedesigner_composevoicedescription",
+      "echadaclicore_voicedesigner_voicedesigner_generatecandidate",
+      "echadaclicore_voicedesigner_voicedesigner_generatecandidates",
       "equatable",
-      "gender",
-      "generated_dependencyversions",
-      "generated_dependencyversions_dependencyversions",
-      "generated_dependencyversions_dependencyversions_report",
-      "generated_dependencyversions_direct",
-      "generated_dependencyversions_string",
-      "generated_dependencyversions_string_padded",
       "sendable",
-      "sources_echadaclicore_castrosterverifier_swift_castmember",
-      "sources_echadaclicore_castrosterverifier_swift_string",
-      "sources_echadaclicore_castrosterverifier_swift_url",
-      "sources_echadaclicore_generated_dependencyversions_swift_int",
-      "sources_echadaclicore_generated_dependencyversions_swift_string",
       "sources_echadaclicore_testvoicecommand_swift_qwen3ttsmodelrepo",
       "sources_echadaclicore_testvoicecommand_swift_string",
+      "sources_echadaclicore_voicedesigner_swift_bool",
+      "sources_echadaclicore_voicedesigner_swift_characterprofile",
+      "sources_echadaclicore_voicedesigner_swift_data",
+      "sources_echadaclicore_voicedesigner_swift_int",
+      "sources_echadaclicore_voicedesigner_swift_string",
+      "sources_echadaclicore_voicedesigner_swift_ttslanguage",
+      "sources_echadaclicore_voicedesigner_swift_voxaltamodelmanager",
       "sources_swiftechada_characterinfo_swift_string",
       "sources_swiftechada_characterprofile_swift_gender",
       "sources_swiftechada_characterprofile_swift_string",
@@ -46,12 +38,15 @@
       "swiftechada_characterprofile_characterevidence_init",
       "swiftechada_characterprofile_characterprofile",
       "swiftechada_characterprofile_characterprofile_init",
+      "swiftechada_samplesentencegenerator",
       "swiftechada_samplesentencegenerator_samplesentencegenerator",
       "swiftechada_samplesentencegenerator_samplesentencegenerator_defaultsentence",
       "swiftechada_samplesentencegenerator_samplesentencegenerator_generate",
       "swiftechada_samplesentencegenerator_samplesentencegenerator_init",
       "swiftechada_samplesentencegenerator_samplesentencegenerator_quotes",
       "swiftechada_samplesentencegenerator_samplesentencegenerator_randomquote",
+      "swiftechada_swiftechada",
+      "swiftechada_swiftechada_swiftechada",
       "swiftechadatests_characterprofiletests",
       "swiftechadatests_characterprofiletests_characterprofiletests",
       "swiftechadatests_characterprofiletests_characterprofiletests_createsprofilewithallfields",
@@ -59,69 +54,24 @@
       "swiftechadatests_characterprofiletests_characterprofiletests_profilecodable",
       "swiftechadatests_characterprofiletests_characterprofiletests_profileequality",
       "swiftechadatests_characterprofiletests_characterprofiletests_voxformatgendermapping",
+      "swiftechadatests_samplesentencegeneratortests",
+      "swiftechadatests_samplesentencegeneratortests_samplesentencegeneratortests",
+      "swiftechadatests_samplesentencegeneratortests_samplesentencegeneratortests_defaultsentencefromquotes",
+      "swiftechadatests_samplesentencegeneratortests_samplesentencegeneratortests_defaultsentencewithlanguagespanish",
+      "swiftechadatests_samplesentencegeneratortests_samplesentencegeneratortests_generatesfromdescription",
+      "swiftechadatests_samplesentencegeneratortests_samplesentencegeneratortests_generatesfromprofile",
+      "swiftechadatests_samplesentencegeneratortests_samplesentencegeneratortests_randomquoteenglishmatchesdefaultpool",
+      "swiftechadatests_samplesentencegeneratortests_samplesentencegeneratortests_randomquotereturnsfrompool",
+      "swiftechadatests_samplesentencegeneratortests_samplesentencegeneratortests_randomquotespanishreturnsspanish",
+      "swiftechadatests_samplesentencegeneratortests_samplesentencegeneratortests_regionsubtagresolvestobaselanguage",
+      "swiftechadatests_samplesentencegeneratortests_samplesentencegeneratortests_unknownlanguagefallsbacktoenglish",
+      "swiftechadatests_samplesentencegeneratortests_samplesentencegeneratortests_zeroargoverloadsunchanged",
       "swiftechadatests_voxfileintegrationtests_voxfileintegrationtests_characterprofilegendermapstovoxformat"
     ],
     "1": [
-      "echadaclicore_castvoicegenerator",
-      "echadaclicore_castvoicegenerator_candidateresult",
-      "echadaclicore_castvoicegenerator_castinglanguages",
-      "echadaclicore_castvoicegenerator_castvoicegenerator",
-      "echadaclicore_castvoicegenerator_castvoicegenerator_generate",
-      "echadaclicore_castvoicegenerator_castvoicegenerator_generatecandidatewithprompt",
-      "echadaclicore_castvoicegenerator_castvoicegenerator_init",
-      "echadaclicore_castvoicegenerator_castvoicegenerator_resolvedmodelrepo",
-      "echadaclicore_castvoicegenerator_castvoicegeneratorerror",
-      "echadaclicore_castvoicegenerator_castvoicegeneratorerror_existingvoxunreadable",
-      "echadaclicore_castvoicegenerator_castvoicegeneratorerror_unsupportedttsmodel",
-      "echadaclicore_castvoicegenerator_generateresult",
-      "echadaclicore_castvoicegenerator_loglanguageaudit",
-      "echadaclicore_castvoicegenerator_voxlanguagetag",
-      "echadaclicore_testvoicecommand",
-      "echadaclicore_voicecommand",
-      "echadaclicore_voicecommand_voicecommand",
-      "echadaclicore_voicecommand_voicecommand_init",
-      "echadaclicore_voicecommand_voicecommand_resolvedmodelrepo",
-      "echadaclicore_voicecommand_voicecommand_run",
-      "localizederror",
-      "qwen3ttsmodel",
-      "sources_echadaclicore_castvoicegenerator_swift_bool",
-      "sources_echadaclicore_castvoicegenerator_swift_castmember",
-      "sources_echadaclicore_castvoicegenerator_swift_data",
-      "sources_echadaclicore_castvoicegenerator_swift_int",
-      "sources_echadaclicore_castvoicegenerator_swift_qwen3ttsmodelrepo",
-      "sources_echadaclicore_castvoicegenerator_swift_string",
-      "sources_echadaclicore_castvoicegenerator_swift_ttslanguage",
-      "sources_echadaclicore_castvoicegenerator_swift_url",
-      "sources_echadaclicore_castvoicegenerator_swift_voxaltamodelmanager",
-      "sources_echadaclicore_voicecommand_swift_bool",
-      "sources_echadaclicore_voicecommand_swift_qwen3ttsmodelrepo",
-      "sources_echadaclicore_voicecommand_swift_string",
-      "swiftechada_samplesentencegenerator",
-      "swiftechada_swiftechada",
-      "swiftechada_swiftechada_swiftechada",
-      "swiftechadatests_castinglanguageresolutiontests",
-      "swiftechadatests_castinglanguageresolutiontests_castinglanguageresolutiontests",
-      "swiftechadatests_castinglanguageresolutiontests_castinglanguageresolutiontests_blankmemberlanguagedefaultstoenglish",
-      "swiftechadatests_castinglanguageresolutiontests_castinglanguageresolutiontests_defaultstoenglishwhenunspecified",
-      "swiftechadatests_castinglanguageresolutiontests_castinglanguageresolutiontests_explicitoverridewins",
-      "swiftechadatests_castinglanguageresolutiontests_castinglanguageresolutiontests_fallsbacktomemberlanguage",
-      "swiftechadatests_castinglanguageresolutiontests_castinglanguageresolutiontests_mixedcastresolvespermember",
-      "swiftechadatests_languageoptiontests",
-      "swiftechadatests_languageoptiontests_languageoptiontests",
-      "swiftechadatests_languageoptiontests_languageoptiontests_emptyvalueisrejected",
-      "swiftechadatests_languageoptiontests_languageoptiontests_englishmapstolanguagelessdefault",
-      "swiftechadatests_languageoptiontests_languageoptiontests_lowercasesanddeduplicates",
-      "swiftechadatests_languageoptiontests_languageoptiontests_noflagdefaultstoenglish",
-      "swiftechadatests_languageoptiontests_languageoptiontests_noflagyieldsemptyoverride",
-      "swiftechadatests_languageoptiontests_languageoptiontests_nonenglishkeepstag",
-      "swiftechadatests_languageoptiontests_languageoptiontests_repeatedflagpreservesorder",
-      "voxaltamodelmanager"
-    ],
-    "2": [
       "asyncparsablecommand",
       "echada_echadacli",
       "echada_echadacli_echadaclientry",
-      "echadaclicore_castcommand",
       "echadaclicore_castcommand_castcommand",
       "echadaclicore_castcommand_castcommand_ensurecastmarkdown",
       "echadaclicore_castcommand_castcommand_ensureprojectmarkdown",
@@ -144,7 +94,6 @@
       "echadaclicore_generatecommand",
       "echadaclicore_generatecommand_generatecommand",
       "echadaclicore_generatecommand_generatecommand_init",
-      "echadaclicore_generatepromptcommand",
       "echadaclicore_generatepromptcommand_generatepromptcommand",
       "echadaclicore_generatepromptcommand_generatepromptcommand_init",
       "echadaclicore_generatevoxcommand",
@@ -157,6 +106,7 @@
       "projectanalysis",
       "sources_echadaclicore_castcommand_swift_bool",
       "sources_echadaclicore_castcommand_swift_int",
+      "sources_echadaclicore_castcommand_swift_modelreference",
       "sources_echadaclicore_castcommand_swift_string",
       "sources_echadaclicore_castcommand_swift_url",
       "sources_echadaclicore_echadacli_swift_string",
@@ -164,6 +114,7 @@
       "sources_echadaclicore_generatecastcommand_swift_string",
       "sources_echadaclicore_generatecastcommand_swift_url",
       "sources_echadaclicore_generatepromptcommand_swift_bool",
+      "sources_echadaclicore_generatepromptcommand_swift_modelreference",
       "sources_echadaclicore_generatepromptcommand_swift_string",
       "sources_echadaclicore_generatevoxcommand_swift_bool",
       "sources_echadaclicore_generatevoxcommand_swift_castmember",
@@ -171,7 +122,7 @@
       "sources_echadaclicore_generatevoxcommand_swift_projectfrontmatter",
       "sources_echadaclicore_generatevoxcommand_swift_string"
     ],
-    "3": [
+    "2": [
       "filepattern",
       "projectfrontmatter",
       "proyectocastmember",
@@ -190,6 +141,7 @@
       "swiftechadatests_generatecastcommandtests_castcommandbootstraptests_bootstrapleavessamedirectoryprojectinplace",
       "swiftechadatests_generatecastcommandtests_castcommandbootstraptests_existingprojectatexactpathisleftuntouched",
       "swiftechadatests_generatecastcommandtests_generatecastcommandtests",
+      "swiftechadatests_generatecastcommandtests_generatecastcommandtests_castfileresolvesunderprivateprefix",
       "swiftechadatests_generatecastcommandtests_generatecastcommandtests_castoptionoverridesfilename",
       "swiftechadatests_generatecastcommandtests_generatecastcommandtests_castoptionrejectspathtraversal",
       "swiftechadatests_generatecastcommandtests_generatecastcommandtests_casturl",
@@ -224,8 +176,10 @@
       "tests_swiftechadatests_modelbackedgenerationtests_swift_string",
       "tests_swiftechadatests_modelbackedgenerationtests_swift_url"
     ],
-    "4": [
+    "3": [
       "characterdialogueevidence",
+      "echadaclicore_castcommand",
+      "echadaclicore_generatepromptcommand",
       "echadaclicore_generatepromptcommand_generatepromptcommand_run",
       "echadaclicore_voicepromptsynthesizer",
       "echadaclicore_voicepromptsynthesizer_voicepromptsynthesizer",
@@ -240,8 +194,11 @@
       "echadaclicore_voicepromptsynthesizer_voicepromptsynthesizererror",
       "echadaclicore_voicepromptsynthesizer_voicepromptsynthesizererror_appleintelligenceunavailable",
       "echadaclicore_voicepromptsynthesizer_voicepromptsynthesizererror_generationfailed",
+      "echadaclicore_voicepromptsynthesizer_voicepromptsynthesizererror_modelunavailable",
+      "gender",
       "sources_echadaclicore_voicepromptsynthesizer_swift_bool",
       "sources_echadaclicore_voicepromptsynthesizer_swift_gender",
+      "sources_echadaclicore_voicepromptsynthesizer_swift_languagemodel",
       "sources_echadaclicore_voicepromptsynthesizer_swift_string",
       "swiftechadatests_dialogueextractortests",
       "swiftechadatests_dialogueextractortests_dialogueextractortests",
@@ -260,38 +217,15 @@
       "swiftechadatests_dialogueextractortests_voicepromptsynthesizertests_sanitizecleansoutput",
       "swiftechadatests_dialogueextractortests_voicepromptsynthesizertests_selectdialogue",
       "swiftechadatests_dialogueextractortests_voicepromptsynthesizertests_selectdialoguecap",
-      "swiftechadatests_dialogueextractortests_voicepromptsynthesizertests_selectdialoguefallback"
+      "swiftechadatests_dialogueextractortests_voicepromptsynthesizertests_selectdialoguefallback",
+      "swiftreparto"
     ],
-    "5": [
-      "accent_tower_01_castablelanguages",
-      "accent_tower_01_composevoiceprompt",
-      "accent_tower_01_eval_matrix",
-      "accent_tower_01_neutralize_gotcha",
-      "accent_tower_01_operation",
-      "accent_tower_01_piece1_accent",
-      "accent_tower_01_piece2_perlanguage",
-      "accent_tower_01_supervisor_state",
-      "accent_tower_01_test_cleanup",
-      "accent_tower_01_voicedesign_ignores_instruct",
-      "architecture_cast_pipeline",
-      "architecture_qwen3ttsmodel",
-      "architecture_voicelockmanager",
-      "architecture_vox_bundle",
-      "architecture_voxexporter",
-      "architecture_voxfile",
-      "backlog_automator_quick_action",
-      "backlog_quicklook_plugin",
-      "todo_decidevoxgeneration_limit",
-      "todo_instruct_accent_no_ipa",
-      "todo_instruct_accent_spike",
-      "todo_lang_path_scheme",
-      "todo_language_option",
-      "todo_swiftvoxalta_v0130",
-      "todo_voxformat_v040",
-      "todo_voxlanguagetag"
-    ],
-    "6": [
+    "4": [
       "customstringconvertible",
+      "echadaclicore_foundationmodelretry",
+      "echadaclicore_foundationmodelretry_foundationmodelretry",
+      "echadaclicore_foundationmodelretry_foundationmodelretry_defaultbackoff",
+      "echadaclicore_foundationmodelretry_foundationmodelretry_sanitizedresponse",
       "echadaclicore_referenceaudiogenerator",
       "echadaclicore_referenceaudiogenerator_referenceaudioerror",
       "echadaclicore_referenceaudiogenerator_referenceaudioerror_conversionfailed",
@@ -299,26 +233,58 @@
       "echadaclicore_referenceaudiogenerator_referenceaudiogenerator",
       "echadaclicore_referenceaudiogenerator_referenceaudiogenerator_generate",
       "echadaclicore_referenceaudiogenerator_referenceaudiogenerator_generatedata",
-      "echadaclicore_voicedesigner",
-      "echadaclicore_voicedesigner_voicedesigner",
-      "echadaclicore_voicedesigner_voicedesigner_composevoicedescription",
-      "echadaclicore_voicedesigner_voicedesigner_generatecandidate",
-      "echadaclicore_voicedesigner_voicedesigner_generatecandidates",
       "echadaclicore_voicedesigner_voicedesignererror",
       "echadaclicore_voicedesigner_voicedesignererror_modelcastfailed",
       "error",
+      "sources_echadaclicore_foundationmodelretry_swift_error",
+      "sources_echadaclicore_foundationmodelretry_swift_int",
+      "sources_echadaclicore_foundationmodelretry_swift_languagemodel",
+      "sources_echadaclicore_foundationmodelretry_swift_string",
+      "sources_echadaclicore_foundationmodelretry_swift_void",
       "sources_echadaclicore_referenceaudiogenerator_swift_data",
       "sources_echadaclicore_referenceaudiogenerator_swift_string",
       "sources_echadaclicore_referenceaudiogenerator_swift_url",
-      "sources_echadaclicore_voicedesigner_swift_bool",
-      "sources_echadaclicore_voicedesigner_swift_characterprofile",
-      "sources_echadaclicore_voicedesigner_swift_data",
-      "sources_echadaclicore_voicedesigner_swift_int",
-      "sources_echadaclicore_voicedesigner_swift_string",
-      "sources_echadaclicore_voicedesigner_swift_ttslanguage",
-      "sources_echadaclicore_voicedesigner_swift_voxaltamodelmanager"
+      "swiftechadatests_foundationmodelretrytests",
+      "swiftechadatests_foundationmodelretrytests_foundationmodelretrytests",
+      "swiftechadatests_foundationmodelretrytests_foundationmodelretrytests_backofffiresonlybetweenattempts",
+      "swiftechadatests_foundationmodelretrytests_foundationmodelretrytests_exhaustsandreportslasterror",
+      "swiftechadatests_foundationmodelretrytests_foundationmodelretrytests_exhaustswithemptyoutputreportsnilerror",
+      "swiftechadatests_foundationmodelretrytests_foundationmodelretrytests_nobackoff",
+      "swiftechadatests_foundationmodelretrytests_foundationmodelretrytests_retriesonunusableoutput",
+      "swiftechadatests_foundationmodelretrytests_foundationmodelretrytests_retriesthensucceeds",
+      "swiftechadatests_foundationmodelretrytests_foundationmodelretrytests_succeedsfirsttry",
+      "swiftechadatests_foundationmodelretrytests_stuberror",
+      "tests_swiftechadatests_foundationmodelretrytests_swift_int",
+      "tests_swiftechadatests_foundationmodelretrytests_swift_string",
+      "void"
     ],
-    "7": [
+    "5": [
+      "echadaclicore_castvoicegenerator",
+      "echadaclicore_castvoicegenerator_candidateresult",
+      "echadaclicore_castvoicegenerator_castvoicegenerator",
+      "echadaclicore_castvoicegenerator_castvoicegenerator_generate",
+      "echadaclicore_castvoicegenerator_castvoicegenerator_generatecandidatewithprompt",
+      "echadaclicore_castvoicegenerator_castvoicegenerator_init",
+      "echadaclicore_castvoicegenerator_castvoicegenerator_resolvedmodelrepo",
+      "echadaclicore_castvoicegenerator_castvoicegeneratorerror",
+      "echadaclicore_castvoicegenerator_castvoicegeneratorerror_existingvoxunreadable",
+      "echadaclicore_castvoicegenerator_castvoicegeneratorerror_unsupportedttsmodel",
+      "echadaclicore_castvoicegenerator_generateresult",
+      "echadaclicore_castvoicegenerator_loglanguageaudit",
+      "localizederror",
+      "qwen3ttsmodel",
+      "sources_echadaclicore_castvoicegenerator_swift_bool",
+      "sources_echadaclicore_castvoicegenerator_swift_castmember",
+      "sources_echadaclicore_castvoicegenerator_swift_data",
+      "sources_echadaclicore_castvoicegenerator_swift_int",
+      "sources_echadaclicore_castvoicegenerator_swift_qwen3ttsmodelrepo",
+      "sources_echadaclicore_castvoicegenerator_swift_string",
+      "sources_echadaclicore_castvoicegenerator_swift_ttslanguage",
+      "sources_echadaclicore_castvoicegenerator_swift_url",
+      "sources_echadaclicore_castvoicegenerator_swift_voxaltamodelmanager",
+      "sources_echadaclicore_castvoicegenerator_swift_voxfile"
+    ],
+    "6": [
       "double",
       "swiftechadatests_voxfileintegrationtests",
       "swiftechadatests_voxfileintegrationtests_ensureparent",
@@ -341,6 +307,29 @@
       "tests_swiftechadatests_voxfileintegrationtests_swift_string",
       "tests_swiftechadatests_voxfileintegrationtests_swift_url",
       "tests_swiftechadatests_voxfileintegrationtests_swift_voxfile"
+    ],
+    "7": [
+      "echadaclicore_castrosterverifier",
+      "echadaclicore_castrosterverifier_castdivergence",
+      "echadaclicore_castrosterverifier_castrosterverifier",
+      "echadaclicore_castrosterverifier_castrosterverifier_describevoices",
+      "echadaclicore_castrosterverifier_castrosterverifier_divergences",
+      "echadaclicore_castrosterverifier_castrosterverifier_fieldmismatches",
+      "echadaclicore_castrosterverifier_kind",
+      "echadaclicore_castrosterverifier_kind_danglingvoicepath",
+      "echadaclicore_castrosterverifier_kind_fieldmismatch",
+      "echadaclicore_castrosterverifier_kind_membership",
+      "generated_dependencyversions",
+      "generated_dependencyversions_dependencyversions",
+      "generated_dependencyversions_dependencyversions_report",
+      "generated_dependencyversions_direct",
+      "generated_dependencyversions_string",
+      "generated_dependencyversions_string_padded",
+      "sources_echadaclicore_castrosterverifier_swift_castmember",
+      "sources_echadaclicore_castrosterverifier_swift_string",
+      "sources_echadaclicore_castrosterverifier_swift_url",
+      "sources_echadaclicore_generated_dependencyversions_swift_int",
+      "sources_echadaclicore_generated_dependencyversions_swift_string"
     ],
     "8": [
       "echadaclicore_castvoicegenerator_castablelanguages",
@@ -367,7 +356,6 @@
     ],
     "9": [
       "echadaclicore_castvoicegenerator_decidevoxgeneration",
-      "sources_echadaclicore_castvoicegenerator_swift_voxfile",
       "swiftechadatests_castvoicegeneratordecisiontests",
       "swiftechadatests_castvoicegeneratordecisiontests_castvoicegeneratordecisiontests",
       "swiftechadatests_castvoicegeneratordecisiontests_castvoicegeneratordecisiontests_corruptexistingvox_isskippednotoverwritten",
@@ -389,49 +377,6 @@
       "tests_swiftechadatests_castvoicegeneratordecisiontests_swift_url"
     ],
     "10": [
-      "echadaclicore_foundationmodelretry",
-      "echadaclicore_foundationmodelretry_foundationmodelretry",
-      "echadaclicore_foundationmodelretry_foundationmodelretry_defaultbackoff",
-      "echadaclicore_foundationmodelretry_foundationmodelretry_sanitizedresponse",
-      "sources_echadaclicore_foundationmodelretry_swift_error",
-      "sources_echadaclicore_foundationmodelretry_swift_int",
-      "sources_echadaclicore_foundationmodelretry_swift_string",
-      "sources_echadaclicore_foundationmodelretry_swift_void",
-      "swiftechadatests_foundationmodelretrytests",
-      "swiftechadatests_foundationmodelretrytests_foundationmodelretrytests",
-      "swiftechadatests_foundationmodelretrytests_foundationmodelretrytests_backofffiresonlybetweenattempts",
-      "swiftechadatests_foundationmodelretrytests_foundationmodelretrytests_exhaustsandreportslasterror",
-      "swiftechadatests_foundationmodelretrytests_foundationmodelretrytests_exhaustswithemptyoutputreportsnilerror",
-      "swiftechadatests_foundationmodelretrytests_foundationmodelretrytests_nobackoff",
-      "swiftechadatests_foundationmodelretrytests_foundationmodelretrytests_retriesonunusableoutput",
-      "swiftechadatests_foundationmodelretrytests_foundationmodelretrytests_retriesthensucceeds",
-      "swiftechadatests_foundationmodelretrytests_foundationmodelretrytests_succeedsfirsttry",
-      "swiftechadatests_foundationmodelretrytests_stuberror",
-      "tests_swiftechadatests_foundationmodelretrytests_swift_int",
-      "tests_swiftechadatests_foundationmodelretrytests_swift_string"
-    ],
-    "11": [
-      "agents_echada_cli",
-      "agents_graphify_codemap",
-      "agents_makefile_rule",
-      "agents_swiftechada",
-      "agents_swiftvoxalta",
-      "agents_targeted_imports",
-      "agents_two_phase_pipeline",
-      "api_swiftechada_enum",
-      "architecture_module_graph",
-      "claude_claude_rules",
-      "gemini_gemini_rules",
-      "gemini_git_lfs_skip_smudge",
-      "rationale_library_no_ml",
-      "readme_homebrew_install",
-      "readme_mlx_framework",
-      "readme_voice_command",
-      "todo_cli_bundling_echadaclicore",
-      "todo_cli_bundling_thin_executable",
-      "todo_cli_bundling_vinetas_pattern"
-    ],
-    "12": [
       "agents_md",
       "api_md",
       "architecture_md",
@@ -452,7 +397,28 @@
       "tests_yml",
       "vox_pipeline_md"
     ],
-    "13": [
+    "11": [
+      "api_castmember",
+      "api_echadaclicore",
+      "api_swiftechada_library",
+      "architecture_legacyprojectcastreader",
+      "confessions_project_cast_block",
+      "confessions_project_episodes_index",
+      "confessions_project_fixture",
+      "dependencies_projectcastimporter",
+      "dependencies_swiftreparto",
+      "execution_plan_doc",
+      "execution_plan_hg0",
+      "execution_plan_projectcastwriteback",
+      "gotchas_castmember_ambiguity",
+      "requirements_canonicalname",
+      "requirements_cast_md_changes_doc",
+      "requirements_cast_md_changes_package_cycle",
+      "requirements_cast_md_changes_reparto_leaf",
+      "requirements_cast_md_changes_seeding",
+      "requirements_cast_md_changes_swiftsemblanzas"
+    ],
+    "12": [
       "substring",
       "swiftechadatests_generatevoxwritebacktests",
       "swiftechadatests_generatevoxwritebacktests_generatevoxwritebacktests",
@@ -473,27 +439,7 @@
       "tests_swiftechadatests_generatevoxwritebacktests_swift_url",
       "tests_swiftechadatests_generatevoxwritebacktests_swift_void"
     ],
-    "14": [
-      "api_castmember",
-      "api_characterinfo",
-      "api_charactermerger",
-      "api_echadaclicore",
-      "api_swiftechada_library",
-      "architecture_legacyprojectcastreader",
-      "confessions_project_cast_block",
-      "confessions_project_episodes_index",
-      "confessions_project_fixture",
-      "dependencies_projectcastimporter",
-      "dependencies_swiftreparto",
-      "execution_plan_doc",
-      "execution_plan_hg0",
-      "requirements_cast_md_changes_doc",
-      "requirements_cast_md_changes_package_cycle",
-      "requirements_cast_md_changes_reparto_leaf",
-      "requirements_cast_md_changes_seeding",
-      "requirements_cast_md_changes_swiftsemblanzas"
-    ],
-    "15": [
+    "13": [
       "parsablecommand",
       "swiftechadatests_cliwiringtests",
       "swiftechadatests_cliwiringtests_cliwiringtests",
@@ -512,6 +458,44 @@
       "swiftechadatests_cliwiringtests_cliwiringtests_rootsubcommandscontaincast",
       "swiftechadatests_cliwiringtests_cliwiringtests_rootsubcommandscontaingenerateandvoice",
       "tests_swiftechadatests_cliwiringtests_swift_string"
+    ],
+    "14": [
+      "api_gender",
+      "architecture_foundationmodelretry",
+      "architecture_voicepromptsynthesizer",
+      "changelog_foundationmodelretry",
+      "changelog_v0_16_0",
+      "changelog_v2_1_0",
+      "dependencies_swiftllavero",
+      "readme_auth_command",
+      "readme_echada_cast_command",
+      "readme_generate_prompt_command",
+      "readme_generate_vox_command",
+      "readme_llm_flag",
+      "requirements_ec_30_tests",
+      "test_analysis_ci_slowness",
+      "test_analysis_generatevoxproducesmultimodelvox",
+      "test_analysis_makeisolatedproject",
+      "test_analysis_report"
+    ],
+    "15": [
+      "castcommand_resolvedaccent",
+      "castcommand_resolvedlanguages",
+      "castcommand_run",
+      "castvoicegenerator_castablelanguages",
+      "castvoicegenerator_composevoiceprompt",
+      "castvoicegenerator_decidevoxgeneration",
+      "castvoicegenerator_generate",
+      "castvoicegenerator_generatecandidatewithprompt",
+      "castvoicegenerator_localizedvoiceprompt",
+      "castvoicegenerator_samelanguagereference",
+      "castvoicegenerator_twophasepipeline",
+      "castvoicegenerator_voxlanguagetag",
+      "echadaclicore_castvoicegenerator_voxgenerationdecision",
+      "echadaclicore_castvoicegenerator_voxgenerationdecision_generate",
+      "echadaclicore_castvoicegenerator_voxgenerationdecision_skipexistinghasvariant",
+      "echadaclicore_castvoicegenerator_voxgenerationdecision_skipexistingunreadable",
+      "voicecommand_run"
     ],
     "16": [
       "characterinfo",
@@ -552,22 +536,22 @@
       "tests_swiftechadatests_auditionsentencetests_swift_ttslanguage"
     ],
     "18": [
-      "agents_doc",
-      "api_castmarkdowngenerator",
-      "api_doc",
-      "architecture_auditionsentence",
-      "architecture_doc",
-      "architecture_one_writer_rule",
-      "architecture_testvoicecommand",
-      "architecture_two_phase_vox_pipeline",
-      "architecture_voicecommand",
-      "changelog_curated_audition_rationale",
-      "changelog_doc",
-      "changelog_issue_44_55",
-      "changelog_produciesta_compat",
-      "dependencies_doc",
-      "execution_plan_projectcastwriteback",
-      "vox_pipeline_doc"
+      "api_castvoicegenerator",
+      "api_referenceaudiogenerator",
+      "api_voicedesigner",
+      "architecture_two_phase_pipeline",
+      "build_and_test_integration_test",
+      "dependencies_mlx_audio_swift",
+      "dependencies_qwen3ttsmodel",
+      "dependencies_swiftvoxalta",
+      "dependencies_voicelockmanager",
+      "dependencies_vox_format",
+      "dependencies_voxaltamodelmanager",
+      "dependencies_voxexporter",
+      "dependencies_voxfile",
+      "readme_voice_command",
+      "test_analysis_coverage_gaps",
+      "tests_acervo_model_cache"
     ],
     "19": [
       "swiftechadatests_generatevoxcommandtests",
@@ -588,6 +572,23 @@
       "tests_swiftechadatests_generatevoxcommandtests_swift_url"
     ],
     "20": [
+      "agents_echada_cli",
+      "agents_graphify_codemap",
+      "agents_swiftechada",
+      "agents_swiftvoxalta",
+      "agents_two_phase_pipeline",
+      "architecture_echada_executable",
+      "architecture_echadaclicore",
+      "architecture_module_graph",
+      "dependencies_swift_argument_parser",
+      "rationale_library_no_ml",
+      "readme_homebrew_install",
+      "readme_mlx_framework",
+      "todo_cli_bundling_echadaclicore",
+      "todo_cli_bundling_thin_executable",
+      "todo_cli_bundling_vinetas_pattern"
+    ],
+    "21": [
       "echadaclicore_castvoicegenerator_composevoiceprompt",
       "swiftechadatests_accentoptiontests",
       "swiftechadatests_accentoptiontests_accentoptiontests",
@@ -604,7 +605,7 @@
       "swiftechadatests_perlanguageprompttests_perlanguageprompttests_noaccentonlocalizedpromptreturnslocalizedverbatim",
       "swiftechadatests_perlanguageprompttests_perlanguageprompttests_promptselectionenglishdefaultpathunchangedwithnolocalizedpromptnoaccent"
     ],
-    "21": [
+    "22": [
       "swiftechadatests_projectmigrationtests",
       "swiftechadatests_projectmigrationtests_projectmigrationtests",
       "swiftechadatests_projectmigrationtests_projectmigrationtests_casturl",
@@ -621,7 +622,7 @@
       "tests_swiftechadatests_projectmigrationtests_swift_swiftreparto",
       "tests_swiftechadatests_projectmigrationtests_swift_url"
     ],
-    "22": [
+    "23": [
       "swiftechadatests_castbodypreservationtests",
       "swiftechadatests_castbodypreservationtests_castbodypreservationtests",
       "swiftechadatests_castbodypreservationtests_castbodypreservationtests_bodyregionbytes",
@@ -637,7 +638,52 @@
       "tests_swiftechadatests_castbodypreservationtests_swift_url",
       "uint8"
     ],
-    "23": [
+    "24": [
+      "agents_critical_rules",
+      "agents_makefile_rule",
+      "agents_targeted_imports",
+      "api_swiftechada_enum",
+      "architecture_module_type_name_collision",
+      "build_and_test_homebrew_distribution",
+      "build_and_test_makefile",
+      "build_and_test_metal_bundle",
+      "claude_claude_rules",
+      "dependencies_mlx_swift",
+      "gemini_gemini_rules",
+      "gemini_git_lfs_skip_smudge",
+      "release_build_and_upload"
+    ],
+    "25": [
+      "agents_doc",
+      "api_castmarkdowngenerator",
+      "api_doc",
+      "architecture_doc",
+      "architecture_one_writer_rule",
+      "architecture_single_writer_cast_md",
+      "architecture_two_phase_vox_pipeline",
+      "changelog_curated_audition_rationale",
+      "changelog_doc",
+      "changelog_issue_44_55",
+      "changelog_produciesta_compat",
+      "dependencies_doc",
+      "vox_pipeline_doc"
+    ],
+    "26": [
+      "api_castmarkdownparser",
+      "api_characterinfo",
+      "api_charactermerger",
+      "api_projectmigration",
+      "architecture_castcommand",
+      "architecture_castrosterverifier",
+      "architecture_dialogueextractor",
+      "architecture_generatecastcommand",
+      "architecture_generatepromptcommand",
+      "architecture_generatevoxcommand",
+      "changelog_verify_prune_removed",
+      "readme_generate_cast_command",
+      "requirements_ec27_verify_cast"
+    ],
+    "27": [
       "echadaclicore_dialogueextractor",
       "echadaclicore_dialogueextractor_characterdialogueevidence",
       "echadaclicore_dialogueextractor_characterdialogueevidence_merge",
@@ -652,7 +698,7 @@
       "sources_echadaclicore_dialogueextractor_swift_int",
       "sources_echadaclicore_dialogueextractor_swift_string"
     ],
-    "24": [
+    "28": [
       "swiftechadatests_generatecastseedingtests",
       "swiftechadatests_generatecastseedingtests_generatecastseedingtests",
       "swiftechadatests_generatecastseedingtests_generatecastseedingtests_casturl",
@@ -667,35 +713,21 @@
       "tests_swiftechadatests_generatecastseedingtests_swift_string",
       "tests_swiftechadatests_generatecastseedingtests_swift_url"
     ],
-    "25": [
-      "api_characterevidence",
-      "api_characterprofile",
-      "api_gender",
-      "api_referenceaudiogenerator",
-      "api_samplesentencegenerator",
-      "api_voicedesigner",
-      "architecture_foundationmodelretry",
-      "architecture_voicepromptsynthesizer",
-      "dependencies_voxaltamodelmanager",
-      "tests_acervo_model_cache",
-      "tests_unit_tests_job",
-      "todo_samplesentencegenerator_lang"
+    "29": [
+      "agents_ownership_split",
+      "changelog_audition_variant_flag",
+      "changelog_projectcastwriteback",
+      "changelog_v1_0_0",
+      "changelog_v2_0_0",
+      "changelog_verify_prune_cast",
+      "readme_cast_flag",
+      "readme_migrating_older_projects",
+      "readme_produciesta_compatibility",
+      "requirements_cast_voices_skill",
+      "requirements_ec_27_withdrawn",
+      "requirements_ec_29_skills_docs"
     ],
-    "26": [
-      "castcommand_resolvedaccent",
-      "castcommand_resolvedlanguages",
-      "castcommand_run",
-      "castvoicegenerator_castablelanguages",
-      "castvoicegenerator_composevoiceprompt",
-      "castvoicegenerator_generate",
-      "castvoicegenerator_generatecandidatewithprompt",
-      "castvoicegenerator_localizedvoiceprompt",
-      "castvoicegenerator_samelanguagereference",
-      "castvoicegenerator_twophasepipeline",
-      "castvoicegenerator_voxlanguagetag",
-      "voicecommand_run"
-    ],
-    "27": [
+    "30": [
       "echadaclicore_sourcemateriallocator",
       "echadaclicore_sourcemateriallocator_sourcemateriallocator",
       "echadaclicore_sourcemateriallocator_sourcemateriallocator_enumeratefiles",
@@ -709,34 +741,46 @@
       "sources_echadaclicore_sourcemateriallocator_swift_string",
       "sources_echadaclicore_sourcemateriallocator_swift_url"
     ],
-    "28": [
-      "swiftechadatests_samplesentencegeneratortests",
-      "swiftechadatests_samplesentencegeneratortests_samplesentencegeneratortests",
-      "swiftechadatests_samplesentencegeneratortests_samplesentencegeneratortests_defaultsentencefromquotes",
-      "swiftechadatests_samplesentencegeneratortests_samplesentencegeneratortests_defaultsentencewithlanguagespanish",
-      "swiftechadatests_samplesentencegeneratortests_samplesentencegeneratortests_generatesfromdescription",
-      "swiftechadatests_samplesentencegeneratortests_samplesentencegeneratortests_generatesfromprofile",
-      "swiftechadatests_samplesentencegeneratortests_samplesentencegeneratortests_randomquoteenglishmatchesdefaultpool",
-      "swiftechadatests_samplesentencegeneratortests_samplesentencegeneratortests_randomquotereturnsfrompool",
-      "swiftechadatests_samplesentencegeneratortests_samplesentencegeneratortests_randomquotespanishreturnsspanish",
-      "swiftechadatests_samplesentencegeneratortests_samplesentencegeneratortests_regionsubtagresolvestobaselanguage",
-      "swiftechadatests_samplesentencegeneratortests_samplesentencegeneratortests_unknownlanguagefallsbacktoenglish",
-      "swiftechadatests_samplesentencegeneratortests_samplesentencegeneratortests_zeroargoverloadsunchanged"
+    "31": [
+      "accent_tower_01_neutralize_gotcha",
+      "api_samplesentencegenerator",
+      "architecture_vox_bundle",
+      "backlog_automator_quick_action",
+      "backlog_quicklook_plugin",
+      "todo_decidevoxgeneration_limit",
+      "todo_lang_path_scheme",
+      "todo_language_option",
+      "todo_samplesentencegenerator_lang",
+      "todo_voxformat_v040",
+      "todo_voxlanguagetag"
     ],
-    "29": [
-      "agents_swiftproyecto",
-      "api_castvoicegenerator",
-      "dependencies_mlx_audio_swift",
-      "dependencies_qwen3ttsmodel",
-      "dependencies_swiftvoxalta",
-      "dependencies_voicelockmanager",
-      "dependencies_vox_format",
-      "dependencies_voxexporter",
-      "dependencies_voxfile",
-      "readme_cast_command",
-      "requirements_ec28_echada_sample"
+    "32": [
+      "architecture_auditionsentence",
+      "architecture_dependencyversions",
+      "architecture_testvoicecommand",
+      "architecture_voicecommand",
+      "changelog_dependency_versions_table",
+      "changelog_foundationmodelsentence",
+      "changelog_v0_17_0",
+      "tests_apple_intelligence_gate",
+      "tests_unit_tests_job",
+      "tests_verify_deps_job",
+      "tests_workflow"
     ],
-    "30": [
+    "33": [
+      "build_and_test_doc",
+      "claude_doc",
+      "claude_ownership_split",
+      "dependencies_projectmarkdownparser",
+      "dependencies_projectservice",
+      "dependencies_swiftproyecto",
+      "gotchas_doc",
+      "gotchas_module_type_name_collision",
+      "gotchas_never_swift_build",
+      "readme_doc",
+      "release_workflow"
+    ],
+    "34": [
       "range",
       "swiftechadatests_castmigrationlosslessnesstests",
       "swiftechadatests_castmigrationlosslessnesstests_castmigrationlosslessnesstests",
@@ -749,7 +793,7 @@
       "tests_swiftechadatests_castmigrationlosslessnesstests_swift_string",
       "tests_swiftechadatests_castmigrationlosslessnesstests_swift_url"
     ],
-    "31": [
+    "35": [
       "swiftechadatests_legacyprojectcastreadertests",
       "swiftechadatests_legacyprojectcastreadertests_legacyprojectcastreadertests",
       "swiftechadatests_legacyprojectcastreadertests_legacyprojectcastreadertests_castlessprojectyieldsemptyarraywithoutthrowing",
@@ -762,7 +806,7 @@
       "swiftechadatests_legacyprojectcastreadertests_legacyprojectcastreadertests_voicedescriptionaliasandarrayvoicesdecode",
       "tests_swiftechadatests_legacyprojectcastreadertests_swift_url"
     ],
-    "32": [
+    "36": [
       "swiftechadatests_nonenglishpassthroughtests",
       "swiftechadatests_nonenglishpassthroughtests_nonenglishpassthroughtests",
       "swiftechadatests_nonenglishpassthroughtests_nonenglishpassthroughtests_basedescriptioncastableforallnonenglish",
@@ -775,19 +819,31 @@
       "swiftechadatests_nonenglishpassthroughtests_nonenglishpassthroughtests_resolvedlanguagespreservesnonenglish",
       "tests_swiftechadatests_nonenglishpassthroughtests_swift_string"
     ],
-    "33": [
-      "api_castmarkdownparser",
-      "api_projectmigration",
-      "architecture_castcommand",
-      "architecture_castrosterverifier",
-      "architecture_dialogueextractor",
-      "architecture_generatecastcommand",
-      "architecture_generatepromptcommand",
-      "architecture_generatevoxcommand",
-      "changelog_verify_prune_removed",
-      "requirements_ec27_verify_cast"
+    "37": [
+      "accent_tower_01_castablelanguages",
+      "accent_tower_01_composevoiceprompt",
+      "accent_tower_01_eval_matrix",
+      "accent_tower_01_operation",
+      "accent_tower_01_piece1_accent",
+      "accent_tower_01_piece2_perlanguage",
+      "accent_tower_01_supervisor_state",
+      "accent_tower_01_test_cleanup",
+      "accent_tower_01_voicedesign_ignores_instruct",
+      "todo_instruct_accent_spike"
     ],
-    "34": [
+    "38": [
+      "echadaclicore_castvoicegenerator_voxlanguagetag",
+      "swiftechadatests_languageoptiontests",
+      "swiftechadatests_languageoptiontests_languageoptiontests",
+      "swiftechadatests_languageoptiontests_languageoptiontests_emptyvalueisrejected",
+      "swiftechadatests_languageoptiontests_languageoptiontests_englishmapstolanguagelessdefault",
+      "swiftechadatests_languageoptiontests_languageoptiontests_lowercasesanddeduplicates",
+      "swiftechadatests_languageoptiontests_languageoptiontests_noflagdefaultstoenglish",
+      "swiftechadatests_languageoptiontests_languageoptiontests_noflagyieldsemptyoverride",
+      "swiftechadatests_languageoptiontests_languageoptiontests_nonenglishkeepstag",
+      "swiftechadatests_languageoptiontests_languageoptiontests_repeatedflagpreservesorder"
+    ],
+    "39": [
       "echadaclicore_projectmigration",
       "echadaclicore_projectmigration_outcome",
       "echadaclicore_projectmigration_projectmigration",
@@ -799,7 +855,7 @@
       "sources_echadaclicore_projectmigration_swift_string",
       "sources_echadaclicore_projectmigration_swift_url"
     ],
-    "35": [
+    "40": [
       "swiftechadatests_generatepromptcommandtests",
       "swiftechadatests_generatepromptcommandtests_generatepromptcommandtests",
       "swiftechadatests_generatepromptcommandtests_generatepromptcommandtests_castoptionrejectspathseparators",
@@ -811,7 +867,7 @@
       "tests_swiftechadatests_generatepromptcommandtests_swift_swiftreparto",
       "tests_swiftechadatests_generatepromptcommandtests_swift_url"
     ],
-    "36": [
+    "41": [
       "echadaclicore_auditionsentence",
       "echadaclicore_auditionsentence_auditionsentence",
       "echadaclicore_auditionsentence_auditionsentence_auditionsentence",
@@ -822,7 +878,7 @@
       "sources_echadaclicore_auditionsentence_swift_int",
       "sources_echadaclicore_auditionsentence_swift_string"
     ],
-    "37": [
+    "42": [
       "scripts_generate_dependency_versions",
       "scripts_generate_dependency_versions_main",
       "scripts_generate_dependency_versions_next_major",
@@ -833,7 +889,7 @@
       "scripts_generate_dependency_versions_rationale_52",
       "scripts_generate_dependency_versions_swift_string"
     ],
-    "38": [
+    "43": [
       "swiftechadatests_characterinfotests",
       "swiftechadatests_characterinfotests_characterinfotests",
       "swiftechadatests_characterinfotests_characterinfotests_decodesfromjson",
@@ -844,7 +900,58 @@
       "swiftechadatests_characterinfotests_characterinfotests_jsonroundtripnildescription",
       "swiftechadatests_characterinfotests_characterinfotests_jsonroundtripwithvoicedescription"
     ],
-    "39": [
+    "44": [
+      "swiftechadatests_languagemodeloptiontests",
+      "swiftechadatests_languagemodeloptiontests_languagemodeloptiontests",
+      "swiftechadatests_languagemodeloptiontests_languagemodeloptiontests_authmounted",
+      "swiftechadatests_languagemodeloptiontests_languagemodeloptiontests_castacceptsreference",
+      "swiftechadatests_languagemodeloptiontests_languagemodeloptiontests_ondevicedetection",
+      "swiftechadatests_languagemodeloptiontests_languagemodeloptiontests_promptacceptsreferences",
+      "swiftechadatests_languagemodeloptiontests_languagemodeloptiontests_promptdefaultstoondevice",
+      "swiftechadatests_languagemodeloptiontests_languagemodeloptiontests_promptrejectsmalformedreference",
+      "swiftechadatests_languagemodeloptiontests_languagemodeloptiontests_unconfiguredaccountfailsfast"
+    ],
+    "45": [
+      "api_castdocument",
+      "requirements_dossier_bundle",
+      "requirements_ec26_migrate_voices",
+      "requirements_ec_23_output_location",
+      "requirements_ec_24_file_names",
+      "requirements_ec_25_voxalta_writeback",
+      "requirements_ec_28_echada_sample",
+      "requirements_voices_into_dossier"
+    ],
+    "46": [
+      "echadaclicore_castvoicegenerator_castinglanguages",
+      "swiftechadatests_castinglanguageresolutiontests",
+      "swiftechadatests_castinglanguageresolutiontests_castinglanguageresolutiontests",
+      "swiftechadatests_castinglanguageresolutiontests_castinglanguageresolutiontests_blankmemberlanguagedefaultstoenglish",
+      "swiftechadatests_castinglanguageresolutiontests_castinglanguageresolutiontests_defaultstoenglishwhenunspecified",
+      "swiftechadatests_castinglanguageresolutiontests_castinglanguageresolutiontests_explicitoverridewins",
+      "swiftechadatests_castinglanguageresolutiontests_castinglanguageresolutiontests_fallsbacktomemberlanguage",
+      "swiftechadatests_castinglanguageresolutiontests_castinglanguageresolutiontests_mixedcastresolvespermember"
+    ],
+    "47": [
+      "echadaclicore_languagemodelresolver",
+      "echadaclicore_languagemodelresolver_languagemodelresolver",
+      "echadaclicore_languagemodelresolver_languagemodelresolver_isondevice",
+      "echadaclicore_languagemodelresolver_languagemodelresolver_resolve",
+      "llavero",
+      "sources_echadaclicore_languagemodelresolver_swift_bool",
+      "sources_echadaclicore_languagemodelresolver_swift_languagemodel",
+      "sources_echadaclicore_languagemodelresolver_swift_modelreference"
+    ],
+    "48": [
+      "echadaclicore_voicecommand_voicecommand",
+      "echadaclicore_voicecommand_voicecommand_init",
+      "echadaclicore_voicecommand_voicecommand_resolvedmodelrepo",
+      "echadaclicore_voicecommand_voicecommand_run",
+      "sources_echadaclicore_voicecommand_swift_bool",
+      "sources_echadaclicore_voicecommand_swift_qwen3ttsmodelrepo",
+      "sources_echadaclicore_voicecommand_swift_string",
+      "voxaltamodelmanager"
+    ],
+    "49": [
       "swiftechadatests_legacycastmemberalias",
       "swiftechadatests_legacycastmemberalias_legacyprojectfixture",
       "swiftechadatests_legacycastmemberalias_legacyprojectfixture_write",
@@ -854,16 +961,16 @@
       "tests_swiftechadatests_legacycastmemberalias_swift_swiftreparto",
       "tests_swiftechadatests_legacycastmemberalias_swift_url"
     ],
-    "40": [
-      "claude_doc",
-      "claude_ownership_split",
-      "dependencies_swiftproyecto",
-      "gotchas_castmember_ambiguity",
-      "gotchas_doc",
-      "gotchas_module_type_name_collision",
-      "readme_doc"
+    "50": [
+      "architecture_cast_pipeline",
+      "architecture_qwen3ttsmodel",
+      "architecture_voicelockmanager",
+      "architecture_voxexporter",
+      "architecture_voxfile",
+      "todo_instruct_accent_no_ipa",
+      "todo_swiftvoxalta_v0130"
     ],
-    "41": [
+    "51": [
       "swiftechadatests_dependencyversionstests",
       "swiftechadatests_dependencyversionstests_dependencyversionstests",
       "swiftechadatests_dependencyversionstests_dependencyversionstests_alldirectdependenciesresolved",
@@ -872,15 +979,7 @@
       "swiftechadatests_dependencyversionstests_dependencyversionstests_swiftproyectoreported",
       "swiftechadatests_dependencyversionstests_dependencyversionstests_versionreportleadswithversion"
     ],
-    "42": [
-      "architecture_dependencyversions",
-      "build_and_test_doc",
-      "gotchas_never_swift_build",
-      "release_workflow",
-      "tests_verify_deps_job",
-      "tests_workflow"
-    ],
-    "43": [
+    "52": [
       "echadaclicore_legacyprojectcastreader",
       "echadaclicore_legacyprojectcastreader_legacyprojectcastreader",
       "echadaclicore_legacyprojectcastreader_legacyprojectcastreader_readcast",
@@ -888,140 +987,147 @@
       "sources_echadaclicore_legacyprojectcastreader_swift_string",
       "sources_echadaclicore_legacyprojectcastreader_swift_url"
     ],
-    "44": [
-      "api_castdocument",
-      "requirements_doc",
-      "requirements_dossier_format",
-      "requirements_ec23_output_location",
-      "requirements_ec26_migrate_voices"
-    ],
-    "45": [
-      "castvoicegenerator_decidevoxgeneration",
-      "echadaclicore_castvoicegenerator_voxgenerationdecision",
-      "echadaclicore_castvoicegenerator_voxgenerationdecision_generate",
-      "echadaclicore_castvoicegenerator_voxgenerationdecision_skipexistinghasvariant",
-      "echadaclicore_castvoicegenerator_voxgenerationdecision_skipexistingunreadable"
-    ],
-    "46": [
+    "53": [
       "scripts_acervo_ci_prime",
       "scripts_acervo_ci_prime_fetch",
       "scripts_acervo_ci_prime_fetch_file",
       "scripts_acervo_ci_prime_prime_one",
       "users_stovak_projects_package_collection_pkg_swiftechada_github_scripts_acervo_ci_prime_sh__entry"
     ],
-    "47": [
+    "54": [
       "swiftechadatests_voicepromptroundtriptests",
       "swiftechadatests_voicepromptroundtriptests_voicepromptroundtriptests",
       "swiftechadatests_voicepromptroundtriptests_voicepromptroundtriptests_voicedescriptionfieldalsoworks",
       "swiftechadatests_voicepromptroundtriptests_voicepromptroundtriptests_voicepromptfieldsurvivesyamlparsing",
       "swiftechadatests_voicepromptroundtriptests_voicepromptroundtriptests_voicepromptsurviveswriteandreparse"
     ],
-    "48": [
+    "55": [
+      "agents_swiftproyecto",
+      "api_characterevidence",
+      "api_characterprofile",
+      "readme_cast_command"
+    ],
+    "56": [
       "concept_phase_b_voice_locking",
       "concept_voice_lock_manager",
       "concept_vox_bundle",
       "concept_voxexporter"
     ],
-    "49": [
+    "57": [
+      "requirements_doc",
+      "requirements_dossier_format",
+      "requirements_ec23_output_location",
+      "requirements_ec28_echada_sample"
+    ],
+    "58": [
       "concept_cast_command",
       "concept_voice_command",
       "docs_test_analysis"
     ],
-    "50": [
+    "59": [
       "scripts_generate_coverage_badge",
       "users_stovak_projects_package_collection_pkg_swiftechada_github_scripts_generate_coverage_badge_sh__entry",
       "users_stovak_projects_swiftechada_github_scripts_generate_coverage_badge_sh__entry"
     ],
-    "51": [
+    "60": [
       "scripts_setup_mlx",
       "users_stovak_projects_package_collection_pkg_swiftechada_scripts_setup_mlx_sh__entry",
       "users_stovak_projects_swiftechada_scripts_setup_mlx_sh__entry"
     ],
-    "52": [
+    "61": [
       "concept_phase_a_candidate",
       "concept_voicedesign_1_7b"
     ],
-    "53": [
+    "62": [
       "scripts_acervo_ci_cache_key",
       "users_stovak_projects_package_collection_pkg_swiftechada_github_scripts_acervo_ci_cache_key_sh__entry"
     ],
-    "54": [
+    "63": [
       "swiftechadatests_swiftechadatests",
       "swiftechadatests_swiftechadatests_versionisset"
     ],
-    "55": [
+    "64": [
       "architecture_concurrency_model"
     ],
-    "56": [
+    "65": [
       "concept_apple_intelligence"
     ],
-    "57": [
+    "66": [
       "docs_architecture"
     ],
-    "58": [
+    "67": [
       "package"
     ]
   },
   "cohesion": {
-    "0": 0.06545879602571596,
-    "1": 0.06778476589797344,
-    "2": 0.05731523378582202,
-    "3": 0.08313725490196078,
-    "4": 0.08095238095238096,
-    "5": 0.10153846153846154,
-    "6": 0.12923076923076923,
-    "7": 0.24242424242424243,
+    "0": 0.05547785547785548,
+    "1": 0.05731523378582202,
+    "2": 0.08069381598793364,
+    "3": 0.06736353077816493,
+    "4": 0.07142857142857142,
+    "5": 0.17753623188405798,
+    "6": 0.24242424242424243,
+    "7": 0.15714285714285714,
     "8": 0.15714285714285714,
-    "9": 0.19047619047619047,
-    "10": 0.12105263157894737,
-    "11": 0.11695906432748537,
-    "12": 0.19298245614035087,
-    "13": 0.2046783625730994,
-    "14": 0.17647058823529413,
-    "15": 0.11764705882352941,
+    "9": 0.20526315789473684,
+    "10": 0.19298245614035087,
+    "11": 0.15789473684210525,
+    "12": 0.2046783625730994,
+    "13": 0.11764705882352941,
+    "14": 0.16911764705882354,
+    "15": 0.1323529411764706,
     "16": 0.17647058823529413,
     "17": 0.14705882352941177,
-    "18": 0.15,
+    "18": 0.25833333333333336,
     "19": 0.225,
     "20": 0.1619047619047619,
-    "21": 0.3523809523809524,
-    "22": 0.3516483516483517,
-    "23": 0.32051282051282054,
-    "24": 0.358974358974359,
-    "25": 0.16666666666666666,
-    "26": 0.19696969696969696,
-    "27": 0.30303030303030304,
-    "28": 0.16666666666666666,
-    "29": 0.2545454545454545,
-    "30": 0.3090909090909091,
-    "31": 0.2727272727272727,
-    "32": 0.2727272727272727,
-    "33": 0.28888888888888886,
-    "34": 0.35555555555555557,
-    "35": 0.3111111111111111,
-    "36": 0.4444444444444444,
-    "37": 0.3611111111111111,
+    "21": 0.1619047619047619,
+    "22": 0.3523809523809524,
+    "23": 0.3516483516483517,
+    "24": 0.19230769230769232,
+    "25": 0.20512820512820512,
+    "26": 0.21794871794871795,
+    "27": 0.32051282051282054,
+    "28": 0.358974358974359,
+    "29": 0.16666666666666666,
+    "30": 0.30303030303030304,
+    "31": 0.2,
+    "32": 0.23636363636363636,
+    "33": 0.2,
+    "34": 0.3090909090909091,
+    "35": 0.2727272727272727,
+    "36": 0.2727272727272727,
+    "37": 0.3111111111111111,
     "38": 0.2222222222222222,
-    "39": 0.32142857142857145,
-    "40": 0.3333333333333333,
-    "41": 0.2857142857142857,
-    "42": 0.4,
-    "43": 0.3333333333333333,
-    "44": 0.5,
-    "45": 0.4,
-    "46": 0.6,
-    "47": 0.4,
-    "48": 0.5,
-    "49": 0.6666666666666666,
-    "50": 0.6666666666666666,
-    "51": 0.6666666666666666,
-    "52": 1.0,
-    "53": 1.0,
-    "54": 1.0,
-    "55": 1.0,
-    "56": 1.0,
-    "57": 1.0,
-    "58": 1.0
+    "39": 0.35555555555555557,
+    "40": 0.3111111111111111,
+    "41": 0.4444444444444444,
+    "42": 0.3611111111111111,
+    "43": 0.2222222222222222,
+    "44": 0.2222222222222222,
+    "45": 0.39285714285714285,
+    "46": 0.39285714285714285,
+    "47": 0.2857142857142857,
+    "48": 0.2857142857142857,
+    "49": 0.32142857142857145,
+    "50": 0.3333333333333333,
+    "51": 0.2857142857142857,
+    "52": 0.3333333333333333,
+    "53": 0.6,
+    "54": 0.4,
+    "55": 0.5,
+    "56": 0.5,
+    "57": 0.6666666666666666,
+    "58": 0.6666666666666666,
+    "59": 0.6666666666666666,
+    "60": 0.6666666666666666,
+    "61": 1.0,
+    "62": 1.0,
+    "63": 1.0,
+    "64": 1.0,
+    "65": 1.0,
+    "66": 1.0,
+    "67": 1.0
   },
   "gods": [
     {
@@ -1030,14 +1136,24 @@
       "degree": 24
     },
     {
+      "id": "api_castvoicegenerator",
+      "label": "CastVoiceGenerator struct",
+      "degree": 24
+    },
+    {
+      "id": "api_projectmigration",
+      "label": "ProjectMigration",
+      "degree": 18
+    },
+    {
       "id": "echadaclicore_castvoicegenerator_castablelanguages",
       "label": "castableLanguages()",
       "degree": 17
     },
     {
-      "id": "api_castvoicegenerator",
-      "label": "CastVoiceGenerator struct",
-      "degree": 16
+      "id": "swiftechadatests_generatecastcommandtests_generatecastcommandtests",
+      "label": "GenerateCastCommandTests",
+      "degree": 17
     },
     {
       "id": "characterprofile",
@@ -1045,9 +1161,9 @@
       "degree": 16
     },
     {
-      "id": "swiftechadatests_generatecastcommandtests_generatecastcommandtests",
-      "label": "GenerateCastCommandTests",
-      "degree": 16
+      "id": "echadaclicore_castcommand_castcommand",
+      "label": "CastCommand",
+      "degree": 15
     },
     {
       "id": "swiftechada_characterprofile_characterprofile",
@@ -1060,22 +1176,23 @@
       "degree": 15
     },
     {
-      "id": "echadaclicore_castcommand_castcommand",
-      "label": "CastCommand",
-      "degree": 14
-    },
-    {
       "id": "echadaclicore_castvoicegenerator_decidevoxgeneration",
       "label": "decideVoxGeneration()",
-      "degree": 14
-    },
-    {
-      "id": "swiftechadatests_auditionsentencetests_auditionsentencetests",
-      "label": "AuditionSentenceTests",
       "degree": 14
     }
   ],
   "surprises": [
+    {
+      "source": "Claude-specific rules",
+      "target": "Critical Rules (All Agents)",
+      "source_files": [
+        "CLAUDE.md",
+        "AGENTS.md"
+      ],
+      "confidence": "INFERRED",
+      "relation": "semantically_similar_to",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; semantically similar concepts with no structural link"
+    },
     {
       "source": "Gemini-specific rules",
       "target": "Claude-specific rules",
@@ -1086,6 +1203,17 @@
       "confidence": "INFERRED",
       "relation": "semantically_similar_to",
       "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; semantically similar concepts with no structural link"
+    },
+    {
+      "source": "echada cast command",
+      "target": "CastVoiceGenerator struct",
+      "source_files": [
+        "README.md",
+        "Docs/api.md"
+      ],
+      "confidence": "INFERRED",
+      "relation": "references",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities; peripheral node `echada cast command` unexpectedly reaches hub `CastVoiceGenerator struct`"
     },
     {
       "source": "Docs/vox-pipeline.md",
@@ -1108,32 +1236,10 @@
       "confidence": "INFERRED",
       "relation": "conceptually_related_to",
       "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities; peripheral node `Produciesta compatibility (CAST.md-aware build needed)` unexpectedly reaches hub `ProjectMigration`"
-    },
-    {
-      "source": "Transition-window CastMember/Gender ambiguity",
-      "target": "verify cast / prune cast removed (2.0.0)",
-      "source_files": [
-        "Docs/gotchas.md",
-        "CHANGELOG.md"
-      ],
-      "confidence": "AMBIGUOUS",
-      "relation": "conceptually_related_to",
-      "why": "ambiguous connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
-    },
-    {
-      "source": "AccentOptionTests",
-      "target": "CastCommand.resolvedAccent",
-      "source_files": [
-        "Tests/SwiftEchadaTests/AccentOptionTests.swift",
-        "Sources/EchadaCLICore/CastCommand.swift"
-      ],
-      "confidence": "EXTRACTED",
-      "relation": "references",
-      "why": "connects across different repos/directories; bridges separate communities; peripheral node `CastCommand.resolvedAccent` unexpectedly reaches hub `AccentOptionTests`"
     }
   ],
   "tokens": {
-    "input": 114182,
-    "output": 20485
+    "input": 90261,
+    "output": 23232
   }
 }

@@ -19,11 +19,15 @@ permissions:
 jobs:
   build-and-upload:
     name: Build and Upload Binary
-    runs-on: macos-26
+    runs-on: xcode-27
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      - name: Install Metal Toolchain
+        # The xcode-27 image ships without it; MLX's Metal shaders need it.
+        run: xcodebuild -downloadComponent MetalToolchain
 
       - name: Cache DerivedData and SPM packages
         uses: actions/cache@v6

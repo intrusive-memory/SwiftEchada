@@ -247,11 +247,14 @@ public struct GenerateCastCommand: AsyncParsableCommand {
     }
     let castURL = projectDir.appendingPathComponent(name, isDirectory: false)
 
-    // Belt and suspenders: the standardized result must stay inside the
-    // project directory.
+    // Belt and suspenders: the cast file's parent must be the project
+    // directory. Compare the two directories rather than prefix-matching the
+    // file's path: `standardizedFileURL` strips a `/private` prefix only from
+    // paths that exist, so a not-yet-created CAST.md under `/private/tmp` would
+    // otherwise appear to escape its (existing) directory.
+    let castDir = castURL.deletingLastPathComponent().standardizedFileURL.path
     let standardizedDir = projectDir.standardizedFileURL.path
-    let dirPrefix = standardizedDir.hasSuffix("/") ? standardizedDir : standardizedDir + "/"
-    guard castURL.standardizedFileURL.path.hasPrefix(dirPrefix) else {
+    guard castDir == standardizedDir else {
       throw ValidationError(
         "--cast resolves outside the project directory: \(name)")
     }

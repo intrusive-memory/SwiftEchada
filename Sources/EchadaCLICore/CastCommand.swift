@@ -1,5 +1,7 @@
 import ArgumentParser
 import Foundation
+import LlaveroCLI
+import SwiftLlavero
 import SwiftProyecto
 import SwiftReparto
 
@@ -50,7 +52,7 @@ public struct CastCommand: AsyncParsableCommand {
       (PROJECT.md is read for `episodesDir`/`filePattern` only).
 
       Step 2 — `generate prompt`: writes a `voicePrompt` for each cast member \
-      from their dialogue, using the on-device Foundation Model.
+      from their dialogue, using the language model chosen by `--llm` (on-device by default).
 
       Step 3 — `generate vox`: synthesizes an on-device `.vox` voice for each \
       cast member from their `voicePrompt`.
@@ -62,6 +64,7 @@ public struct CastCommand: AsyncParsableCommand {
 
       Cross-stage flags: `--cast` (roster filename, default CAST.md) forwards to \
       all three stages; `--character` forwards to the prompt and vox stages; \
+      `--llm` forwards to the prompt stage; \
       `--tts-model`, `--language`, and `--accent` forward to the vox stage. \
       `--dry-run` performs the offline bootstrap and cast-discovery steps (writing \
       the discovered cast to CAST.md) but stops before the model-backed prompt \
@@ -107,6 +110,13 @@ public struct CastCommand: AsyncParsableCommand {
       "Accent or delivery directive applied to every character's voice in the vox stage (e.g. \"slow southern drawl\"). Forwarded to `generate vox`."
   )
   public var accent: String?
+
+  @Option(
+    name: .long,
+    help:
+      "Language model for the prompt stage: on-device (default), pcc, or any account:model set up with `echada auth login`. Forwarded to `generate prompt`."
+  )
+  public var llm: ModelReference = .onDevice
 
   @Option(
     name: .long,
@@ -163,7 +173,7 @@ public struct CastCommand: AsyncParsableCommand {
       return
     }
 
-    // Step 2: write a voicePrompt for each member (on-device Foundation Model).
+    // Step 2: write a voicePrompt for each member (FoundationModels; see --llm).
     print("\n== Stage 2/3: generate prompt ==")
     fflush(stdout)
     var promptStage = GeneratePromptCommand()
@@ -172,6 +182,7 @@ public struct CastCommand: AsyncParsableCommand {
     // parsing or assignment — every property must be set before run() reads it.
     promptStage.cast = cast
     promptStage.character = character
+    promptStage.llm = llm
     promptStage.force = force
     promptStage.dryRun = false
     promptStage.verbose = verbose

@@ -4,7 +4,7 @@ type: doc
 
 # Architecture
 
-**Version**: 1.0.0 | **Swift**: 6.2 | **Platforms**: macOS 26+, iOS 26+
+**Version**: 1.0.0 | **Swift**: 6.2 | **Platforms**: macOS 27+, iOS 27+
 
 ---
 

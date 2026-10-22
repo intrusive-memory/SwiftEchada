@@ -1,13 +1,13 @@
 name: Tests
 
 # --- R-CI-1 (OPERATION GENERAL MUSTER, Sortie 10, resolved OQ-4) ---------------
-# GitHub-hosted `macos-26` runners do NOT provision Apple Intelligence:
+# GitHub-hosted `xcode-27` (macOS 27) runners do NOT provision Apple Intelligence:
 # `SystemLanguageModel.default.isAvailable` reports `false` here (it requires
 # device opt-in, a signed-in Apple Account, and on-device model downloads that
 # are unavailable on ephemeral hosted runners). Every test gated with
 # `.enabled(if: SystemLanguageModel.default.isAvailable)` — `generate prompt`,
 # and the full-pipeline `echada cast` test whose prompt stage calls
-# `VoicePromptSynthesizer.requireAvailable()` — SKIPS on this job. That is
+# the on-device model through SwiftLlavero — SKIPS on this job. That is
 # accepted, expected coverage, not a failure.
 #
 # `generate vox` NO LONGER skips here. Audition sentences used to come
@@ -61,7 +61,7 @@ jobs:
   # what the binary links, and a silently stale table makes that claim false.
   verify-deps:
     name: Dependency Table Drift
-    runs-on: macos-26
+    runs-on: xcode-27
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -76,7 +76,7 @@ jobs:
 
   unit-tests:
     name: Unit Tests
-    runs-on: macos-26
+    runs-on: xcode-27
 
     env:
       # --- SwiftAcervo model cache (R-CI-2) ----------------------------------
@@ -122,6 +122,10 @@ jobs:
 
       - name: Select Xcode version
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Install Metal Toolchain
+        # The xcode-27 image ships without it; MLX's Metal shaders need it.
+        run: xcodebuild -downloadComponent MetalToolchain
 
       - name: Show Swift version
         run: swift --version

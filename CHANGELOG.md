@@ -9,6 +9,38 @@ All notable changes to SwiftEchada will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-10-22
+
+### Changed
+
+- **macOS 27 / iOS 27 minimum** (was 26). Released as a minor version, but
+  consumers still building on macOS 26 must stay on 2.0.x
+  (`.upToNextMinor(from: "2.0.0")`), because 2.1.0 will not build there. FoundationModels' `LanguageModel`
+  protocol, which every off-device model below goes through, needs the 27 SDKs,
+  and SwiftPM applies the floor to the whole package, `EchadaCLICore` included.
+  CI and releases move to GitHub's `xcode-27` runner image (macOS 27 + Xcode 27),
+  which also needs the Metal Toolchain installed for MLX.
+
+### Added
+
+- **`--llm` on `echada generate prompt` and `echada cast`** picks the model that
+  writes voice prompts: `on-device` (default, unchanged behavior), `pcc` (Apple
+  Private Cloud Compute, no key), or any `account:model` configured through
+  [SwiftLlavero](https://github.com/intrusive-memory/SwiftLlavero) —
+  `anthropic:claude-sonnet-5-5`, `openai:gpt-5.6`, `gemini`, `ollama:llama3.3`.
+  Off-device choices send the characters' dialogue to that provider, and the
+  stage says so.
+- **`echada auth login|logout|status|check`** (SwiftLlavero's
+  `LlaveroAuthCommand`). Credentials live in the Keychain and are shared with
+  every other tool that uses SwiftLlavero; environment variables
+  (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) work too.
+
+### Fixed
+
+- Every stage failed with `--cast resolves outside the project directory` when
+  the project lived under `/private` (e.g. `/tmp`) and `CAST.md` did not exist
+  yet: `standardizedFileURL` strips `/private` only from paths that exist.
+
 ## [2.0.0] - 2026-10-21
 
 ### Changed — Breaking

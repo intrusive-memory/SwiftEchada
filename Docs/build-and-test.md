@@ -94,7 +94,7 @@ Test fixture files live in `Fixtures/`:
 #### `tests.yml` -- Unit Tests
 
 - **Trigger**: Push to `main`, PR to `main`
-- **Runner**: `macos-26`
+- **Runner**: `xcode-27` (macOS 27 + Xcode 27; GitHub has no `macos-27` label)
 - **Command**: `xcodebuild test -scheme SwiftEchada-Package -destination 'platform=macOS'`
 - **Artifact**: `test-output.log` (30-day retention)
 - **Summary**: Pass/fail counts posted to Actions summary
@@ -116,7 +116,7 @@ Test fixture files live in `Fixtures/`:
   mode would block the harmless manifest re-fetch that happens on every fresh
   test process, defeating the cache).
 - **Apple Intelligence is NOT available on this runner (R-CI-1, UNMET)**:
-  GitHub-hosted `macos-26` reports `SystemLanguageModel.default.isAvailable ==
+  GitHub-hosted `xcode-27` reports `SystemLanguageModel.default.isAvailable ==
   false` (no device opt-in, no signed-in Apple Account, no on-device model
   download on ephemeral hosted runners). Every test gated with `.enabled(if:
   SystemLanguageModel.default.isAvailable)` -- `generate prompt` and the
@@ -129,10 +129,10 @@ Test fixture files live in `Fixtures/`:
   weights never actually unlocked any coverage on hosted CI. Sentences are now
   curated data (`AuditionSentence`), so nothing in the vox path touches Apple
   Intelligence and the `generate vox` test is gated on `TTSWeights.present`
-  alone. With the model cache primed, it runs on hosted `macos-26`.
+  alone. With the model cache primed, it runs on hosted `xcode-27`.
 
   The full-pipeline `echada cast` test still needs both, because its
-  `generate prompt` stage calls `VoicePromptSynthesizer.requireAvailable()`.
+  `generate prompt` stage calls the on-device model (the default `--llm on-device`).
   Those remaining paths are exercised locally on a developer Mac with Apple
   Intelligence enabled, or would need a self-hosted
   Apple-Intelligence-provisioned runner, which this workflow does not provide.
@@ -144,7 +144,7 @@ Test fixture files live in `Fixtures/`:
 #### `release.yml` -- Release Binary
 
 - **Trigger**: GitHub release published OR manual `workflow_dispatch`
-- **Runner**: `macos-26`
+- **Runner**: `xcode-27` (macOS 27 + Xcode 27; GitHub has no `macos-27` label)
 - **Cache**: DerivedData + SPM packages (keyed on `Package.resolved` hash)
 - **Steps**:
   1. `make release`

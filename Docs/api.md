@@ -4,7 +4,7 @@ type: doc
 
 # API Reference
 
-**Version**: 1.0.0 | **Platforms**: iOS 26.0+, macOS 26.0+
+**Version**: 1.0.0 | **Platforms**: iOS 27.0+, macOS 27.0+
 **Swift**: 6.2 | **Language Mode**: v6 (strict concurrency)
 
 ---

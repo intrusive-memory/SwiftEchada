@@ -14,7 +14,7 @@ AI-powered cast management for screenplay projects. Generates on-device custom v
 
 ## Requirements
 
-- macOS 26+ (Apple Silicon)
+- macOS 27+ (Apple Silicon). echada 2.0.x is the last release for macOS 26.
 - Swift 6.2+
 - **MLX framework** (via Homebrew)
 
@@ -74,18 +74,18 @@ from the surrounding directory (inferred title, author, `episodesDir`,
 block when one is present, created empty otherwise; an existing roster is left
 untouched. Then it runs, in order: `generate cast`
 (discover cast members from the screenplay source), `generate prompt` (write a
-`voicePrompt` per member via the on-device Foundation Model), and `generate
+`voicePrompt` per member via the language model chosen with `--llm`), and `generate
 vox` (synthesize an on-device `.vox` voice per member). Every stage is
 idempotent, so re-running only fills the gaps.
 
 ```bash
-echada cast [--project <path>] [--cast <filename>] [--character <name>] [--tts-model <0.6b|1.7b>] [--language <bcp-47>]... [--accent <directive>] [--force] [--dry-run] [--verbose]
+echada cast [--project <path>] [--cast <filename>] [--character <name>] [--tts-model <0.6b|1.7b>] [--language <bcp-47>]... [--accent <directive>] [--llm <model>] [--force] [--dry-run] [--verbose]
 ```
 
 `--force` cascades to every stage's own force flag (cast re-sync, prompt
 overwrite, vox regenerate). `--cast` forwards to all three stages;
 `--tts-model`, `--language`, and `--accent`
-forward to the vox stage; `--character` forwards to the prompt and vox stages.
+forward to the vox stage; `--llm` forwards to the prompt stage; `--character` forwards to the prompt and vox stages.
 `--dry-run` runs the offline bootstrap + cast-discovery steps but stops before
 the model-backed prompt and vox stages.
 
@@ -96,7 +96,7 @@ standalone under the `generate` namespace:
 
 ```bash
 echada generate cast [--project <path>] [--cast <filename>] [--force] [--dry-run] [--verbose]
-echada generate prompt [--project <path>] [--cast <filename>] [--character <name>] [--force] [--dry-run] [--verbose]
+echada generate prompt [--project <path>] [--cast <filename>] [--character <name>] [--llm <model>] [--force] [--dry-run] [--verbose]
 echada generate vox [--project <path>] [--cast <filename>] [--character <name>] [--tts-model <0.6b|1.7b>] [--language <bcp-47>]... [--accent <directive>] [--force-regenerate] [--dry-run] [--verbose]
 ```
 
@@ -108,8 +108,11 @@ echada generate vox [--project <path>] [--cast <filename>] [--character <name>] 
   verbatim before discovered characters are merged on top. PROJECT.md itself
   is never modified.
 - **`generate prompt`** — examines each cast member's dialogue and writes a
-  `voicePrompt` into CAST.md via the on-device Foundation Model. Fills empty
-  prompts only unless `--force`.
+  `voicePrompt` into CAST.md. Fills empty prompts only unless `--force`.
+  `--llm` picks the model: `on-device` (default), `pcc` (Apple Private Cloud
+  Compute), or any `account:model` configured with `echada auth`, such as
+  `anthropic:claude-sonnet-5-5` or `openai:gpt-5.6`. Off-device models receive
+  the characters' dialogue.
 - **`generate vox`** — synthesizes an on-device `.vox` voice from each
   member's `voicePrompt` using Qwen3-TTS, recording the output path under
   `voices.voxalta` in CAST.md (relative to CAST.md's directory). This is what
@@ -120,6 +123,20 @@ echada generate vox [--project <path>] [--cast <filename>] [--character <name>] 
   bundles. `--language` may be repeated to cast multiple languages into one
   `.vox` (e.g. `--language es --language en`); `--accent` applies a delivery
   directive (e.g. `"slow southern drawl"`) to every character's voice.
+
+### `echada auth` — language model credentials
+
+```bash
+echada auth login anthropic        # prompts for the API key, no echo
+pbpaste | echada auth login openai # or pipe it in
+echada auth status                 # what's configured, and where it comes from
+echada auth check anthropic:claude-haiku-5-5
+echada auth logout anthropic
+```
+
+Credentials are stored in the Keychain by
+[SwiftLlavero](https://github.com/intrusive-memory/SwiftLlavero) and shared with
+every tool that uses it. `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` work too.
 
 ### Migrating older projects
 

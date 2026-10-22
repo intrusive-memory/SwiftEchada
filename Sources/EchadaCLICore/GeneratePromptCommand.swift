@@ -1,5 +1,8 @@
 import ArgumentParser
 import Foundation
+import FoundationModels
+import LlaveroCLI
+import SwiftLlavero
 import SwiftProyecto
 import SwiftReparto
 
@@ -8,8 +11,8 @@ import SwiftReparto
 ///
 /// This is the inverse of `generate vox`: where `vox` consumes each member's
 /// `voicePrompt` to lock a `.vox`, `prompt` reads the episode scripts, gathers
-/// what each character actually says (and how), and asks the on-device
-/// Foundation Model to write the voice-design brief that `vox` will later use.
+/// what each character actually says (and how), and asks a FoundationModels
+/// language model (on-device by default, or Private Cloud Compute) to write the voice-design brief that `vox` will later use.
 ///
 /// ## The roster lives in CAST.md; PROJECT.md is read-only here
 ///
@@ -30,8 +33,11 @@ public struct GeneratePromptCommand: AsyncParsableCommand {
     discussion: """
       Consumes the project's screenplay source material (via `episodesDir`/`filePattern` \
       in PROJECT.md) and each cast member's dialogue within it, and produces a \
-      `voicePrompt` per member — written by the on-device Foundation Model from the \
-      gathered dialogue evidence.
+      `voicePrompt` per member — written by a language model from the gathered \
+      dialogue evidence. `--llm on-device` (the default) keeps everything on the Mac; \
+      `--llm pcc` uses Apple Private Cloud Compute (no API key); `--llm \
+      anthropic:claude-sonnet-5-5` (or any account configured with `echada auth \
+      login`) uses that provider.
 
       The roster is read from, and written back to, CAST.md (beside PROJECT.md); \
       PROJECT.md is read for `title`, `episodesDir`, and `filePattern`; an older \
@@ -60,6 +66,13 @@ public struct GeneratePromptCommand: AsyncParsableCommand {
 
   @Option(name: .long, help: "Generate a voice prompt for a single character (by name).")
   public var character: String?
+
+  @Option(
+    name: .long,
+    help:
+      "Language model that writes the voice prompts: on-device (default; nothing leaves the Mac), pcc (Apple Private Cloud Compute), or any account:model set up with `echada auth login` (e.g. anthropic:claude-sonnet-5-5). Off-device models receive the characters' dialogue."
+  )
+  public var llm: ModelReference = .onDevice
 
   @Flag(
     name: .long,
@@ -140,6 +153,10 @@ public struct GeneratePromptCommand: AsyncParsableCommand {
     }
     print(
       "Cast members: \(targetCast.count)\(character != nil ? " (filtered: \(character!))" : "")")
+    print("Language model: \(llm)")
+    if !LanguageModelResolver.isOnDevice(llm) {
+      print("  Note: character dialogue is sent to this model's provider.")
+    }
     if force { print("Force: overwriting existing voice prompts") }
     print("")
     fflush(stdout)
@@ -162,10 +179,9 @@ public struct GeneratePromptCommand: AsyncParsableCommand {
       return text
     }
 
-    // Fail fast on model availability before any per-character work (skip in dry run).
-    if !dryRun {
-      try VoicePromptSynthesizer.requireAvailable()
-    }
+    // Resolve the model once, failing fast before any per-character work
+    // (skipped in a dry run, which never calls the model).
+    let model: (any LanguageModel)? = dryRun ? nil : try await LanguageModelResolver.resolve(llm)
 
     var updatedByName: [String: SwiftReparto.CastMember] = [:]
     var generatedCount = 0
@@ -203,7 +219,7 @@ public struct GeneratePromptCommand: AsyncParsableCommand {
         )
       }
 
-      if dryRun {
+      guard let model else {
         let preview = VoicePromptSynthesizer.selectedDialogue(evidence.dialogue).prefix(3)
         print("  \(member.character): would generate from \(evidence.dialogue.count) line(s):")
         for line in preview { print("      \u{201C}\(line)\u{201D}") }
@@ -220,7 +236,8 @@ public struct GeneratePromptCommand: AsyncParsableCommand {
           projectTitle: frontMatter.title,
           projectDescription: frontMatter.description,
           genre: frontMatter.genre,
-          evidence: evidence
+          evidence: evidence,
+          model: model
         )
       } catch {
         print("  \(member.character): error — \(error.localizedDescription)")

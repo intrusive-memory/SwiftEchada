@@ -18,6 +18,8 @@ EchadaCLICore (CLI library) / echada (executable)
 ├── SwiftProyecto (5.3.2+)         ← PROJECT.md only: title, episodesDir, filePattern, tts.model
 ├── SwiftVoxAlta (0.14.2+)
 │   └── vox-format, mlx-audio-swift, mlx-swift (transitive)
+├── SwiftLlavero (0.1.0-beta.2, 0.1.x) ← --llm models + `echada auth` credentials
+│   └── ClaudeForFoundationModels, firebase-ios-sdk (transitive)
 ├── swift-argument-parser (1.7.1+)
 ├── mlx-swift (0.31.3+)
 ├── mlx-swift-lm (3.31.3+)
@@ -48,6 +50,7 @@ package cycle involving cast data is possible by construction.
 |---------|-----|---------|-----------|
 | [SwiftProyecto](https://github.com/intrusive-memory/SwiftProyecto) | `from: "5.3.2"` | PROJECT.md parsing (project-level fields only) and the migration rewrite | `ProjectMarkdownParser`, `ProjectFrontMatter`, `ProjectService` |
 | [SwiftVoxAlta](https://github.com/intrusive-memory/SwiftVoxAlta) | `from: "0.14.2"` | On-device voice generation | `VoxAltaModelManager`, `VoiceLockManager`, `VoxExporter`, `Qwen3TTSModelRepo` |
+| [SwiftLlavero](https://github.com/intrusive-memory/SwiftLlavero) | `upToNextMinor(from: "0.1.0-beta.2")` | The `--llm` model (on-device, PCC, Claude, OpenAI-compatible, Gemini) and `echada auth` (Keychain credentials shared across tools). Beta: pinned to 0.1.x | `Llavero`, `ModelReference`, `LlaveroAuthCommand` |
 | [swift-argument-parser](https://github.com/apple/swift-argument-parser) | `from: "1.7.1"` | CLI argument parsing | `AsyncParsableCommand`, `CommandConfiguration` |
 | [mlx-swift](https://github.com/ml-explore/mlx-swift) | `from: "0.31.3"` | MLX framework (GPU compute) | `MLXArray`, `Stream`, `Memory` |
 | [mlx-swift-lm](https://github.com/ml-explore/mlx-swift-lm) | `from: "3.31.3"` | Language model commons | `GenerateParameters` |

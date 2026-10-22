@@ -1,13 +1,14 @@
 import Foundation
 import FoundationModels
+import SwiftLlavero
 import SwiftReparto
 
-/// Failures surfaced when the on-device Foundation Model cannot synthesize a
+/// Failures surfaced when the selected language model cannot synthesize a
 /// character voice prompt.
 enum VoicePromptSynthesizerError: LocalizedError {
-  /// Apple Intelligence is unavailable (disabled, unsupported hardware, or the
-  /// model is still downloading).
-  case appleIntelligenceUnavailable
+  /// The selected model is unusable: Apple Intelligence disabled or not ready,
+  /// Private Cloud Compute not ready, or a provider account not configured.
+  case modelUnavailable(ModelReference, reason: String)
   /// The model ran but returned no usable voice prompt for the character.
   /// Carries the underlying FoundationModels error (if any) so the real cause
   /// is never swallowed.
@@ -15,16 +16,12 @@ enum VoicePromptSynthesizerError: LocalizedError {
 
   var errorDescription: String? {
     switch self {
-    case .appleIntelligenceUnavailable:
-      return """
-        Apple Intelligence is not available on this device. echada uses the \
-        on-device Foundation Model to write voice prompts from your source \
-        material, so you must have Apple Intelligence enabled. Turn it on in \
-        System Settings ▸ Apple Intelligence & Siri on a supported Apple silicon Mac.
-        """
+    case .modelUnavailable(let reference, let reason):
+      return
+        "echada writes voice prompts with a language model, and '\(reference)' is unusable. \(reason)"
     case .generationFailed(let character, let underlying):
       let base =
-        "Apple Intelligence returned no usable voice prompt for character '\(character)'."
+        "The language model returned no usable voice prompt for character '\(character)'."
       guard let underlying else { return base }
       let detail =
         (underlying as? LocalizedError)?.errorDescription
@@ -34,10 +31,11 @@ enum VoicePromptSynthesizerError: LocalizedError {
   }
 }
 
-/// Synthesizes a character's `voicePrompt` from screenplay evidence using Apple's
-/// on-device Foundation Model.
+/// Synthesizes a character's `voicePrompt` from screenplay evidence using a
+/// FoundationModels language model (on-device by default; see
+/// ``LanguageModelResolver``).
 ///
-/// This is the one place echada uses the on-device `SystemLanguageModel`.
+/// This is the one place echada uses a language model.
 /// Audition sentences are curated data (see ``AuditionSentence``) because they
 /// must be fixed and reproducible; writing a voice-design brief is the opposite
 /// — genuine generative work with no single right answer — so it stays with the
@@ -48,13 +46,6 @@ enum VoicePromptSynthesizerError: LocalizedError {
 /// VoiceDesign's `voice:` parameter by ``CastVoiceGenerator`` to lock the
 /// character's `.vox`.
 enum VoicePromptSynthesizer {
-
-  /// Fails fast when the on-device model is unusable. Call before any work.
-  static func requireAvailable() throws {
-    guard SystemLanguageModel.default.isAvailable else {
-      throw VoicePromptSynthesizerError.appleIntelligenceUnavailable
-    }
-  }
 
   /// The most dialogue lines fed to the model — enough to characterize a voice
   /// without overrunning the on-device context window.
@@ -75,6 +66,7 @@ enum VoicePromptSynthesizer {
   ///   - projectDescription: Project description/logline, if any.
   ///   - genre: Project genre, if any.
   ///   - evidence: Gathered dialogue and delivery notes for the character.
+  ///   - model: Which language model writes the brief.
   /// - Returns: A sanitized voice-prompt string suitable for `voicePrompt`.
   /// - Throws: ``VoicePromptSynthesizerError`` if the model is unavailable or
   ///   returns nothing usable.
@@ -85,11 +77,9 @@ enum VoicePromptSynthesizer {
     projectTitle: String,
     projectDescription: String?,
     genre: String?,
-    evidence: CharacterDialogueEvidence
+    evidence: CharacterDialogueEvidence,
+    model: any LanguageModel
   ) async throws -> String {
-    guard SystemLanguageModel.default.isAvailable else {
-      throw VoicePromptSynthesizerError.appleIntelligenceUnavailable
-    }
 
     let prompt = buildPrompt(
       character: character,
@@ -104,7 +94,7 @@ enum VoicePromptSynthesizer {
     // Retry transient FoundationModels failures with a fresh session so one
     // flaky character doesn't abort prompt synthesis for the whole cast.
     let (result, lastError) = await FoundationModelRetry.sanitizedResponse(
-      to: prompt, sanitize: sanitize)
+      to: prompt, model: model, sanitize: sanitize)
     guard let result else {
       throw VoicePromptSynthesizerError.generationFailed(
         character: character, underlying: lastError)
@@ -114,7 +104,7 @@ enum VoicePromptSynthesizer {
 
   // MARK: - Prompt construction (pure, unit-testable)
 
-  /// Build the instruction handed to the Foundation Model. Kept pure so the
+  /// Build the instruction handed to the language model. Kept pure so the
   /// exact evidence-selection and wording can be asserted in tests.
   static func buildPrompt(
     character: String,
