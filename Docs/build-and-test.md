@@ -94,7 +94,7 @@ Test fixture files live in `Fixtures/`:
 
 #### `tests.yml` -- Unit Tests
 
-- **Trigger**: Push to `main`, PR to `main`
+- **Trigger**: Push to `main`; PRs to `main` or `development`
 - **Runner**: `xcode-27` (macOS 27 + Xcode 27; GitHub has no `macos-27` label)
 - **Command**: `xcodebuild test -scheme SwiftEchada-Package -destination 'platform=macOS'`
 - **Artifact**: `test-output.log` (30-day retention)
