@@ -159,8 +159,8 @@ struct ProjectMigrationTests {
     #expect(try read(projectURL) == Self.expectedMigratedProjectMd)
   }
 
-  @Test("generate cast migrates a legacy project before discovering characters")
-  func generateCastMigrates() async throws {
+  @Test("echada cast --dry-run migrates a legacy project and discovers nobody")
+  func castPipelineMigrates() async throws {
     let projectURL = try makeProject()
     let dir = projectURL.deletingLastPathComponent()
     defer { try? FileManager.default.removeItem(at: dir) }
@@ -169,11 +169,11 @@ struct ProjectMigrationTests {
     try "INT. ROOM - DAY\n\nHOST\nWelcome back.\n".write(
       to: episodes.appendingPathComponent("ep1.fountain"), atomically: true, encoding: .utf8)
 
-    try await GenerateCastCommand.parse(["--project", projectURL.path]).run()
+    try await CastCommand.parse(["--project", projectURL.path, "--dry-run"]).run()
 
     #expect(try read(projectURL) == Self.expectedMigratedProjectMd)
     let cast = try CastMarkdownParser().parse(fileURL: castURL(for: projectURL)).cast
-    #expect(cast.map(\.character) == ["NARRATOR", "THE PRACTITIONER", "HOST"])
+    #expect(cast.map(\.character) == ["NARRATOR", "THE PRACTITIONER"])
   }
 
   @Test("generate vox --dry-run describes the migration without performing it")

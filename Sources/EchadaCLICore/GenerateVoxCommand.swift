@@ -12,8 +12,8 @@ import SwiftReparto
 /// `PROJECT.md`, through SwiftReparto's `CastMarkdownParser` (EC-12).
 /// `PROJECT.md` is still consulted read-only for `title` and `tts.model`, but
 /// its legacy `cast:` block is never touched. When `CAST.md` is absent this
-/// command fails rather than creating it — only `echada generate cast` creates
-/// the roster (EC-14).
+/// command fails rather than creating it — the roster comes from
+/// `personaje cast-discover` (EC-P11).
 public struct GenerateVoxCommand: AsyncParsableCommand {
   public static let configuration = CommandConfiguration(
     commandName: "vox",
@@ -25,8 +25,8 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
 
       PROJECT.md is read for `title` and `tts.model`; an older PROJECT.md that \
       still holds a `cast:` block is first migrated into CAST.md (original saved \
-      as PROJECT.md.bak). When CAST.md is absent this command fails — run \
-      `echada generate cast` first to create it.
+      as PROJECT.md.bak). When CAST.md is absent this command fails — build \
+      it first with `personaje cast-discover`.
 
       Idempotency: members whose `.vox` already holds the requested variant \
       (TTS model + language) are skipped unless `--force-regenerate` is passed, \
@@ -123,7 +123,7 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
       throw ValidationError("Project file not found: \(project)")
     }
     let projectDir = fileURL.deletingLastPathComponent()
-    let castURL = try GenerateCastCommand.resolveCastFile(named: cast, in: projectDir)
+    let castURL = try CastFile.resolve(named: cast, in: projectDir)
 
     // A pre-v5 project still carries its roster in PROJECT.md; move it to
     // CAST.md before this stage reads anything.
@@ -133,7 +133,7 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
     guard FileManager.default.fileExists(atPath: castURL.path) else {
       throw ValidationError(
         "Cast file not found: \(castURL.path). `generate vox` reads the roster from \(cast) "
-          + "and never creates it — run `echada generate cast` first.")
+          + "and never creates it — build it first with `personaje cast-discover`.")
     }
 
     // PROJECT.md is read-only here: `title` and `tts.model` only (EC-12).
@@ -159,7 +159,7 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
     let roster = document.cast
     guard !roster.isEmpty else {
       throw ValidationError(
-        "No cast members found in \(cast). Run `echada generate cast` to discover them.")
+        "No cast members found in \(cast). Build the roster with `personaje cast-discover`.")
     }
 
     // Filter cast to a single character if requested

@@ -14,7 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed — Breaking
 
 - **macOS 27 / iOS 27 minimum** (was 26). Consumers still building on macOS 26
-  stay on 2.0.x. FoundationModels' `LanguageModel`
+  stay on 2.0.x.
+- **`echada generate cast` is removed, and `echada cast` no longer discovers
+  cast members** (EC-P11). Build CAST.md from the screenplays with
+  `personaje cast-discover` (SwiftPersonaje), or by hand. `echada cast` is now
+  bootstrap → `generate prompt` → `generate vox`; an empty roster stops it with
+  that advice. Migration off a legacy `cast:` block is unchanged.
+- **`CharacterInfo` and `CharacterMerger` are removed** from the `SwiftEchada`
+  product (EC-P12). Nothing used them outside their own tests. FoundationModels' `LanguageModel`
   protocol, which every off-device model below goes through, needs the 27 SDKs,
   and SwiftPM applies the floor to the whole package, `EchadaCLICore` included.
   CI and releases move to GitHub's `xcode-27` runner image (macOS 27 + Xcode 27),

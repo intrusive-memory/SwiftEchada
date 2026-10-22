@@ -7,7 +7,7 @@ import Testing
 @testable import EchadaCLICore
 
 /// EC-11: automatic migration of the real 309-line `confessions/PROJECT.md`
-/// fixture is lossless. One `generate cast` run moves the roster into CAST.md
+/// fixture is lossless. One migration moves the roster into CAST.md
 /// and rewrites PROJECT.md. The residual must differ from the original by
 /// exactly the `cast:` line span plus the stamped `schemaVersion: 5` line:
 /// `introFile`/`outroFile`, `tts`, and the full `episodes_index` structure (the
@@ -92,7 +92,7 @@ struct CastMigrationLosslessnessTests {
   }
 
   @Test(
-    "generate cast migrates: residual PROJECT.md differs only by the cast: span and schemaVersion")
+    "Migration: residual PROJECT.md differs only by the cast: span and schemaVersion")
   func migrationRoundTripIsLossless() async throws {
     let projectURL = try makeConfessionsProject()
     let dir = projectURL.deletingLastPathComponent()
@@ -102,7 +102,7 @@ struct CastMigrationLosslessnessTests {
     let original = try String(contentsOf: projectURL, encoding: .utf8)
     let originalLines = original.components(separatedBy: "\n")
 
-    try await GenerateCastCommand.parse(["--project", projectURL.path]).run()
+    _ = try ProjectMigration.migrateIfNeeded(projectURL: projectURL, castName: "CAST.md")
 
     // Every cast field survived into CAST.md, including bio via extraKeys.
     let document = try CastMarkdownParser().parse(fileURL: castURL)
@@ -162,7 +162,7 @@ struct CastMigrationLosslessnessTests {
 
     // A second run finds nothing to migrate and leaves PROJECT.md alone.
     let residualSha = try sha256(of: projectURL)
-    try await GenerateCastCommand.parse(["--project", projectURL.path]).run()
+    _ = try ProjectMigration.migrateIfNeeded(projectURL: projectURL, castName: "CAST.md")
     #expect(try sha256(of: projectURL) == residualSha)
     #expect(
       !FileManager.default.fileExists(atPath: dir.appendingPathComponent("PROJECT.md.bak.1").path))

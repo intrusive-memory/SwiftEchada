@@ -73,23 +73,23 @@ enum CastRosterVerifier {
     var found: [CastDivergence] = []
 
     // Membership is matched under the same case- and whitespace-insensitive
-    // key SwiftReparto's `merging(_:)` uses (RQ-14), so migration and
-    // `generate cast` can never disagree about whether two spellings are the
-    // same character.
+    // key SwiftReparto's `merging(_:)` uses (RQ-14), so migration and the
+    // merge can never disagree about whether two spellings are the same
+    // character.
     var legacyByKey: [String: CastMember] = [:]
     for member in legacyRoster {
-      let key = GenerateCastCommand.matchKey(member.character)
+      let key = CastFile.matchKey(member.character)
       if legacyByKey[key] == nil { legacyByKey[key] = member }
     }
     var castByKey: [String: CastMember] = [:]
     for member in castRoster {
-      let key = GenerateCastCommand.matchKey(member.character)
+      let key = CastFile.matchKey(member.character)
       if castByKey[key] == nil { castByKey[key] = member }
     }
 
     // Class 1: present in one file and not the other — both directions.
     for member in legacyRoster
-    where castByKey[GenerateCastCommand.matchKey(member.character)] == nil {
+    where castByKey[CastFile.matchKey(member.character)] == nil {
       found.append(
         CastDivergence(
           kind: .membership,
@@ -99,7 +99,7 @@ enum CastRosterVerifier {
         ))
     }
     for member in castRoster
-    where legacyByKey[GenerateCastCommand.matchKey(member.character)] == nil {
+    where legacyByKey[CastFile.matchKey(member.character)] == nil {
       found.append(
         CastDivergence(
           kind: .membership,
@@ -111,7 +111,7 @@ enum CastRosterVerifier {
 
     // Class 2: differing field values on a matched character.
     for member in castRoster {
-      guard let legacy = legacyByKey[GenerateCastCommand.matchKey(member.character)] else {
+      guard let legacy = legacyByKey[CastFile.matchKey(member.character)] else {
         continue
       }
       found.append(

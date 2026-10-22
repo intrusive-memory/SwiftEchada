@@ -20,10 +20,11 @@ import Testing
 /// Two layers of coverage:
 ///
 /// 1. **Offline (always runs, the CI regression gate)** — `echada cast
-///    --dry-run` runs bootstrap + `generate cast` for real (the orchestrator
-///    hardcodes the cast stage to a non-dry run) and rewrites `CAST.md`, so the
-///    write path under test genuinely executes without any model.
-/// 2. **Model-gated full run** — the complete pipeline (cast → prompt → vox)
+///    --dry-run` runs bootstrap + the automatic migration for real. A legacy
+///    `cast:` block in PROJECT.md carrying a member CAST.md lacks makes the
+///    migration rewrite `CAST.md`, so the write path under test genuinely
+///    executes without any model.
+/// 2. **Model-gated full run** — the complete pipeline (prompt → vox)
 ///    with the same assertions, gated to skip wherever the Foundation Model or
 ///    the TTS weights are absent (same gates as `ModelBackedGenerationTests`).
 @Suite("EC-18 — echada cast preserves the CAST.md body and never touches PROJECT.md")
@@ -31,10 +32,8 @@ struct CastBodyPreservationTests {
 
   // MARK: - Fixtures
 
-  /// A script whose cue set ("MAYA", "NOAH") is a strict superset of the
-  /// hand-authored roster below, so the cast stage discovers a NEW character
-  /// and must rewrite CAST.md — making the body-preservation assertion
-  /// non-vacuous.
+  /// A script with two cues. echada never discovers them (EC-P11); the roster
+  /// changes in these tests come from migration only.
   static let twoCharacterScript = """
     INT. KITCHEN - MORNING
 
@@ -154,10 +153,20 @@ struct CastBodyPreservationTests {
     ])
     defer { try? FileManager.default.removeItem(at: projectDir.deletingLastPathComponent()) }
 
-    try writeProjectMarkdown(title: "Body Preservation", to: projectFile)
+    // A legacy PROJECT.md whose `cast:` block carries NOAH, which CAST.md lacks.
+    let frontMatter = ProjectFrontMatter(
+      type: "project",
+      title: "Body Preservation",
+      author: "Test",
+      created: Date(timeIntervalSince1970: 0),
+      episodesDir: "episodes",
+      filePattern: FilePattern("*.fountain")
+    )
+    try LegacyProjectFixture.write(
+      frontMatter: frontMatter, cast: [ProyectoCastMember(character: "NOAH")], to: projectFile)
 
     // Hand-write CAST.md (raw text, not the writer) with MAYA only, so the
-    // cast stage MUST rewrite the file to add NOAH.
+    // migration MUST rewrite the file to add NOAH.
     let castFile = projectDir.appendingPathComponent("CAST.md")
     let raw = Self.handAuthoredCastMarkdown(
       roster: """
@@ -173,7 +182,7 @@ struct CastBodyPreservationTests {
     let cmd = try CastCommand.parse(["--project", projectFile.path, "--dry-run"])
     try await cmd.run()
 
-    // The rewrite genuinely happened: NOAH was discovered and merged in.
+    // The rewrite genuinely happened: NOAH migrated in from the legacy block.
     let roster = try CastMarkdownParser().parse(fileURL: castFile).cast
     #expect(roster.map(\.character).sorted() == ["MAYA", "NOAH"])
     #expect(roster.first { $0.character == "MAYA" }?.actor == "Existing Actor")
@@ -182,12 +191,13 @@ struct CastBodyPreservationTests {
     let bodyAfter = try bodyRegionBytes(of: castFile)
     #expect(bodyAfter == bodyBefore, "CAST.md body region must survive byte-for-byte")
 
-    // Companion assertion: PROJECT.md is SHA-256-unchanged by the run.
-    #expect(try sha256(of: projectFile) == projectShaBefore)
+    // Companion assertion: the original PROJECT.md is kept byte-for-byte as
+    // the migration backup.
+    #expect(try sha256(of: projectFile.appendingPathExtension("bak")) == projectShaBefore)
   }
 
   @Test("--cast cascades from the orchestrator: an overridden roster filename is the one written")
-  func castOptionCascadesToTheCastStage() async throws {
+  func castOptionCascadesToBootstrap() async throws {
     let (projectDir, projectFile) = try makeIsolatedProject(scripts: [
       "ep1.fountain": Self.twoCharacterScript
     ])
@@ -200,17 +210,16 @@ struct CastBodyPreservationTests {
     ])
     try await cmd.run()
 
-    // The override reached the bootstrap + cast stage: ROSTER.md exists and
-    // carries the discovered roster; no CAST.md was created anywhere.
+    // The override reached bootstrap: ROSTER.md exists (empty, since echada
+    // discovers nobody); no CAST.md was created anywhere.
     let rosterFile = projectDir.appendingPathComponent("ROSTER.md")
-    let roster = try CastMarkdownParser().parse(fileURL: rosterFile).cast
-    #expect(roster.map(\.character) == ["MAYA", "NOAH"])
+    #expect(try CastMarkdownParser().parse(fileURL: rosterFile).cast.isEmpty)
     #expect(
       !FileManager.default.fileExists(
         atPath: projectDir.appendingPathComponent("CAST.md").path))
   }
 
-  @Test("Bootstrap ensures CAST.md exists even before discovery (EC-15)")
+  @Test("Bootstrap ensures CAST.md exists (EC-15)")
   func bootstrapCreatesCastMarkdownWhenAbsent() async throws {
     let (projectDir, projectFile) = try makeIsolatedProject(scripts: [
       "ep1.fountain": Self.twoCharacterScript
@@ -224,14 +233,13 @@ struct CastBodyPreservationTests {
     #expect(FileManager.default.fileExists(atPath: projectFile.path))
     let castFile = projectDir.appendingPathComponent("CAST.md")
     #expect(FileManager.default.fileExists(atPath: castFile.path))
-    let roster = try CastMarkdownParser().parse(fileURL: castFile).cast
-    #expect(roster.map(\.character) == ["MAYA", "NOAH"])
+    #expect(try CastMarkdownParser().parse(fileURL: castFile).cast.isEmpty)
   }
 
   // MARK: - Model-gated full run (skips where either model is absent)
 
-  /// The full, un-truncated `echada cast` pipeline — cast, prompt (Foundation
-  /// Model), and vox (MLX TTS) all write CAST.md — with the same two EC-18
+  /// The full, un-truncated `echada cast` pipeline — prompt (Foundation
+  /// Model) and vox (MLX TTS) both write CAST.md — with the same two EC-18
   /// assertions. Gate conjunction mirrors
   /// `ModelBackedGenerationTests.fullCastPipelineProducesAllFourOutputs`.
   @Test(
@@ -258,7 +266,7 @@ struct CastBodyPreservationTests {
     let cmd = try CastCommand.parse(["--project", projectFile.path])
     try await cmd.run()
 
-    // All three stages wrote through: NARR gained a prompt and a .vox pointer.
+    // Both stages wrote through: NARR gained a prompt and a .vox pointer.
     let roster = try CastMarkdownParser().parse(fileURL: castFile).cast
     let narr = try #require(roster.first { $0.character == "NARR" })
     #expect(!(narr.voicePrompt ?? "").isEmpty)
