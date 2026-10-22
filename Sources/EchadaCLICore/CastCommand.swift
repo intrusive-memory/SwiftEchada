@@ -10,16 +10,20 @@ import SwiftReparto
 /// Running `echada cast` executes the whole production
 /// pipeline end to end:
 ///
-///     PROJECT.md  →  generate cast  →  generate prompt  →  generate vox
+///     PROJECT.md + CAST.md  →  generate prompt  →  generate vox
 ///
 /// Step 0 bootstraps a `PROJECT.md` when one is absent (no LLM — the scaffolding
 /// is inferred heuristically from the surrounding directory via
 /// `ProjectService.analyzeForGeneration(at:)`) and then ensures the `CAST.md`
 /// roster beside it (seeded from a legacy `cast:` block when present; EC-15).
-/// The three generative stages are then invoked in order. Each stage is independently idempotent — `generate
-/// cast` adds only newly-discovered characters, `generate prompt` fills only
-/// empty `voicePrompt`s, and `generate vox` skips `.vox` variants that already
-/// exist — so re-running `echada cast` only fills the remaining gaps.
+/// The two generative stages then run in order. Each is independently
+/// idempotent — `generate prompt` fills only empty `voicePrompt`s and
+/// `generate vox` skips `.vox` variants that already exist — so re-running
+/// `echada cast` only fills the remaining gaps.
+///
+/// Echada does not discover cast members (EC-P11, 3.0.0). The roster comes
+/// from `personaje cast-discover`, a legacy `cast:` block, or a person; an
+/// empty roster stops the pipeline with that advice.
 ///
 /// A single cascading `--force` fans out to every stage's own force flag; use
 /// the standalone `echada generate <stage>` subcommands when per-stage control
@@ -28,12 +32,12 @@ public struct CastCommand: AsyncParsableCommand {
   public static let configuration = CommandConfiguration(
     commandName: "cast",
     abstract:
-      "Run the full production pipeline: bootstrap PROJECT.md, then cast → prompt → vox.",
+      "Run the voice pipeline: bootstrap PROJECT.md and CAST.md, then prompt → vox.",
     discussion: """
       Drives the whole \
       pipeline end to end:
 
-          PROJECT.md  →  generate cast  →  generate prompt  →  generate vox
+          PROJECT.md + CAST.md  →  generate prompt  →  generate vox
 
       Step 0 — Bootstrap: if the `--project` file (default `PROJECT.md`) is \
       absent, a minimal PROJECT.md is scaffolded automatically from the \
@@ -47,28 +51,27 @@ public struct CastCommand: AsyncParsableCommand {
       created; an existing roster is left untouched. Under `--dry-run` these \
       offline steps, migration included, still run for real.
 
-      Step 1 — `generate cast`: heuristically discovers character names from the \
-      screenplay source and merges them into the project's CAST.md roster \
-      (PROJECT.md is read for `episodesDir`/`filePattern` only).
+      echada does not discover cast members. Build CAST.md from the \
+      screenplays with `personaje cast-discover` (or by hand); an empty roster \
+      stops the pipeline before any model runs.
 
-      Step 2 — `generate prompt`: writes a `voicePrompt` for each cast member \
+      Step 1 — `generate prompt`: writes a `voicePrompt` for each cast member \
       from their dialogue, using the language model chosen by `--llm` (on-device by default).
 
-      Step 3 — `generate vox`: synthesizes an on-device `.vox` voice for each \
+      Step 2 — `generate vox`: synthesizes an on-device `.vox` voice for each \
       cast member from their `voicePrompt`.
 
       Idempotency: every stage skips already-completed work, so re-running only \
       fills the remaining gaps. A single cascading `--force` is forwarded to each \
-      stage's own force flag (cast re-sync, prompt overwrite, vox regenerate); for \
+      stage's own force flag (prompt overwrite, vox regenerate); for \
       per-stage control use the standalone `echada generate <stage>` subcommands.
 
       Cross-stage flags: `--cast` (roster filename, default CAST.md) forwards to \
-      all three stages; `--character` forwards to the prompt and vox stages; \
+      both stages; `--character` forwards to the prompt and vox stages; \
       `--llm` forwards to the prompt stage; \
       `--tts-model`, `--language`, and `--accent` forward to the vox stage. \
-      `--dry-run` performs the offline bootstrap and cast-discovery steps (writing \
-      the discovered cast to CAST.md) but stops before the model-backed prompt \
-      and vox stages.
+      `--dry-run` performs the offline bootstrap and migration steps but stops \
+      before the model-backed prompt and vox stages.
 
       Example:
           echada cast
@@ -128,14 +131,14 @@ public struct CastCommand: AsyncParsableCommand {
   @Flag(
     name: .long,
     help:
-      "Cascading force: re-sync the cast list, overwrite existing voice prompts, and regenerate existing .vox files. Fans out to every stage's own force flag."
+      "Cascading force: overwrite existing voice prompts and regenerate existing .vox files. Fans out to every stage's own force flag."
   )
   public var force: Bool = false
 
   @Flag(
     name: .long,
     help:
-      "Run the offline bootstrap + cast-discovery steps but stop before the model-backed prompt and vox stages."
+      "Run the offline bootstrap and migration steps but stop before the model-backed prompt and vox stages."
   )
   public var dryRun: Bool = false
 
@@ -151,30 +154,30 @@ public struct CastCommand: AsyncParsableCommand {
     // Step 0: ensure a PROJECT.md exists (bootstrap without an LLM when absent),
     // then ensure the CAST.md roster beside it (EC-15).
     try ensureProjectMarkdown(at: fileURL, projectDir: projectDir)
+    // Bootstrap defers to a PROJECT.md already in this directory rather than
+    // scaffolding a competing `--project` file; say so instead of silently
+    // running against nothing.
+    guard FileManager.default.fileExists(atPath: fileURL.path) else {
+      throw ValidationError(
+        "Project file not found: \(project). This directory already has a PROJECT.md; "
+          + "pass --project PROJECT.md to use it.")
+    }
     try ensureCastMarkdown(projectFile: fileURL, projectDir: projectDir)
 
-    // Step 1: discover cast from the screenplay source (offline, heuristic).
-    print("\n== Stage 1/3: generate cast ==")
-    fflush(stdout)
-    var castStage = GenerateCastCommand()
-    castStage.project = project
-    // Property wrappers on a directly-constructed command are only realized by
-    // parsing or assignment — every property must be set before run() reads it.
-    castStage.cast = cast
-    castStage.force = force
-    castStage.dryRun = false  // cast is offline/cheap; run it for real so the
-    // discovered cast is written before the model stages.
-    castStage.verbose = verbose
-    try await castStage.run()
+    let rosterIsEmpty = try castRosterIsEmpty(projectDir: projectDir)
 
     if dryRun {
+      if rosterIsEmpty { print("\n\(Self.emptyRosterAdvice(cast))") }
       print(
         "\n(dry run — stopping before the model stages: `generate prompt` and `generate vox`)")
       return
     }
+    // echada no longer discovers cast (EC-P11), so an empty roster leaves the
+    // model stages nothing to do.
+    if rosterIsEmpty { throw ValidationError(Self.emptyRosterAdvice(cast)) }
 
-    // Step 2: write a voicePrompt for each member (FoundationModels; see --llm).
-    print("\n== Stage 2/3: generate prompt ==")
+    // Step 1: write a voicePrompt for each member (FoundationModels; see --llm).
+    print("\n== Stage 1/2: generate prompt ==")
     fflush(stdout)
     var promptStage = GeneratePromptCommand()
     promptStage.project = project
@@ -188,8 +191,8 @@ public struct CastCommand: AsyncParsableCommand {
     promptStage.verbose = verbose
     try await promptStage.run()
 
-    // Step 3: synthesize a .vox for each member (on-device MLX TTS).
-    print("\n== Stage 3/3: generate vox ==")
+    // Step 2: synthesize a .vox for each member (on-device MLX TTS).
+    print("\n== Stage 2/2: generate vox ==")
     fflush(stdout)
     var voxStage = GenerateVoxCommand()
     voxStage.project = project
@@ -236,7 +239,7 @@ public struct CastCommand: AsyncParsableCommand {
 
     // Infer scaffolding heuristically from the surrounding directory. No LLM.
     // (Bootstrap writes even under `--dry-run`: the offline steps are the whole
-    // point of the dry run, and the cast stage needs a project to write into.)
+    // point of the dry run.)
     let analysis = ProjectService.analyzeForGeneration(at: projectDir)
     let folderName = projectDir.lastPathComponent
     let title =
@@ -267,18 +270,26 @@ public struct CastCommand: AsyncParsableCommand {
   private func ensureCastMarkdown(projectFile: URL, projectDir: URL) throws {
     // Resolve (and validate) the --cast filename up front, so a bad override
     // fails before any stage runs. Same filename-only rule as the stages.
-    let castURL = try GenerateCastCommand.resolveCastFile(named: cast, in: projectDir)
-
-    // No project file at the literal --project path (e.g. it deferred to a
-    // sibling PROJECT.md): let Stage 1 surface its actionable error rather
-    // than guessing which project to migrate.
-    guard FileManager.default.fileExists(atPath: projectFile.path) else { return }
+    let castURL = try CastFile.resolve(named: cast, in: projectDir)
 
     try ProjectMigration.migrateIfNeeded(projectURL: projectFile, castName: cast)
 
     guard !FileManager.default.fileExists(atPath: castURL.path) else { return }
     try CastMarkdownParser().write(document: CastDocument(cast: []), to: castURL)
-    print("Bootstrapped \(cast) (empty roster — `generate cast` fills it next).")
+    print("Bootstrapped \(cast) (empty roster).")
+  }
+
+  /// Whether the `--cast` roster exists and has no members. A missing roster
+  /// is not "empty": the prompt stage reports that case itself.
+  private func castRosterIsEmpty(projectDir: URL) throws -> Bool {
+    let castURL = try CastFile.resolve(named: cast, in: projectDir)
+    guard FileManager.default.fileExists(atPath: castURL.path) else { return false }
+    return try CastMarkdownParser().parse(fileURL: castURL).cast.isEmpty
+  }
+
+  static func emptyRosterAdvice(_ cast: String) -> String {
+    "\(cast) has no cast members. Build it from the screenplays with "
+      + "`personaje cast-discover`, or add members by hand, then run `echada cast` again."
   }
 
   /// Resolves the project directory for analysis/discovery. A relative
@@ -311,7 +322,7 @@ public struct CastCommand: AsyncParsableCommand {
   /// Derives the screenplay `filePattern` for a scaffolded project from the
   /// directory analysis, keeping only globs whose extension the pipeline can
   /// actually parse as a screenplay (so a `.txt`/`.md` project is bootstrapped
-  /// with a pattern the immediately-following `generate cast` will match).
+  /// with a pattern `generate prompt` can read dialogue from).
   /// Falls back to `*.fountain` when the analysis surfaces no parseable scripts.
   private static func inferFilePattern(from analysis: ProjectAnalysis?) -> FilePattern {
     let scriptPatterns = (analysis?.discoveredFiles ?? [])

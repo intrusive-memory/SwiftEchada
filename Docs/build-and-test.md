@@ -60,11 +60,12 @@ Swift Testing (`@Test` macro) -- not XCTest.
 |-------|------:|----------------|
 | `SwiftEchadaTests` | 1 | Version constant |
 | `CharacterProfileTests` | 6 | Profile struct, gender mapping, equality, JSON codability |
-| `CharacterInfoTests` | 9 | Extraction struct, optional fields, JSON round-trip |
-| `CharacterMergerTests` | 8 | Dedup, voice preservation, alphabetical sorting |
 | `VoicePromptRoundTripTests` | 3 | YAML parse/serialize, field preservation |
 | `NonEnglishPassthroughTests` | -- | Non-English `--language` passthrough (es/pt/it/de) |
 | `AuditionSentenceTests` | 12 | Curated audition sentences: coverage, determinism, text contract |
+| `VoiceLocationTests` | -- | EC-23 rules, EC-24 canonical names, case collisions, `charactersDir` |
+| `VoiceMigrationTests` / `VoiceSampleTests` | -- | `migrate voices` plan/apply/rollback; `sample` m4a export, `samples.yaml` |
+| `EchadaVoiceTests` (own target) | -- | `VoiceBuilder` with `EchadaVoice` alone; gated two-embedding build |
 
 ### Fixtures
 
@@ -93,7 +94,7 @@ Test fixture files live in `Fixtures/`:
 
 #### `tests.yml` -- Unit Tests
 
-- **Trigger**: Push to `main`, PR to `main`
+- **Trigger**: Push to `main`; PRs to `main` or `development`
 - **Runner**: `xcode-27` (macOS 27 + Xcode 27; GitHub has no `macos-27` label)
 - **Command**: `xcodebuild test -scheme SwiftEchada-Package -destination 'platform=macOS'`
 - **Artifact**: `test-output.log` (30-day retention)

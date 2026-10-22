@@ -16,6 +16,10 @@ let package = Package(
       targets: ["SwiftEchada"]
     ),
     .library(
+      name: "EchadaVoice",
+      targets: ["EchadaVoice"]
+    ),
+    .library(
       name: "EchadaCLICore",
       targets: ["EchadaCLICore"]
     ),
@@ -27,14 +31,17 @@ let package = Package(
   dependencies: [
     .package(
       url: "https://github.com/intrusive-memory/SwiftProyecto.git", .upToNextMajor(from: "5.3.2")),
+    // 0.2.0: role, manifest, canonicalName (EC-23, EC-24).
     .package(
-      url: "https://github.com/intrusive-memory/SwiftReparto.git", .upToNextMajor(from: "0.1.0")),
+      url: "https://github.com/intrusive-memory/SwiftReparto.git", .upToNextMajor(from: "0.2.0")),
     .package(
       url: "https://github.com/intrusive-memory/SwiftVoxAlta.git", .upToNextMajor(from: "0.14.2")),
     .package(
       url: "https://github.com/intrusive-memory/SwiftLlavero.git",
       .upToNextMinor(from: "0.1.0-beta.2")),
     .package(url: "https://github.com/apple/swift-argument-parser", .upToNextMajor(from: "1.7.1")),
+    // Reads PROJECT.md's `personaje:` block, which SwiftProyecto doesn't model.
+    .package(url: "https://github.com/jpsim/Yams.git", .upToNextMajor(from: "6.2.2")),
     .package(url: "https://github.com/ml-explore/mlx-swift", .upToNextMajor(from: "0.31.3")),
     .package(url: "https://github.com/ml-explore/mlx-swift-lm", .upToNextMajor(from: "3.31.3")),
     // Aligned with SwiftVoxAlta 0.14.1, which depends on mlx-audio-swift
@@ -56,10 +63,29 @@ let package = Package(
         .enableUpcomingFeature("StrictConcurrency")
       ]
     ),
+    // The voice builder an app can link (Personaje Part B, EC-P5): .vox
+    // generation, auditions, and samples with no ArgumentParser and no
+    // PROJECT.md reader in its dependency closure.
+    .target(
+      name: "EchadaVoice",
+      dependencies: [
+        "SwiftEchada",
+        .product(name: "SwiftReparto", package: "SwiftReparto"),
+        .product(name: "SwiftVoxAlta", package: "SwiftVoxAlta"),
+        .product(name: "MLX", package: "mlx-swift"),
+        .product(name: "MLXAudioTTS", package: "mlx-audio-swift"),
+        .product(name: "MLXLMCommon", package: "mlx-swift-lm"),
+        .product(name: "VoxFormat", package: "vox-format"),
+      ],
+      swiftSettings: [
+        .enableUpcomingFeature("StrictConcurrency")
+      ]
+    ),
     .target(
       name: "EchadaCLICore",
       dependencies: [
         "SwiftEchada",
+        "EchadaVoice",
         .product(name: "SwiftProyecto", package: "SwiftProyecto"),
         .product(name: "SwiftReparto", package: "SwiftReparto"),
         .product(name: "SwiftVoxAlta", package: "SwiftVoxAlta"),
@@ -70,6 +96,7 @@ let package = Package(
         .product(name: "MLXAudioTTS", package: "mlx-audio-swift"),
         .product(name: "MLXLMCommon", package: "mlx-swift-lm"),
         .product(name: "VoxFormat", package: "vox-format"),
+        .product(name: "Yams", package: "Yams"),
       ],
       swiftSettings: [
         .enableUpcomingFeature("StrictConcurrency")
@@ -90,6 +117,7 @@ let package = Package(
       name: "SwiftEchadaTests",
       dependencies: [
         "SwiftEchada",
+        "EchadaVoice",
         "EchadaCLICore",
         .product(name: "SwiftReparto", package: "SwiftReparto"),
         .product(name: "VoxFormat", package: "vox-format"),
@@ -97,6 +125,19 @@ let package = Package(
       ],
       resources: [
         .copy("Fixtures")
+      ],
+      swiftSettings: [
+        .enableUpcomingFeature("StrictConcurrency")
+      ]
+    ),
+    // Depends on EchadaVoice only: proves the library links without
+    // ArgumentParser (EC-P5).
+    .testTarget(
+      name: "EchadaVoiceTests",
+      dependencies: [
+        "EchadaVoice",
+        .product(name: "SwiftReparto", package: "SwiftReparto"),
+        .product(name: "VoxFormat", package: "vox-format"),
       ],
       swiftSettings: [
         .enableUpcomingFeature("StrictConcurrency")

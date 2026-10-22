@@ -70,7 +70,8 @@ struct GenerateVoxCommandTests {
     await #expect(throws: ValidationError.self) { try await cmd.run() }
   }
 
-  @Test("A missing CAST.md fails, pointing at `echada generate cast`, and never creates it (EC-14)")
+  @Test(
+    "A missing CAST.md fails, pointing at `personaje cast-discover`, and never creates it (EC-14)")
   func missingCastFileThrowsActionably() async throws {
     let url = try writeProject(castMembers: nil)
     defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
@@ -79,7 +80,7 @@ struct GenerateVoxCommandTests {
       try await cmd.run()
       Issue.record("expected a ValidationError for the missing CAST.md")
     } catch let error as ValidationError {
-      #expect(error.message.contains("echada generate cast"))
+      #expect(error.message.contains("personaje cast-discover"))
     }
     // EC-14: the command must not have created the roster it failed over.
     let castURL = url.deletingLastPathComponent().appendingPathComponent("CAST.md")
@@ -215,11 +216,41 @@ struct GenerateVoxCommandTests {
     try vox.write(to: url)
   }
 
-  /// EC-16 end to end (model-free): a member whose `.vox` already holds the
-  /// requested variant takes the skip-existing path, which still records the
-  /// voice pointer — and the path written into CAST.md must resolve to an
-  /// existing file relative to CAST.md's directory.
-  @Test("A .vox path written into CAST.md resolves relative to CAST.md's directory (EC-16)")
+  /// EC-23/EC-25 end to end (model-free): a new member's `.vox` lives at
+  /// `characters/<NAME>.dossier/voice/<NAME>.vox`. When that bundle already
+  /// holds the requested variant the skip-existing path still records the
+  /// pointer — and the path written into CAST.md must resolve to an existing
+  /// file relative to CAST.md's directory.
+  /// EC-23 "an existing pointer is respected" + its EC-30 test: a dossier
+  /// voice that already holds the requested variant is skipped, its pointer
+  /// is untouched, and nothing appears under `voices/` — with a `manifest:`
+  /// (rule 1) and without one (rule 2, in place).
+  @Test(
+    "A dossier voice survives generate vox: pointer unchanged, nothing under voices/",
+    arguments: [true, false])
+  func dossierVoiceSurvivesGenerateVox(withManifest: Bool) async throws {
+    let path = "characters/SHANE.dossier/voice/SHANE.vox"
+    var member = SwiftReparto.CastMember(
+      character: "SHANE", voicePrompt: "A dry, laconic drawl.", voices: ["voxalta": [path]])
+    if withManifest { member.manifest = "characters/SHANE.dossier/manifest.json" }
+    let url = try writeProject(castMembers: [member])
+    let projectDir = url.deletingLastPathComponent()
+    defer { try? FileManager.default.removeItem(at: projectDir) }
+    try writeSyntheticVox(
+      at: projectDir.appendingPathComponent(path), variant: "1.7b",
+      modelId: "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-bf16")
+
+    try await GenerateVoxCommand.parse(["--project", url.path, "--tts-model", "1.7b"]).run()
+
+    let roster = try CastMarkdownParser().parse(
+      fileURL: projectDir.appendingPathComponent("CAST.md")
+    ).cast
+    #expect(roster.first?.voices["voxalta"] == [path])
+    #expect(
+      !FileManager.default.fileExists(atPath: projectDir.appendingPathComponent("voices").path))
+  }
+
+  @Test("A .vox path written into CAST.md is the dossier location, CAST-relative (EC-23, EC-25)")
   func voxPathInCastMdResolvesRelativeToCastDirectory() async throws {
     let member = SwiftReparto.CastMember(
       character: "NARR",
@@ -231,7 +262,7 @@ struct GenerateVoxCommandTests {
     // Pre-existing bundle already carrying the requested 1.7b variant → the
     // command records the pointer without loading any model.
     try writeSyntheticVox(
-      at: projectDir.appendingPathComponent("voices/NARR.vox"),
+      at: projectDir.appendingPathComponent("characters/NARR.dossier/voice/NARR.vox"),
       variant: "1.7b",
       modelId: "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-bf16")
 
@@ -245,7 +276,7 @@ struct GenerateVoxCommandTests {
     let roster = try CastMarkdownParser().parse(fileURL: castURL).cast
     let narr = try #require(roster.first { $0.character == "NARR" })
     let voxPath = try #require(narr.voices["voxalta"]?.first)
-    #expect(voxPath == "voices/NARR.vox")
+    #expect(voxPath == "characters/NARR.dossier/voice/NARR.vox")
 
     // ...and resolves to an existing file relative to CAST.md's directory.
     let resolved = castURL.deletingLastPathComponent().appendingPathComponent(voxPath)

@@ -91,14 +91,26 @@ so every byte outside the `cast:` lines survives.
 
 ## Source Layout
 
-### Library (`Sources/SwiftEchada/` -- 4 files)
+### Library (`Sources/SwiftEchada/` -- 2 files)
 
 | File | Types | Role |
 |------|-------|------|
 | `SwiftEchada.swift` | `SwiftEchada` enum | Module marker + `version` constant |
 | `CharacterProfile.swift` | `CharacterProfile`, `CharacterEvidence` | Voice design specification; `gender` is `SwiftReparto.Gender` |
-| `CharacterInfo.swift` | `CharacterInfo` | Lightweight extracted character from `.fountain` |
-| `CharacterMerger.swift` | `CharacterMerger` | Dedup extracted lists, delegate reconciliation to SwiftReparto's additive merge |
+
+`CharacterInfo` and `CharacterMerger` were removed in 3.0.0 (EC-P12): cast
+discovery is SwiftPersonaje's (`personaje cast-discover`).
+
+### Voice library (`Sources/EchadaVoice/` -- 4 files)
+
+What an app links (Personaje Part B). No ArgumentParser, no PROJECT.md reader.
+
+| File | Types | Role |
+|------|-------|------|
+| `VoiceBuilder.swift` | `VoiceBuilder`, `VoiceModelSize`, `VoiceBuildProgress`, `VoiceAudition`, `VoiceBuildResult`, `VoiceSample` | Public app API: build both sizes, audition + lock, samples to `.m4a` |
+| `VoiceLocation.swift` | `VoiceLocation`, `VoiceLocationError` | EC-23 location rules and EC-24 canonical file names |
+| `CastVoiceGenerator.swift` | `CastVoiceGenerator` + pure helpers | Batch two-phase pipeline `generate vox` uses (package access) |
+| `AuditionSentence.swift` | `AuditionSentence` | Curated in-language audition sentences |
 
 ### Executable (`Sources/echada/` -- 1 file)
 
@@ -109,20 +121,23 @@ so every byte outside the `cast:` lines survives.
 
 | Area | Files | Role |
 |------|-------|------|
-| Entry | `EchadaCLI.swift` | Root command: `cast`, `generate`, `voice`, `test-voice` (hidden) |
-| Pipeline orchestrator | `CastCommand.swift` | Bootstrap PROJECT.md + CAST.md, then cascade the three generate stages |
-| Generate stages | `GenerateCommand.swift`, `GenerateCastCommand.swift`, `GeneratePromptCommand.swift`, `GenerateVoxCommand.swift` | Discover roster → write voice prompts → synthesize `.vox`; all read/write CAST.md |
+| Entry | `EchadaCLI.swift` | Root command: `cast`, `generate`, `sample`, `migrate`, `voice`, `auth`, `test-voice` (hidden) |
+| Pipeline orchestrator | `CastCommand.swift` | Bootstrap PROJECT.md + CAST.md, then cascade the two generate stages; stops on an empty roster |
+| Generate stages | `GenerateCommand.swift`, `GeneratePromptCommand.swift`, `GenerateVoxCommand.swift` | Write voice prompts → synthesize `.vox`; both read/write CAST.md |
+| Roster files | `CastFile.swift`, `PersonajeSettings.swift` | `--cast` resolution, canonical match key; PROJECT.md `personaje.charactersDir` |
+| Voice assets | `SampleCommand.swift`, `MigrateCommand.swift`, `VoiceMigration.swift` | `echada sample` (EC-28), `echada migrate voices` (EC-26) |
 | Migration | `ProjectMigration.swift`, `LegacyProjectCastReader.swift`, `CastRosterVerifier.swift` | Automatic pre-v5 → v5 upgrade: legacy `cast:` decode, roster comparison, CAST.md merge, PROJECT.md backup + surgical rewrite |
-| Voice generation | `CastVoiceGenerator.swift`, `VoiceDesigner.swift`, `VoiceCommand.swift`, `TestVoiceCommand.swift`, `ReferenceAudioGenerator.swift` | Two-phase Qwen3-TTS pipeline and single-voice commands |
+| Voice generation | `VoiceDesigner.swift`, `VoiceCommand.swift`, `TestVoiceCommand.swift`, `ReferenceAudioGenerator.swift` | Single-voice commands (the batch pipeline lives in `EchadaVoice`) |
 | Prompt synthesis | `VoicePromptSynthesizer.swift`, `DialogueExtractor.swift`, `FoundationModelRetry.swift`, `SourceMaterialLocator.swift` | Foundation-Model voice briefs from screenplay dialogue |
-| Data | `AuditionSentence.swift`, `Generated/` | Curated in-language audition sentences; build-time dependency-version table |
+| Data | `Generated/` | Build-time dependency-version table |
 
-### Tests (`Tests/SwiftEchadaTests/` -- 30 files)
+### Tests (`Tests/SwiftEchadaTests/`, `Tests/EchadaVoiceTests/`)
 
 Library types, CLI wiring, every generate stage against CAST.md fixtures, automatic
 migration, migration losslessness (byte-level
 PROJECT.md preservation), body preservation, and model-backed integration
-tests (gated on TTS-weight presence).
+tests (gated on TTS-weight presence). `EchadaVoiceTests` depends on
+`EchadaVoice` alone, which keeps ArgumentParser out of the library's closure.
 
 ---
 
@@ -134,15 +149,14 @@ tests (gated on TTS-weight presence).
 PROJECT.md ──[SwiftProyecto: ProjectMarkdownParser]──> episodesDir, filePattern, tts.model
       |                                                          (read-only project config)
       v
-.fountain files ──[heuristic CHARACTER-cue scan]──> discovered names
+personaje cast-discover ──> CAST.md roster   (echada discovers nobody since 3.0.0)
       |
       v
 CAST.md ──[SwiftReparto: CastMarkdownParser]──> CastDocument
       |        (seeded from PROJECT.md's legacy cast: block via
       |         LegacyProjectCastReader if CAST.md is absent)
       |
-      |── generate cast:    merge discovered names into document.cast
-      |── generate prompt:  Foundation Model writes voicePrompt per member
+      |── generate prompt:  the --llm model writes voicePrompt per member
       |── generate vox:     CastVoiceGenerator.generate(cast:)
       |     |
       |     |── Phase A: Candidate Generation ────────────────────

@@ -1,3 +1,4 @@
+import EchadaVoice
 import Foundation
 import NaturalLanguage
 import SwiftVoxAlta

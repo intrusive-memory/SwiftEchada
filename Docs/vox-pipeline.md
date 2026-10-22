@@ -138,8 +138,17 @@ Phase B (Base model loaded once)
 - `.vox` file already exists AND `--force-regenerate` not set → skip
 - Error during generation → log, skip, continue batch
 
-**File locations**: `voices/<SANITIZED_NAME>.vox`, beside `CAST.md`
-- Spaces in character names → underscores
+**File locations** (EC-23, `VoiceLocation`), first match wins:
+1. The member has `manifest:` → `<bundle>/voice/<NAME>.vox`
+2. The member already has a `voices.voxalta` path → regenerated in place
+3. Otherwise → `<charactersDir>/<NAME>.dossier/voice/<NAME>.vox`
+   (`charactersDir` = PROJECT.md `personaje.charactersDir`, default `characters`)
+- `<NAME>` is the exact canonical character name, spaces and punctuation kept
+  (EC-24); a non-canonical name fails that member (`reparto canonicalize`).
+  Pre-3.0 files (`voices/THE_PRACTITIONER.vox`) keep working through rule 2
+  until `echada migrate voices --apply` moves them.
+- The skip-existing check looks at that destination, so a voice placed in the
+  dossier by Personaje is never duplicated into `voices/`.
 - Path recorded under `voices.voxalta` in **CAST.md** (`CastMember.voices["voxalta"]`),
   relative to CAST.md's directory. The roster write-back goes through
   SwiftReparto's `CastMarkdownGenerator` — PROJECT.md is never touched

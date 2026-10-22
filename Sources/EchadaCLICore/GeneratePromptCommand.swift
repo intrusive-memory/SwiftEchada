@@ -21,7 +21,7 @@ import SwiftReparto
 /// `PROJECT.md` is still consulted read-only for `title`, `description`,
 /// `genre`, `episodesDir`, and `filePattern`, but its legacy `cast:` block is
 /// never touched. When `CAST.md` is absent this command fails rather than
-/// creating it — only `echada generate cast` creates the roster (EC-14).
+/// creating it — the roster comes from `personaje cast-discover` (EC-P11).
 ///
 /// Characters are processed one at a time, in cast order. By default a member
 /// that already has a `voicePrompt` is left untouched; `--force` regenerates all.
@@ -43,7 +43,7 @@ public struct GeneratePromptCommand: AsyncParsableCommand {
       PROJECT.md is read for `title`, `episodesDir`, and `filePattern`; an older \
       PROJECT.md that still holds a `cast:` block is first migrated into CAST.md \
       (original saved as PROJECT.md.bak). When CAST.md is absent this command \
-      fails — run `echada generate cast` first to create it.
+      fails — build it first with `personaje cast-discover`.
 
       Idempotency: by default, only members with an empty `voicePrompt` are filled in; \
       members that already have one are left untouched. Pass `--force` to regenerate \
@@ -94,7 +94,7 @@ public struct GeneratePromptCommand: AsyncParsableCommand {
       throw ValidationError("Project file not found: \(project)")
     }
     let projectDir = fileURL.deletingLastPathComponent()
-    let castURL = try GenerateCastCommand.resolveCastFile(named: cast, in: projectDir)
+    let castURL = try CastFile.resolve(named: cast, in: projectDir)
 
     // A pre-v5 project still carries its roster in PROJECT.md; move it to
     // CAST.md before this stage reads anything.
@@ -104,7 +104,7 @@ public struct GeneratePromptCommand: AsyncParsableCommand {
     guard FileManager.default.fileExists(atPath: castURL.path) else {
       throw ValidationError(
         "Cast file not found: \(castURL.path). `generate prompt` reads the roster from \(cast) "
-          + "and never creates it — run `echada generate cast` first.")
+          + "and never creates it — build it first with `personaje cast-discover`.")
     }
 
     // PROJECT.md is read-only here: `title`/`description`/`genre` feed the
@@ -117,7 +117,7 @@ public struct GeneratePromptCommand: AsyncParsableCommand {
     let roster = document.cast
     guard !roster.isEmpty else {
       throw ValidationError(
-        "No cast members found in \(cast). Run `echada generate cast` to discover them.")
+        "No cast members found in \(cast). Build the roster with `personaje cast-discover`.")
     }
 
     // Resolve the target cast (all, or a single --character filter).

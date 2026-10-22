@@ -8,11 +8,11 @@ import Testing
 ///
 ///     echada
 ///     ├── generate
-///     │   ├── cast
 ///     │   ├── prompt
 ///     │   └── vox
 ///     ├── cast      (pipeline orchestrator)
 ///     ├── voice
+///     ├── auth      (SwiftLlavero)
 ///     └── test-voice (hidden)
 ///
 /// These tests guard against silent doc/wiring drift: the root has no default
@@ -64,20 +64,19 @@ struct CLIWiringTests {
 
   // MARK: - `generate` container wiring
 
-  @Test("GenerateCommand's subcommands are exactly cast/prompt/vox, with no default")
-  func generateContainerSubcommandsExactlyCastPromptVox() {
+  @Test("GenerateCommand's subcommands are exactly prompt/vox, with no default")
+  func generateContainerSubcommandsExactlyPromptVox() {
     #expect(GenerateCommand.configuration.defaultSubcommand == nil)
 
     let names = GenerateCommand.configuration.subcommands.map {
       $0.configuration.commandName ?? String(describing: $0)
     }
-    #expect(Set(names) == ["cast", "prompt", "vox"])
-    #expect(names.count == 3)  // exactly three -- no stray duplicates
+    #expect(Set(names) == ["prompt", "vox"])
+    #expect(names.count == 2)  // exactly two -- `generate cast` was removed in 3.0.0 (EC-P11)
 
     let identifiers = Set(GenerateCommand.configuration.subcommands.map(ObjectIdentifier.init))
     #expect(
       identifiers == [
-        ObjectIdentifier(GenerateCastCommand.self),
         ObjectIdentifier(GeneratePromptCommand.self),
         ObjectIdentifier(GenerateVoxCommand.self),
       ])
@@ -99,27 +98,24 @@ struct CLIWiringTests {
       (
         name: "cast (orchestrator)", abstract: CastCommand.configuration.abstract,
         discussion: CastCommand.configuration.discussion,
-        mustMention: ["PROJECT.md", "generate cast", "generate prompt", "generate vox"]
+        mustMention: [
+          "PROJECT.md", "CAST.md", "personaje cast-discover", "generate prompt", "generate vox",
+        ]
       ),
       (
         name: "generate", abstract: GenerateCommand.configuration.abstract,
         discussion: GenerateCommand.configuration.discussion,
-        mustMention: ["cast", "prompt", "vox"]
-      ),
-      (
-        name: "generate cast", abstract: GenerateCastCommand.configuration.abstract,
-        discussion: GenerateCastCommand.configuration.discussion,
-        mustMention: ["PROJECT.md", "cast"]
+        mustMention: ["prompt", "vox", "personaje cast-discover"]
       ),
       (
         name: "generate prompt", abstract: GeneratePromptCommand.configuration.abstract,
         discussion: GeneratePromptCommand.configuration.discussion,
-        mustMention: ["PROJECT.md", "CAST.md", "voicePrompt", "echada generate cast"]
+        mustMention: ["PROJECT.md", "CAST.md", "voicePrompt", "personaje cast-discover"]
       ),
       (
         name: "generate vox", abstract: GenerateVoxCommand.configuration.abstract,
         discussion: GenerateVoxCommand.configuration.discussion,
-        mustMention: ["PROJECT.md", "CAST.md", "voicePrompt", ".vox", "echada generate cast"]
+        mustMention: ["PROJECT.md", "CAST.md", "voicePrompt", ".vox", "personaje cast-discover"]
       ),
     ] as [(name: String, abstract: String, discussion: String, mustMention: [String])]
   )
@@ -149,7 +145,6 @@ struct CLIWiringTests {
     "Rendered --help for generate and each leaf contains the command name + discussion",
     arguments: [
       (name: "generate", type: GenerateCommand.self as ParsableCommand.Type),
-      (name: "cast", type: GenerateCastCommand.self as ParsableCommand.Type),
       (name: "prompt", type: GeneratePromptCommand.self as ParsableCommand.Type),
       (name: "vox", type: GenerateVoxCommand.self as ParsableCommand.Type),
     ] as [(name: String, type: ParsableCommand.Type)]

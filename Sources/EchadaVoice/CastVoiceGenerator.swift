@@ -15,7 +15,7 @@ import enum SwiftEchada.SwiftEchada
 /// language is stored at its `<lang>`-segmented path. The generation/extraction
 /// language strings (passed to `generate`/`createLock`) are kept verbatim; only
 /// the storage tag collapses `"en"` to the default path.
-func voxLanguageTag(for language: String) -> String? {
+package func voxLanguageTag(for language: String) -> String? {
   language.lowercased() == "en" ? nil : language
 }
 
@@ -33,7 +33,7 @@ func voxLanguageTag(for language: String) -> String? {
 /// Emitted on stderr with the same `[lang]` prefix SwiftVoxAlta's own
 /// ``TTSLanguage/trace(_:_:)`` uses, so the value can be followed across the
 /// stack.
-func logLanguageAudit(
+package func logLanguageAudit(
   _ language: TTSLanguage, model: Qwen3TTSModel, site: String, verbose: Bool
 ) {
   guard verbose else { return }
@@ -62,7 +62,7 @@ func logLanguageAudit(
 ///   - base: The character's voice prompt string.
 ///   - accent: An optional accent/delivery directive (e.g. `"slow southern drawl"`).
 /// - Returns: The composed prompt, or `base` unchanged when accent is absent.
-func composeVoicePrompt(base: String, accent: String?) -> String {
+package func composeVoicePrompt(base: String, accent: String?) -> String {
   guard let trimmed = accent?.trimmingCharacters(in: .whitespaces), !trimmed.isEmpty else {
     return base
   }
@@ -70,11 +70,11 @@ func composeVoicePrompt(base: String, accent: String?) -> String {
 }
 
 /// Errors thrown by CastVoiceGenerator.
-enum CastVoiceGeneratorError: LocalizedError {
+package enum CastVoiceGeneratorError: LocalizedError {
   case unsupportedTTSModel(String, supported: [String])
   case existingVoxUnreadable(path: String, underlying: Error)
 
-  var errorDescription: String? {
+  package var errorDescription: String? {
     switch self {
     case .unsupportedTTSModel(let value, let supported):
       return
@@ -89,7 +89,7 @@ enum CastVoiceGeneratorError: LocalizedError {
 /// Decision outcome for whether a character's existing `.vox` should be skipped
 /// or fed through the generation pipeline (so the requested variant's embedding
 /// can be added to the existing bundle).
-enum VoxGenerationDecision: Equatable {
+package enum VoxGenerationDecision: Equatable {
   /// No existing file, or `--force-regenerate` was set, or the requested variant
   /// is missing from the existing bundle. Run Phase A/B for this member.
   case generate
@@ -112,7 +112,7 @@ enum VoxGenerationDecision: Equatable {
 /// - Returns: The localized prompt stored under the exact tag, else under its
 ///   base subtag, else `nil` when neither key exists. (Does not fall through to
 ///   `voicePrompt` — callers layer that fallback themselves.)
-func localizedVoicePrompt(for member: CastMember, language: String) -> String? {
+package func localizedVoicePrompt(for member: CastMember, language: String) -> String? {
   if let exact = member.voice(for: language) {
     return exact
   }
@@ -140,7 +140,7 @@ func localizedVoicePrompt(for member: CastMember, language: String) -> String? {
 /// declares no language at all.
 ///
 /// - Returns: A non-empty, order-preserving language list for this member.
-func castingLanguages(for member: CastMember, explicitLanguages: [String]) -> [String] {
+package func castingLanguages(for member: CastMember, explicitLanguages: [String]) -> [String] {
   if !explicitLanguages.isEmpty { return explicitLanguages }
   let normalized = member.language?.trimmingCharacters(in: .whitespaces).lowercased()
   if let normalized, !normalized.isEmpty { return [normalized] }
@@ -166,7 +166,7 @@ func castingLanguages(for member: CastMember, explicitLanguages: [String]) -> [S
 ///     cast into (e.g. `["en", "es"]`).
 /// - Returns: The subset of `requestedLanguages` that the member can be cast
 ///   for. An empty array means the member should be skipped entirely.
-func castableLanguages(for member: CastMember, requestedLanguages: [String]) -> [String] {
+package func castableLanguages(for member: CastMember, requestedLanguages: [String]) -> [String] {
   let hasBasePrompt = member.voicePrompt.map { !$0.isEmpty } ?? false
   return requestedLanguages.filter { language in
     localizedVoicePrompt(for: member, language: language) != nil || hasBasePrompt
@@ -185,7 +185,7 @@ func castableLanguages(for member: CastMember, requestedLanguages: [String]) -> 
 /// Otherwise we fall through and let Phase A/B run; the existing block in
 /// `generate(cast:)` will open the existing VoxFile and append the new
 /// variant's clone-prompt + sample-audio to it.
-func decideVoxGeneration(
+package func decideVoxGeneration(
   existingFileExists: Bool,
   forceRegenerate: Bool,
   ttsModelVariant: String,
@@ -214,13 +214,13 @@ func decideVoxGeneration(
 /// Generation is split into two phases to avoid model thrashing:
 ///   Phase A: Load VoiceDesign model once, generate all candidate WAVs
 ///   Phase B: Load Base model once, create all voice locks and export .vox bundles
-struct CastVoiceGenerator {
+package struct CastVoiceGenerator {
 
   /// Result of a voice generation operation.
-  struct GenerateResult: Sendable {
-    let updatedCast: [CastMember]
-    let generatedCount: Int
-    let skippedCount: Int
+  package struct GenerateResult: Sendable {
+    package let updatedCast: [CastMember]
+    package let generatedCount: Int
+    package let skippedCount: Int
   }
 
   /// Intermediate data from Phase A (candidate generation) needed by Phase B (locking).
@@ -235,12 +235,14 @@ struct CastVoiceGenerator {
     let voxURL: URL
   }
 
-  /// The directory containing `CAST.md`. `.vox` bundles are written under
-  /// `voices/` inside it, and every path recorded in `voices.voxalta` resolves
-  /// relative to it (EC-16). Per OQ-1 the cast file always sits beside
-  /// PROJECT.md, so this is also the project directory — but the CAST.md
-  /// directory is the defining anchor.
+  /// The directory containing `CAST.md`. Every path recorded in
+  /// `voices.voxalta` resolves relative to it. Per OQ-1 the cast file always
+  /// sits beside PROJECT.md, so this is also the project directory — but the
+  /// CAST.md directory is the defining anchor.
   private let castDirectory: URL
+  /// PROJECT.md `personaje.charactersDir`: where a new member's `.dossier`
+  /// folder goes (EC-23 rule 3).
+  private let charactersDir: String
   private let forceRegenerate: Bool
   private let verbose: Bool
   private let ttsModelVariant: String
@@ -263,14 +265,21 @@ struct CastVoiceGenerator {
   /// character (see ``AuditionSentence/auditionSentence(language:character:variant:)``).
   private let auditionVariant: Int?
 
-  init(
-    castDirectory: URL, forceRegenerate: Bool = false, verbose: Bool = false,
+  /// Where progress lines go. The CLI prints them; an app can collect them.
+  private let log: @Sendable (String) -> Void
+
+  package init(
+    castDirectory: URL, charactersDir: String = VoiceLocation.defaultCharactersDir,
+    forceRegenerate: Bool = false, verbose: Bool = false,
     ttsModelVariant: String = Qwen3TTSModelRepo.base1_7B.slug,
     languages: [String] = [],
     accent: String? = nil,
-    auditionVariant: Int? = nil
+    auditionVariant: Int? = nil,
+    log: @escaping @Sendable (String) -> Void = { print($0) }
   ) {
+    self.log = log
     self.castDirectory = castDirectory
+    self.charactersDir = charactersDir
     self.forceRegenerate = forceRegenerate
     self.verbose = verbose
     self.ttsModelVariant = ttsModelVariant
@@ -280,10 +289,10 @@ struct CastVoiceGenerator {
   }
 
   /// The default model size slug.
-  static let defaultModelSlug = Qwen3TTSModelRepo.base1_7B.slug
+  package static let defaultModelSlug = Qwen3TTSModelRepo.base1_7B.slug
 
   /// Known TTS model variant strings.
-  static let supportedVariants = Qwen3TTSModelRepo.supportedSlugs
+  package static let supportedVariants = Qwen3TTSModelRepo.supportedSlugs
 
   /// Resolves the TTS model variant string to a `Qwen3TTSModelRepo`.
   private func resolvedModelRepo() throws -> Qwen3TTSModelRepo {
@@ -299,10 +308,7 @@ struct CastVoiceGenerator {
   /// Generate .vox files for each cast member with a non-empty voice prompt.
   ///
   /// Members without a `voicePrompt` (or with an empty one) are silently skipped.
-  func generate(cast: [CastMember]) async throws -> GenerateResult {
-    let voicesDir = castDirectory.appending(path: "voices")
-    try FileManager.default.createDirectory(at: voicesDir, withIntermediateDirectories: true)
-
+  package func generate(cast: [CastMember]) async throws -> GenerateResult {
     let modelManager = VoxAltaModelManager()
     var updatedCast = cast
     var generatedCount = 0
@@ -321,16 +327,26 @@ struct CastVoiceGenerator {
         requestedLanguages: castingLanguages(for: member, explicitLanguages: explicitLanguages))
       guard !castable.isEmpty else {
         if verbose {
-          print(
+          log(
             "[verbose] Skipping \(member.character) — no voice prompt for any requested language")
         }
         skippedCount += 1
         continue
       }
 
-      let sanitizedName = member.character.replacingOccurrences(of: " ", with: "_")
-      let voxPath = "voices/\(sanitizedName).vox"
-      let voxURL = castDirectory.appending(path: voxPath)
+      // EC-23 picks the folder, EC-24 the file name. A name echada can't use
+      // stops this member only.
+      let location: VoiceLocation
+      do {
+        location = try VoiceLocation.resolve(
+          for: member, castDirectory: castDirectory, charactersDir: charactersDir)
+      } catch {
+        log("  Error: \(error.localizedDescription)")
+        skippedCount += 1
+        continue
+      }
+      let voxPath = location.relativePath
+      let voxURL = location.url
 
       let fileExists = FileManager.default.fileExists(atPath: voxURL.path)
       let decision = decideVoxGeneration(
@@ -343,7 +359,7 @@ struct CastVoiceGenerator {
       switch decision {
       case .skipExistingHasVariant:
         if verbose {
-          print(
+          log(
             "[verbose] Skipping \(member.character) — \(voxPath) already has \(ttsModelVariant) embedding"
           )
         }
@@ -357,7 +373,7 @@ struct CastVoiceGenerator {
         continue
 
       case .skipExistingUnreadable:
-        print(
+        log(
           "  Error: existing \(voxPath) for \(member.character) could not be opened. "
             + "Refusing to overwrite — re-run with --force-regenerate to discard it."
         )
@@ -366,7 +382,7 @@ struct CastVoiceGenerator {
 
       case .generate:
         if verbose, fileExists, !forceRegenerate {
-          print(
+          log(
             "[verbose] \(member.character) — \(voxPath) exists but lacks \(ttsModelVariant); will append embedding"
           )
         }
@@ -382,16 +398,15 @@ struct CastVoiceGenerator {
     let totalCandidates = membersToGenerate.reduce(0) {
       $0 + castingLanguages(for: $1.member, explicitLanguages: explicitLanguages).count
     }
-    print(
+    log(
       "Phase A: Generating candidate audio (\(membersToGenerate.count) characters, \(totalCandidates) candidate(s), VoiceDesign 1.7B)..."
     )
-    fflush(stdout)
 
     var candidates: [CandidateResult] = []
 
     for item in membersToGenerate {
       if verbose {
-        print("[verbose] --- Generating voice: \(item.member.character) ---")
+        log("[verbose] --- Generating voice: \(item.member.character) ---")
       }
 
       // One candidate per (member, language). Each language uses a same-language
@@ -410,7 +425,7 @@ struct CastVoiceGenerator {
             ?? item.member.voicePrompt
         else {
           if verbose {
-            print(
+            log(
               "[verbose] Skipping \(item.member.character) [\(language)] — no prompt available for this language"
             )
           }
@@ -425,8 +440,8 @@ struct CastVoiceGenerator {
         let sampleSentence = try AuditionSentence.auditionSentence(
           language: language, character: item.member.character, variant: auditionVariant)
         if verbose {
-          print("[verbose] Language: \(language) — prompt: \(voicePrompt)")
-          print("[verbose] Language: \(language) — sample sentence: \(sampleSentence)")
+          log("[verbose] Language: \(language) — prompt: \(voicePrompt)")
+          log("[verbose] Language: \(language) — sample sentence: \(sampleSentence)")
         }
 
         do {
@@ -439,7 +454,7 @@ struct CastVoiceGenerator {
           )
 
           if verbose {
-            print("[verbose] Generated candidate WAV (\(candidateWAV.count) bytes)")
+            log("[verbose] Generated candidate WAV (\(candidateWAV.count) bytes)")
           }
 
           candidates.append(
@@ -455,7 +470,7 @@ struct CastVoiceGenerator {
             ))
 
         } catch {
-          print("  Error generating voice for \(item.member.character) [\(language)]: \(error)")
+          log("  Error generating voice for \(item.member.character) [\(language)]: \(error)")
           skippedCount += 1
         }
       }
@@ -466,9 +481,8 @@ struct CastVoiceGenerator {
 
     // --- Phase B: Create voice locks and export .vox bundles (Base model loaded once) ---
     let modelRepo = try resolvedModelRepo()
-    print(
+    log(
       "Phase B: Creating voice locks (\(candidates.count) characters, Base \(ttsModelVariant))...")
-    fflush(stdout)
 
     // Tracks `.vox` paths written during THIS run so that subsequent languages
     // (and, under --force-regenerate, the 2nd+ language for a member) append to
@@ -478,7 +492,7 @@ struct CastVoiceGenerator {
     for candidate in candidates {
       let languageTag = voxLanguageTag(for: candidate.language)
       if verbose {
-        print(
+        log(
           "[verbose] --- Locking voice: \(candidate.member.character) [\(candidate.language)] ---")
       }
 
@@ -494,7 +508,7 @@ struct CastVoiceGenerator {
         )
 
         if verbose {
-          print(
+          log(
             "[verbose] Created voice lock for \(candidate.member.character) (model: \(ttsModelVariant), language: \(candidate.language))"
           )
         }
@@ -506,7 +520,7 @@ struct CastVoiceGenerator {
         if appendToExisting {
           vox = try VoxFile(contentsOf: candidate.voxURL)
           if verbose {
-            print(
+            log(
               "[verbose] Opened existing \(candidate.voxPath) to add \(ttsModelVariant) embedding [\(candidate.language)]"
             )
           }
@@ -525,11 +539,13 @@ struct CastVoiceGenerator {
           to: vox, data: voiceLock.clonePromptData, modelRepo: modelRepo, language: languageTag)
         try VoxExporter.addSampleAudio(
           to: vox, data: candidate.candidateWAV, modelRepo: modelRepo, language: languageTag)
+        try FileManager.default.createDirectory(
+          at: candidate.voxURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         try vox.write(to: candidate.voxURL)
         writtenThisRun.insert(candidate.voxPath)
 
         if verbose {
-          print("[verbose] Exported \(candidate.voxPath) [\(candidate.language)]")
+          log("[verbose] Exported \(candidate.voxPath) [\(candidate.language)]")
         }
 
         updatedCast[candidate.index].voices = {
@@ -540,7 +556,7 @@ struct CastVoiceGenerator {
         generatedCount += 1
 
       } catch {
-        print(
+        log(
           "  Error locking voice for \(candidate.member.character) [\(candidate.language)]: \(error)"
         )
         skippedCount += 1
@@ -582,5 +598,17 @@ struct CastVoiceGenerator {
     Memory.clearCache()
 
     return try AudioConversion.mlxArrayToWAVData(audioArray, sampleRate: qwenModel.sampleRate)
+  }
+}
+
+/// Raised when a loaded model isn't the Qwen3-TTS model the pipeline expects.
+package enum VoiceDesignerError: Error, CustomStringConvertible {
+  case modelCastFailed
+
+  package var description: String {
+    switch self {
+    case .modelCastFailed:
+      "Loaded model is not a Qwen3TTSModel."
+    }
   }
 }

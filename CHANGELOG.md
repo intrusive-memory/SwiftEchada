@@ -9,6 +9,48 @@ All notable changes to SwiftEchada will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-10-22
+
+Voices move into the character record (`REQUIREMENTS.md`, EC-23..EC-30), and
+echada narrows to voices for Personaje (`REQUIREMENTS-personaje.md`).
+
+### Changed — Breaking
+
+- **`echada generate cast` is removed, and `echada cast` no longer discovers
+  cast members** (EC-P11). Build CAST.md from the screenplays with
+  `personaje cast-discover` (SwiftPersonaje), or by hand. `echada cast` is now
+  bootstrap → `generate prompt` → `generate vox`; an empty roster stops it with
+  that advice. Migration off a legacy `cast:` block is unchanged.
+- **`CharacterInfo` and `CharacterMerger` are removed** from the `SwiftEchada`
+  product (EC-P12). Nothing used them outside their own tests.
+- **New voices go into the character record** (EC-23): beside the member's
+  `manifest:` (`<bundle>/voice/<NAME>.vox`), else at the path
+  `voices.voxalta` already names (regenerated in place), else
+  `characters/<NAME>.dossier/voice/<NAME>.vox` (PROJECT.md
+  `personaje.charactersDir` overrides `characters`). Existing projects keep
+  working: their pointers are respected until `echada migrate voices` moves
+  them.
+- **File names are the exact canonical character name** (EC-24):
+  `THE PRACTITIONER.vox`, not `THE_PRACTITIONER.vox`. A name that isn't
+  canonical yet fails that member and points at `reparto canonicalize`.
+- Requires **SwiftReparto 0.2.0** (`role`, `manifest`, `canonicalName`).
+
+### Added
+
+- **`echada migrate voices [--apply]`** (EC-26): moves existing `.vox` files
+  into the character record. Dry run by default; `--apply` copies and verifies,
+  rewrites every pointer in one CAST.md write, and rolls back on any failure.
+- **`echada sample <CHARACTER>`** (EC-28): playable
+  `voice/sample-<variant>[-<model>].m4a` files for the dossier page, from the
+  embedded sample or synthesized with a delivery instruction; `--all-variants`
+  reads `voice/samples.yaml`; `--json` for the manifest writer.
+- **`EchadaVoice`**, a library product an app can link (Personaje Part B,
+  EC-P5..EC-P10): `VoiceBuilder` builds a `.vox` with both model sizes in one
+  call, renders auditions to choose from, locks one, and renders samples to
+  `.m4a`, with progress and cancellation. No ArgumentParser in its dependency
+  closure. It writes files only; CAST.md and `manifest.json` stay with
+  SwiftReparto and SwiftDossier.
+
 ## [2.1.0] - 2026-10-22
 
 ### Changed

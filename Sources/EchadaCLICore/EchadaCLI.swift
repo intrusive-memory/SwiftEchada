@@ -17,14 +17,15 @@ public struct EchadaCLI: AsyncParsableCommand {
 
           PROJECT.md  →  cast  →  prompt  →  vox
 
-      `echada cast` bootstraps a PROJECT.md when one is absent, then discovers \
-      the cast, writes a `voicePrompt` for each member, and synthesizes a \
-      `.vox` voice for each. Every stage is idempotent, so re-running only \
+      `echada cast` bootstraps a PROJECT.md and CAST.md when absent, writes a \
+      `voicePrompt` for each cast member, and synthesizes a `.vox` voice for \
+      each. The roster comes from `personaje cast-discover`; echada no longer \
+      discovers characters. Every stage is idempotent, so re-running only \
       fills the gaps.
 
       Individual stages are also available under the `generate` namespace — \
-      `echada generate cast`, `echada generate prompt`, and `echada generate \
-      vox` — for per-stage control. See `echada cast --help` for the full \
+      `echada generate prompt` and `echada generate vox` — for per-stage \
+      control. See `echada cast --help` for the full \
       pipeline and its cascading `--force`.
 
       Older projects migrate automatically. When a stage opens a PROJECT.md \
@@ -35,8 +36,8 @@ public struct EchadaCLI: AsyncParsableCommand {
       """,
     version: EchadaCLI.versionReport,
     subcommands: [
-      VoiceCommand.self, CastCommand.self, GenerateCommand.self, LlaveroAuthCommand.self,
-      TestVoiceCommand.self,
+      VoiceCommand.self, CastCommand.self, GenerateCommand.self, SampleCommand.self,
+      MigrateCommand.self, LlaveroAuthCommand.self, TestVoiceCommand.self,
     ]
   )
 

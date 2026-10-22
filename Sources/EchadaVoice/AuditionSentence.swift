@@ -1,10 +1,10 @@
 import Foundation
 
 /// Raised when no curated audition sentence exists for a requested language.
-enum AuditionSentenceError: LocalizedError {
+package enum AuditionSentenceError: LocalizedError {
   case unsupportedLanguage(String, supported: [String])
 
-  var errorDescription: String? {
+  package var errorDescription: String? {
     switch self {
     case .unsupportedLanguage(let language, let supported):
       return """
@@ -61,14 +61,14 @@ enum AuditionSentenceError: LocalizedError {
 /// spread of that language's consonant and vowel sounds so the audition surfaces
 /// how a voice renders fricatives, plosives, nasals, and diphthongs.
 /// `AuditionSentenceTests` enforces the contract against the data.
-enum AuditionSentence {
+package enum AuditionSentence {
 
   /// Curated audition sentences, keyed by ISO 639-1 code.
   ///
   /// The first entry of each pool is the canonical sentence, returned when no
   /// character is given. Cast generation rotates through the pool per character
   /// (see ``auditionSentence(language:character:variant:)``).
-  static let pools: [String: [String]] = [
+  package static let pools: [String: [String]] = [
     // English draws on the three standard speech-science reading passages, two
     // selections each: The North Wind and the Sun (the IPA's reference passage),
     // the Rainbow Passage (Fairbanks), and Please Call Stella (Speech Accent
@@ -130,7 +130,7 @@ enum AuditionSentence {
   ]
 
   /// Language codes with curated sentences, sorted for stable error messages.
-  static var supportedLanguages: [String] { pools.keys.sorted() }
+  package static var supportedLanguages: [String] { pools.keys.sorted() }
 
   /// Full-name, dialect, and `auto` aliases accepted alongside ISO 639-1 codes.
   ///
@@ -157,7 +157,7 @@ enum AuditionSentence {
 
   /// Reduces a BCP-47 tag or language name to the ISO 639-1 code used as a pool
   /// key: `es-MX` and `es_MX` both become `es`, `English` becomes `en`.
-  static func baseCode(_ rawLanguage: String) -> String {
+  package static func baseCode(_ rawLanguage: String) -> String {
     let lowered = rawLanguage.trimmingCharacters(in: .whitespaces).lowercased()
 
     // Look up the raw form first. Aliases like `beijing_dialect` carry a literal
@@ -181,7 +181,7 @@ enum AuditionSentence {
   /// - Parameter rawLanguage: A BCP-47 code or language name (`es`, `es-MX`, `English`).
   /// - Throws: ``AuditionSentenceError/unsupportedLanguage(_:supported:)`` when
   ///   no pool covers the language.
-  static func auditionSentence(language rawLanguage: String) throws -> String {
+  package static func auditionSentence(language rawLanguage: String) throws -> String {
     try auditionSentence(language: rawLanguage, variant: 0)
   }
 
@@ -189,7 +189,8 @@ enum AuditionSentence {
   ///
   /// - Parameter variant: Index into the language's pool, wrapped so any value
   ///   is valid. `0` is the canonical sentence.
-  static func auditionSentence(language rawLanguage: String, variant: Int) throws -> String {
+  package static func auditionSentence(language rawLanguage: String, variant: Int) throws -> String
+  {
     let code = baseCode(rawLanguage)
     guard let pool = pools[code], !pool.isEmpty else {
       throw AuditionSentenceError.unsupportedLanguage(
@@ -206,7 +207,7 @@ enum AuditionSentence {
   /// The rotation is keyed by a stable hash of the character name, so the same
   /// character always gets the same sentence and its `.vox` stays reproducible.
   /// An explicit `variant` overrides the rotation for every character.
-  static func auditionSentence(
+  package static func auditionSentence(
     language rawLanguage: String, character: String, variant: Int? = nil
   ) throws -> String {
     try auditionSentence(language: rawLanguage, variant: variant ?? rotationIndex(for: character))
@@ -214,7 +215,7 @@ enum AuditionSentence {
 
   /// FNV-1a over the uppercased, trimmed name. `Hasher` is seeded per process,
   /// so it can't be used here — the index must match across runs and machines.
-  static func rotationIndex(for character: String) -> Int {
+  package static func rotationIndex(for character: String) -> Int {
     let key = character.trimmingCharacters(in: .whitespaces).uppercased()
     var hash: UInt64 = 0xcbf2_9ce4_8422_2325
     for byte in key.utf8 {
