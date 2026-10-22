@@ -361,7 +361,8 @@ struct GenerateCastCommandTests {
 
     let castURL = try GenerateCastCommand.resolveCastFile(named: "CAST.md", in: dir)
     #expect(castURL.lastPathComponent == "CAST.md")
-    #expect(castURL.deletingLastPathComponent().standardizedFileURL.path == dir.standardizedFileURL.path)
+    #expect(
+      castURL.deletingLastPathComponent().standardizedFileURL.path == dir.standardizedFileURL.path)
   }
 
   @Test("generate cast --help lists the --cast option")

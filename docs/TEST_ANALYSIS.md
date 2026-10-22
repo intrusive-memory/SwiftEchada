@@ -1,97 +1,112 @@
+---
+type: doc
+---
+
 # Test Analysis Report
 
 **Repository**: SwiftEchada
 **Branch**: development
-**Commit**: 5f7fda3
-**Date**: 2026-06-14
+**Commit**: 98eca5f
+**Date**: 2026-10-22
 **Test scheme**: SwiftEchada-Package
-**Tests considered**: 11 suites + 1 free test function · 81 test cases (12 test files)
+**Tests considered**: 30 suites · 213 test cases (30 test files)
 
 ## Executive summary
 
 | Pass | Findings | Highest priority item |
 |------|----------|------------------------|
-| 1. High-repetition tests | 0 (resolved) (+1 note) | ✅ Merged the two near-duplicate base-description castability tests in `PerLanguagePromptTests` |
-| 2. Superfluous tests | 1 | `versionIsSet()` asserts only non-emptiness of a string literal |
-| 3. Coverage gaps | 4 files | Model-dependent CLI paths (`VoiceCommand`, `CastVoiceGenerator.generate`) run in neither unit nor CI lanes |
-| 4. Flaky-in-CI predictions | 0 (1 note) | None — temp dirs and cleanup are correct; FM tests depend on the on-device model |
-| 5. Performance gating | 0 | No findings |
+| 1. High-repetition tests | 2 (+1 note) | One model-backed test loads two TTS models and accounts for 99.9% of CI test time |
+| 2. Superfluous tests | 1 | `versionIsSet()` checks that a string literal is not empty |
+| 3. Coverage gaps | 5 files | `VoiceCommand` and `TestVoiceCommand` are still at 0%; `CastVoiceGenerator` is at 32% |
+| 4. Flaky-in-CI predictions | 1 | The model-backed `.vox` test depends on a multi-GB cache and runner speed |
+| 5. Performance gating | 1 (CI cost) | CI takes 17m32s per run on `xcode-27`; local runs take 4 s |
 
-The suite is healthy: the pure library (`SwiftEchada`) is at 100% line coverage, Pass 4 found no real flake smells (per-test temp dirs with `defer` cleanup, no sleeps/network/wall-clock), and there are no performance tests leaking into CI. `make lint` ran clean with no diff. The single most impactful gap is **Pass 3**: the model-dependent CLI orchestration (`VoiceCommand` 0%, `CastVoiceGenerator.generate` 12%, `CastCommand.run` 18%) is exercised only by the `make integration-test` target, which is **not wired into CI** — so those paths regress silently. The cheap win — unit-testing `CastCommand.run()`'s model-free branches (dry-run, validation, `--character` filter) — has since been implemented (`CastCommandTests`), raising `CastCommand.swift` from 18% → 58%. The remaining low-coverage CLI files are genuinely model-dependent (`VoiceCommand`, `CastVoiceGenerator.generate`) and need an integration lane, not unit tests.
+This report updates the previous one (2026-06-14): 3 findings resolved, 4 new, 3 updated. `make lint` reformatted two lines (in `VoicePromptSynthesizer.swift` and `GenerateCastCommandTests.swift`). Those changes are uncommitted.
+
+**Why CI is slow.** The suite itself is fast. Locally, all 213 tests pass in **4.0 s**. On the `xcode-27` runner, the Unit Tests job took **17m32s**, up from 9m47s on `macos-26` the day before. Three costs account for the job time:
+
+| Phase | `macos-26` (2026-10-21) | `xcode-27` (2026-10-22) | Cause |
+|---|---|---|---|
+| Model weights | 1m38s CDN download + 1m14s cache save | **4m09s** `actions/cache` restore | Restoring the cache on the new image is about 2.5× slower than downloading the weights from our CDN |
+| Build | 4m07s (1,188 compile steps) | **7m43s** (1,617 compile steps) | SwiftLlavero brings in Firebase AI Logic, FirebaseCore, and ClaudeForFoundationModels, all built from source. `tests.yml` has no DerivedData or SwiftPM cache |
+| Tests | 2m25s | **4m53s** | **One test**, `generate vox produces a valid multi-model .vox`, takes 292.8 s. All other tests finish in under 6 s, running in parallel |
+| Metal Toolchain | — | 0m21s | The `xcode-27` image does not include it |
+
+The most effective change is to make the `.vox` test generate one model variant instead of two, and to test multi-model append on synthetic embeddings (Pass 1). That change saves about 2.5 minutes per run. Dropping `actions/cache` for the weights in favor of the CDN download saves another 2.5 minutes. Caching DerivedData for the Firebase build is the third option.
 
 ## Pass 1 — High-repetition tests
 
 ### Copy-paste patterns
-- ✅ **DONE** — `Tests/SwiftEchadaTests/PerLanguagePromptTests.swift` — the two near-duplicate base-description castability tests were merged into one parameterized `@Test(arguments: [["es","en"], ["es","en","fr"]]) memberWithBaseDescriptionIsCastableForAllRequestedLanguages(_:)`. Both language-list cases still run; the duplicated body is gone.
+- `Tests/SwiftEchadaTests/ModelBackedGenerationTests.swift:128`, `CastPipelineTests.swift:43`, `CastBodyPreservationTests.swift:103`: there are three copies of `makeIsolatedProject(scripts:)`. They differ only in the temp-dir prefix (`model-backed-`, `cast-pipeline-`, `cast-body-`). `oneCharacterScript` is also defined twice, at `ModelBackedGenerationTests.swift:97` and `CastBodyPreservationTests.swift:52`.
+  - **Action**: refactor. Move one `makeIsolatedProject(prefix:scripts:)` and the fixture script into `Fixtures`.
 
-> note (cross-file overlap, introduced this cycle): `NonEnglishPassthroughTests` parameterizes castability/prompt-selection over es/pt/it/de and partially overlaps the logical cases in `PerLanguagePromptTests` (e.g. `localizedVoiceCastableForItsLanguage` ↔ `memberWithLocalizedVoiceOnlyIsCastableForThatLanguage`; `baseDescriptionCastableForAllNonEnglish` ↔ the two tests above). The overlap is defensible — `PerLanguagePromptTests` covers logical edge cases (regional subtags, accent composition, empty input) while `NonEnglishPassthroughTests` pins the four target-language matrix — but if duplication grows, consolidate the plain castability assertions into the parameterized file and let `PerLanguagePromptTests` own the edge cases. Low priority; no action required now.
+> note (carried over): `NonEnglishPassthroughTests` partly overlaps `PerLanguagePromptTests` on castability. The overlap is defensible. Low priority; no action needed now.
 
-### High-iteration loops
-No findings. No `for _ in 0..<N` stress loops or repeated deterministic-output calls in any test.
+### Repeated model work
+- `Tests/SwiftEchadaTests/ModelBackedGenerationTests.swift:158-221`: `generateVoxProducesMultiModelVox` runs the whole `generate vox` command twice, once with `--tts-model 0.6b` and once with `1.7b`. Each run loads Qwen3-TTS VoiceDesign 1.7B plus a Base model and synthesizes audio. The test took **292.8 s on `xcode-27`** and 144.9 s on `macos-26`, which is 99.9% of the CI test phase. The extra value of the second run is that the embedding is *appended* to an existing bundle. That behavior belongs to `.vox` merging, not to TTS.
+  - **Action**: refactor. Keep one real model-backed run (0.6b only). Cover the append and multi-model path with a test that writes two synthetic embeddings, as `VoxFileIntegrationTests` already does for other bundle shapes. Expected saving: about half of the test phase, roughly 2.5 min per CI run.
 
 ## Pass 2 — Superfluous tests
 
-- `Tests/SwiftEchadaTests/SwiftEchadaTests.swift:5` — `versionIsSet()` asserts `!SwiftEchada.version.isEmpty`. `version` is a compile-time string literal, so this auto-passes forever and can only fail if someone sets it to `""`. Very low signal.
-  - **Action**: keep-or-delete (low priority). It's nearly free; the only real value is catching an accidental empty version constant. Delete if you want a leaner suite, otherwise harmless.
+- `Tests/SwiftEchadaTests/SwiftEchadaTests.swift:5`: `versionIsSet()` asserts `!SwiftEchada.version.isEmpty` on a compile-time literal. It passes after every version bump. `DependencyVersionsTests.versionReportLeadsWithVersion` is a stronger test of the same thing.
+  - **Action**: delete, or keep (low priority, costs nothing).
+
+### Resolved since last run
+- The `FoundationModelSentence.swift` gap and its `FoundationModelSentenceTests` note are gone. Audition sentences are now curated data (`AuditionSentence.swift`, 98% coverage).
 
 ## Pass 3 — Coverage gaps
 
-Coverage measured by running the CI test invocation with coverage enabled:
-`xcodebuild test -scheme SwiftEchada-Package -destination 'platform=macOS,arch=arm64' -enableCodeCoverage YES` and parsing `xccov --json`. Library + CLI sources shown; tests, `.build/`, and vendored deps excluded.
+Coverage was measured with `xcodebuild test -scheme SwiftEchada-Package -destination 'platform=macOS,arch=arm64' -only-testing:SwiftEchadaTests -enableCodeCoverage YES` and the results were parsed with `xccov --json`. The run was local, on a Mac with Apple Intelligence and without TTS weights. As a result, `generate prompt` was covered and the three TTS-gated tests skipped. In CI the reverse is true: the `.vox` test runs and `generate prompt` skips. Generated files are excluded.
 
-**Library (`Sources/SwiftEchada/`) — fully covered:**
-
-| File | Line coverage |
-|------|---------------|
-| `CharacterInfo.swift` | 100% |
-| `CharacterProfile.swift` | 100% |
-| `CharacterMerger.swift` | 100% |
-
-**CLI (`Sources/EchadaCLICore/`) — gaps:**
+The library (`SwiftEchada`) has **100%** coverage (62/62 lines). `EchadaCLICore` has **67%** (1570/2344 lines).
 
 | File | Line coverage | Why it matters | Top uncovered |
 |------|---------------|----------------|---------------|
-| `VoiceCommand.swift` | 0% (0/105) | Entire `voice` command path — public CLI surface | `run()` (model load → generate → lock → export) |
-| `VoiceDesigner.swift` | 0% (0/73) | Candidate-WAV generation helper | `generateCandidate`, `generateCandidates` |
+| `VoiceCommand.swift` | 0% (0/109) | The `echada voice` command, public CLI surface | `run()` |
+| `VoiceDesigner.swift` | 0% (0/77) | Candidate generation for `voice` and `cast` | `composeVoiceDescription(from:)` (pure, needs no model), `generateCandidate(s)` |
 | `TestVoiceCommand.swift` | 0% (0/74) | Hidden integration command | `run()` |
-| `ReferenceAudioGenerator.swift` | 0% (0/58) | `say`-based reference audio | `generate`, `generateData` |
-| `CastVoiceGenerator.swift` | 12% (44/354) | **Core `cast` orchestration** | `generate(cast:)` Phase A/B (model loading, locking, export) |
-| `CastCommand.swift` | 58% (105/181) ✅ | `cast` entry point | remaining lines are the model-dependent generate/merge/write path |
-| `FoundationModelSentence.swift` | 72% (80/111) | On-device sentence source (new) | error-message branches, a few `sanitize` edges |
+| `ReferenceAudioGenerator.swift` | 0% (0/58) | Reference audio generated with `say` | `generate`, `generateData` |
+| `CastVoiceGenerator.swift` | 32% locally (122/386), up from 12% | Core `cast` vox orchestration | `logLanguageAudit`, `resolvedModelRepo()`, error descriptions |
 
-**The real story:** most of the uncovered CLI lines require a real Qwen3-TTS model to be loaded, so they are inherently *integration* concerns. The pure logic that *can* be unit-tested already is (decision functions in `CastVoiceGenerator` at 12% are the tested 44 lines; the untested 310 are model orchestration). Two actionable gaps that need **no** model:
-
-- ✅ **DONE** — `CastCommand.run()` model-free branches are now covered by `CastCommandTests` (7 tests: missing project, no cast, unsupported `--tts-model`, unknown `--character`, dry-run-writes-nothing, dry-run `--character` filter, case-insensitive filter). This raised `CastCommand.swift` from **18% → 58%**; the remaining uncovered lines are the model-dependent generate/merge/write path that needs a real TTS model.
-- The model-dependent paths (`CastVoiceGenerator.generate`, `VoiceCommand.run`, `VoiceDesigner`, `TestVoiceCommand`) are exercised only by `make integration-test`, which is **not in CI** (`tests.yml` runs `xcodebuild test` on the package; `integration-test` is a separate target requiring `make install`). **Action**: decide whether the integration target should run in a gated CI job (it now hard-requires Apple Intelligence + model downloads), or accept that these paths are validated locally only — and document that choice.
+- **Cheap win, no model needed:** `VoiceDesigner.composeVoiceDescription(from:)` is a pure function at 0%.
+- **Still open from last run:** the model-dependent paths (`VoiceCommand`, `TestVoiceCommand`, `VoiceDesigner.generateCandidate`) run only under `make integration-test`, which no workflow calls. Decide whether that is acceptable and document the decision.
+- **New, SwiftLlavero wiring:** `LanguageModelResolver.swift` is at 100%. `GeneratePromptCommand.swift` is at 82% only because this Mac has Apple Intelligence. Hosted CI skips the model-backed `generate prompt` test, so the `--llm` resolution path is covered there only by `LanguageModelOptionTests` (parse plus the unconfigured-account error).
 
 ## Pass 4 — Flaky-in-CI predictions
 
-No findings. Specifically checked and cleared:
+- `Tests/SwiftEchadaTests/ModelBackedGenerationTests.swift:158`: `generateVoxProducesMultiModelVox`.
+  - **Smell**: heavy external state and runner speed. The test needs a multi-GB weight cache restored, then runs two full MLX TTS passes. Its duration doubled (145 s → 293 s) when the runner image changed, without any code change. There is no `.timeLimit`. On a slower or busier runner it moves toward the job timeout, and a partial cache restore silently changes which tests run, because `TTSWeights.present` only checks that the directory exists.
+  - **Action**: the Pass 1 split removes most of the risk. Also add `.timeLimit(.minutes(10))` so a hung run fails with a clear message instead of using the whole job timeout.
 
-- **Temp filesystem**: `VoxFileIntegrationTests` and `CastVoiceGeneratorDecisionTests` build per-test paths under `FileManager.default.temporaryDirectory` with a `UUID()` segment and clean up via `defer { try? removeItem(...) }`. Correct isolation, not a fixed-path race.
-- **Randomness**: `UInt8.random` only fills opaque synthetic WAV/clone-prompt payloads that are never asserted on; `UUID()`/`Date()` feed temp paths and an unread `created` field, not assertion paths.
-- **No** `Thread.sleep`/`Task.sleep`, wall-clock `accuracy:` assertions, network calls, shared singletons/`UserDefaults`, or order-dependent state.
+Checked and found clean: no `sleep`, no wall-clock assertions, no network in correctness tests, and no shared `UserDefaults` or singletons. Every temp directory is per-test (`UUID()`) and is removed with `defer`, including the new `/private/tmp/echada-private-<UUID>` fixture at `GenerateCastCommandTests.swift:358`. `Date()` at `VoxFileIntegrationTests.swift:58`, `GenerateVoxCommandTests.swift:172` and `CastVoiceGeneratorDecisionTests.swift:54` only fills a `created` field that no assertion reads.
 
-> note (low risk, by design): `FoundationModelSentenceTests` makes real on-device `SystemLanguageModel` calls and asserts the generated sentence's `NLLanguageRecognizer.dominantLanguage` equals the requested language (es/pt/it/de). Detection was stable across repeated local runs, but this is a genuine dependency on a nondeterministic model + Apple Intelligence availability on the runner. It is intentional (the project now hard-requires Apple Intelligence and you confirmed it's available on `macos-26`). If it ever flakes, loosen `dominantLanguage == expected` to "expected is the top-1 or top-2 hypothesis" rather than deleting the test.
+> note (stale docs, not flaky): the doc comments in `ModelBackedGenerationTests.swift:19-37` and `:213-219` still say "macos-26", `VoicePromptSynthesizer.requireAvailable()` (removed in 2.1.0), and "the vox stage sources its audition sentence from the Foundation Model" (no longer true). Update them so nobody gates on the wrong condition.
 
 ## Pass 5 — Performance test gating
 
-No findings. No `measure {}` blocks, `.timeLimit` benchmarks, `*Perf*`/`*Benchmark*` files, or custom timing assertions exist. (The `measure` grep hits are the word "measured" inside voice-prompt strings.)
+There are no `measure {}`, `.timeLimit` benchmarks, or `*Perf*` suites. The CI cost problem is the model-backed lane described above, together with build and cache overhead.
 
-> note: `make integration-test` exists but isn't run by any workflow. That's the inverse case — a heavyweight target that's defined but unwired. Called out under Pass 3 rather than here since it's about coverage of model paths, not perf gating.
+- `.github/workflows/tests.yml`: Unit Tests takes **17m32s** per run, and it runs on every PR update and again on every push to `main`. Each `development → main` release therefore costs at least 35 runner-minutes on macOS.
+  - **Action 1**: remove the `actions/cache` restore and save for `ACERVO_MODELS_DIR`, and always prime from `cdn.intrusive-memory.productions`. On 2026-10-21 that took 1m38s, compared with the 4m09s restore today, and it also removes the 1m14s save after a cache miss. Re-measure after one or two runs, since this rests on one sample of each.
+  - **Action 2**: cache DerivedData and SwiftPM checkouts in `tests.yml`, keyed on `Package.resolved`, as `release.yml` already does. Firebase and the Claude SDK account for most of the +3.5 min of build time.
+  - **Action 3** (optional): skip CI on draft PRs (see `/draft-pr-ci-gate`), so pushes to the long-lived `Development → Main` draft don't each cost 17 minutes.
+- `make integration-test` exists but no workflow runs it (carried over).
 
 ## Consolidated action items
 
 ### Delete
-- (optional, low priority) `Tests/SwiftEchadaTests/SwiftEchadaTests.swift:5` — `versionIsSet()` non-empty-on-a-literal check.
+- (optional, low priority) `Tests/SwiftEchadaTests/SwiftEchadaTests.swift:5`: `versionIsSet()`.
 
-### Refactor / merge
-- ✅ **DONE** — merged the two base-description castability tests in `PerLanguagePromptTests.swift` into one parameterized test.
-- (watch, no action yet) Cross-file castability overlap between `NonEnglishPassthroughTests` and `PerLanguagePromptTests`.
+### Refactor
+- `Tests/SwiftEchadaTests/ModelBackedGenerationTests.swift:158`: one real 0.6b run plus a synthetic-embedding multi-model append test. **Largest saving in test time.**
+- `ModelBackedGenerationTests.swift:128`, `CastPipelineTests.swift:43`, `CastBodyPreservationTests.swift:103`: one shared `makeIsolatedProject` and `oneCharacterScript` in `Fixtures`.
+- `ModelBackedGenerationTests.swift:19-37, 213-219`: correct the stale gate documentation.
 
 ### Gate / move out of CI
-- None. No perf tests, and no flaky tests currently running in CI.
-- Decision needed (not a fix): whether `make integration-test` (model-dependent paths) should run in a gated CI job or stay local-only — document the choice.
+- `.github/workflows/tests.yml`: drop the model `actions/cache` in favor of the CDN download, add a DerivedData/SwiftPM cache, and optionally skip draft PRs.
+- `ModelBackedGenerationTests.swift:158`: add `.timeLimit(.minutes(10))`.
+- Decision needed: should `make integration-test` get a CI lane, or stay local-only?
 
 ### Add tests for
-- ✅ **DONE** — `CastCommand.run()` model-free branches (`CastCommandTests`, 7 tests). `CastCommand.swift` coverage 18% → 58%.
+- `Sources/EchadaCLICore/VoiceDesigner.swift`: `composeVoiceDescription(from:)` is pure and at 0%.
+- `Sources/EchadaCLICore/VoiceCommand.swift`: the model-free branches of `run()` (validation, missing inputs), following the `CastCommandTests` pattern that raised `CastCommand` from 18% to 78%.

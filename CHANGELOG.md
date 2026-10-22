@@ -9,14 +9,17 @@ All notable changes to SwiftEchada will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — 3.0.0
+## [2.1.0] - 2026-10-22
 
-### Changed — Breaking
+### Changed
 
-- **macOS 27 / iOS 27 minimum** (was 26). FoundationModels' `LanguageModel`
+- **macOS 27 / iOS 27 minimum** (was 26). Released as a minor version, but
+  consumers still building on macOS 26 must stay on 2.0.x
+  (`.upToNextMinor(from: "2.0.0")`), because 2.1.0 will not build there. FoundationModels' `LanguageModel`
   protocol, which every off-device model below goes through, needs the 27 SDKs,
   and SwiftPM applies the floor to the whole package, `EchadaCLICore` included.
-  CI and releases move to GitHub's `xcode-27` runner image.
+  CI and releases move to GitHub's `xcode-27` runner image (macOS 27 + Xcode 27),
+  which also needs the Metal Toolchain installed for MLX.
 
 ### Added
 

@@ -48,4 +48,4 @@ Not applicable -- SwiftEchada is a library, not an app.
 
 ---
 
-**Last Updated**: October 21, 2026 (3.0.0-dev: SwiftLlavero `--llm` + `echada auth`, macOS 27 floor)
+**Last Updated**: October 22, 2026 (2.1.0: SwiftLlavero `--llm` + `echada auth`, macOS 27 floor)

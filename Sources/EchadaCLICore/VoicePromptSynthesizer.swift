@@ -17,7 +17,8 @@ enum VoicePromptSynthesizerError: LocalizedError {
   var errorDescription: String? {
     switch self {
     case .modelUnavailable(let reference, let reason):
-      return "echada writes voice prompts with a language model, and '\(reference)' is unusable. \(reason)"
+      return
+        "echada writes voice prompts with a language model, and '\(reference)' is unusable. \(reason)"
     case .generationFailed(let character, let underlying):
       let base =
         "The language model returned no usable voice prompt for character '\(character)'."
