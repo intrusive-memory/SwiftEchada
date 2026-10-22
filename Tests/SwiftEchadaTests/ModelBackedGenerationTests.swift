@@ -151,14 +151,16 @@ struct ModelBackedGenerationTests {
   /// curated data (``AuditionSentence``) rather than model output — so this needs
   /// only the Qwen3-TTS weights and can run on hosted CI once they are primed.
   ///
-  /// Drives `generate vox` twice against a single PROJECT.md — once for the 0.6B
-  /// variant and once for 1.7B — so the second run APPENDS its embedding to the
-  /// first run's bundle, yielding one multi-model `.vox`. Asserts the file is a
-  /// valid, ready bundle carrying embeddings from two distinct models.
+  /// Drives `generate vox` once, on the 0.6B variant (the cheaper lock), and
+  /// asserts a valid, ready bundle at the EC-23 location with the pointer
+  /// recorded. Multi-model bundles are covered by `EchadaVoiceTests`
+  /// (`buildVoice`, one design pass locked with both sizes) and by
+  /// `VoxFileIntegrationTests` (append, model-free); running the full pipeline
+  /// twice here cost ~5 minutes of CI per run (Docs/TEST_ANALYSIS.md).
   @Test(
-    "generate vox produces a valid multi-model .vox (0.6B + 1.7B)",
-    .enabled(if: TTSWeights.present))
-  func generateVoxProducesMultiModelVox() async throws {
+    "generate vox produces a valid .vox in the character's dossier folder",
+    .enabled(if: TTSWeights.present), .timeLimit(.minutes(10)))
+  func generateVoxProducesVox() async throws {
     let (projectDir, projectFile) = try makeIsolatedProject(scripts: [:])
     defer { try? FileManager.default.removeItem(at: projectDir.deletingLastPathComponent()) }
 
@@ -184,13 +186,9 @@ struct ModelBackedGenerationTests {
     ]
     try CastMarkdownParser().write(document: CastDocument(cast: roster), to: castFile)
 
-    // Two passes into the same CAST.md → one .vox with both model embeddings.
-    for variant in ["0.6b", "1.7b"] {
-      let cmd = try GenerateVoxCommand.parse([
-        "--project", projectFile.path, "--tts-model", variant,
-      ])
-      try await cmd.run()
-    }
+    try await GenerateVoxCommand.parse([
+      "--project", projectFile.path, "--tts-model", "0.6b",
+    ]).run()
 
     let voxURL = projectDir.appendingPathComponent("characters/NARR.dossier/voice/NARR.vox")
     #expect(FileManager.default.fileExists(atPath: voxURL.path))
@@ -198,12 +196,7 @@ struct ModelBackedGenerationTests {
     let vox = try VoxFile(contentsOf: voxURL)
     #expect(vox.isValid)
     #expect(vox.isReady)
-
-    let entries = vox.manifest.embeddingEntries ?? [:]
-    let distinctModels = Set(entries.values.compactMap(\.model))
-    #expect(
-      distinctModels.count >= 2,
-      "expected embeddings from both the 0.6B and 1.7B models, got: \(distinctModels)")
+    #expect(vox.supportsModel("0.6b"))
 
     // CAST.md now records the produced .vox under the member's voxalta voices.
     let updated = try CastMarkdownParser().parse(fileURL: castFile).cast

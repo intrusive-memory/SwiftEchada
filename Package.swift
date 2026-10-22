@@ -131,6 +131,19 @@ let package = Package(
         .enableUpcomingFeature("StrictConcurrency")
       ]
     ),
+    // Depends on EchadaVoice only: proves the library links without
+    // ArgumentParser (EC-P5).
+    .testTarget(
+      name: "EchadaVoiceTests",
+      dependencies: [
+        "EchadaVoice",
+        .product(name: "SwiftReparto", package: "SwiftReparto"),
+        .product(name: "VoxFormat", package: "vox-format"),
+      ],
+      swiftSettings: [
+        .enableUpcomingFeature("StrictConcurrency")
+      ]
+    ),
   ],
   swiftLanguageModes: [.v6]
 )
