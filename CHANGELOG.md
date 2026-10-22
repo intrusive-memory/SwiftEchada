@@ -9,6 +9,17 @@ All notable changes to SwiftEchada will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`--llm` on `echada generate prompt` and `echada cast`** picks the language
+  model that writes voice prompts: `on-device` (default, unchanged behavior) or
+  `pcc` (Apple Private Cloud Compute via FoundationModels'
+  `PrivateCloudComputeLanguageModel`, macOS 27+, no API key; character dialogue
+  is sent to Apple's servers). Both run through FoundationModels'
+  `LanguageModel` protocol, which is the seam future cloud providers plug into.
+
 ## [2.0.0] - 2026-10-21
 
 ### Changed — Breaking

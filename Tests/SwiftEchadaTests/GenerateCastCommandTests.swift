@@ -350,6 +350,20 @@ struct GenerateCastCommandTests {
     await #expect(throws: ValidationError.self) { try await cmd.run() }
   }
 
+  @Test("--cast resolves inside a /private project directory before CAST.md exists")
+  func castFileResolvesUnderPrivatePrefix() throws {
+    // `standardizedFileURL` strips `/private` only from paths that exist, so a
+    // not-yet-created CAST.md under `/private/tmp` used to look like it escaped
+    // its directory and every stage failed.
+    let dir = URL(fileURLWithPath: "/private/tmp/echada-private-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: dir) }
+
+    let castURL = try GenerateCastCommand.resolveCastFile(named: "CAST.md", in: dir)
+    #expect(castURL.lastPathComponent == "CAST.md")
+    #expect(castURL.deletingLastPathComponent().standardizedFileURL.path == dir.standardizedFileURL.path)
+  }
+
   @Test("generate cast --help lists the --cast option")
   func helpListsCastOption() {
     let help = GenerateCastCommand.helpMessage()
