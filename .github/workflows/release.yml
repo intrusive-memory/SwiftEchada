@@ -25,6 +25,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Install Metal Toolchain
+        # The xcode-27 image ships without it; MLX's Metal shaders need it.
+        run: xcodebuild -downloadComponent MetalToolchain
+
       - name: Cache DerivedData and SPM packages
         uses: actions/cache@v6
         with:
