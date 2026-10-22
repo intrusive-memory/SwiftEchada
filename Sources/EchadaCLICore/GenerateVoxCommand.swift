@@ -1,4 +1,5 @@
 import ArgumentParser
+import EchadaVoice
 import Foundation
 import SwiftProyecto
 import SwiftReparto
@@ -20,8 +21,15 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
     abstract: "Generate on-device voices for cast members from their voice prompts in CAST.md.",
     discussion: """
       Consumes each cast member's `voicePrompt` in CAST.md and produces a `.vox` \
-      voice file under `voices/` beside CAST.md, recorded under the member's \
+      voice file in the character's record, recorded under the member's \
       `voices.voxalta` in CAST.md (paths relative to CAST.md's directory).
+
+      Where the `.vox` goes: beside the member's `manifest:` \
+      (`<bundle>/voice/<NAME>.vox`); else at the path `voices.voxalta` already \
+      names (regenerated in place; `echada migrate voices` moves old files); \
+      else `characters/<NAME>.dossier/voice/<NAME>.vox` (PROJECT.md \
+      `personaje.charactersDir` overrides `characters`). File names are the \
+      exact character name, so names must be canonical (`reparto canonicalize`).
 
       PROJECT.md is read for `title` and `tts.model`; an older PROJECT.md that \
       still holds a `cast:` block is first migrated into CAST.md (original saved \
@@ -194,11 +202,21 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
     print("")
     fflush(stdout)
 
+    let charactersDir = try PersonajeSettings.read(fileURL: fileURL).resolvedCharactersDir
+
     if dryRun {
       print("Cast voice prompts:")
       for member in targetCast {
         let desc = member.voicePrompt ?? "(empty — will skip)"
         print("  \(member.character): \(desc)")
+        do {
+          let location = try VoiceLocation.resolve(
+            for: member, castDirectory: castURL.deletingLastPathComponent(),
+            charactersDir: charactersDir)
+          print("    → \(location.relativePath)")
+        } catch {
+          print("    ✗ \(error.localizedDescription)")
+        }
       }
       if let accentValue = resolvedAccentValue {
         print("Accent: \(accentValue)")
@@ -212,10 +230,12 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
     print("Loading VoxAlta models (this may take a moment)...")
     fflush(stdout)
 
-    // `.vox` output lives in `voices/` beside CAST.md, and the paths recorded
-    // in `voices.voxalta` resolve relative to CAST.md's directory (EC-16).
+    // Each `.vox` goes where EC-23 says (the character's `.dossier`), and the
+    // paths recorded in `voices.voxalta` resolve relative to CAST.md's
+    // directory (EC-25).
     let generator = CastVoiceGenerator(
       castDirectory: castURL.deletingLastPathComponent(),
+      charactersDir: charactersDir,
       forceRegenerate: forceRegenerate,
       verbose: verbose,
       ttsModelVariant: effectiveTTSModel,

@@ -216,11 +216,12 @@ struct GenerateVoxCommandTests {
     try vox.write(to: url)
   }
 
-  /// EC-16 end to end (model-free): a member whose `.vox` already holds the
-  /// requested variant takes the skip-existing path, which still records the
-  /// voice pointer — and the path written into CAST.md must resolve to an
-  /// existing file relative to CAST.md's directory.
-  @Test("A .vox path written into CAST.md resolves relative to CAST.md's directory (EC-16)")
+  /// EC-23/EC-25 end to end (model-free): a new member's `.vox` lives at
+  /// `characters/<NAME>.dossier/voice/<NAME>.vox`. When that bundle already
+  /// holds the requested variant the skip-existing path still records the
+  /// pointer — and the path written into CAST.md must resolve to an existing
+  /// file relative to CAST.md's directory.
+  @Test("A .vox path written into CAST.md is the dossier location, CAST-relative (EC-23, EC-25)")
   func voxPathInCastMdResolvesRelativeToCastDirectory() async throws {
     let member = SwiftReparto.CastMember(
       character: "NARR",
@@ -232,7 +233,7 @@ struct GenerateVoxCommandTests {
     // Pre-existing bundle already carrying the requested 1.7b variant → the
     // command records the pointer without loading any model.
     try writeSyntheticVox(
-      at: projectDir.appendingPathComponent("voices/NARR.vox"),
+      at: projectDir.appendingPathComponent("characters/NARR.dossier/voice/NARR.vox"),
       variant: "1.7b",
       modelId: "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-bf16")
 
@@ -246,7 +247,7 @@ struct GenerateVoxCommandTests {
     let roster = try CastMarkdownParser().parse(fileURL: castURL).cast
     let narr = try #require(roster.first { $0.character == "NARR" })
     let voxPath = try #require(narr.voices["voxalta"]?.first)
-    #expect(voxPath == "voices/NARR.vox")
+    #expect(voxPath == "characters/NARR.dossier/voice/NARR.vox")
 
     // ...and resolves to an existing file relative to CAST.md's directory.
     let resolved = castURL.deletingLastPathComponent().appendingPathComponent(voxPath)

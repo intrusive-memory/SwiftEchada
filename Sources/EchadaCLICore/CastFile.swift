@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import SwiftReparto
 
 /// Locating the `CAST.md` roster and comparing the names in it.
 ///
@@ -42,16 +43,20 @@ enum CastFile {
 
   // MARK: - Character matching
 
-  /// The case- and whitespace-insensitive key two `character` names are
-  /// compared under, mirroring SwiftReparto's documented matching rule for
-  /// `merging(_:)` (RQ-14): collapse every run of Unicode whitespace to one
-  /// space, trim the ends, lowercase. Used only for membership tests here —
+  /// The key two `character` names are compared under, matching SwiftReparto
+  /// 0.2.0's `merging(_:)` (RQ-22): the canonical name, so `NARRATOR (V.O.)`
+  /// and `narrator` are one character. A name with no canonical form falls
+  /// back to the 0.1.0 rule (collapse whitespace, lowercase) behind a NUL, so
+  /// it can never equal a canonical key. Used only for membership tests here —
   /// never stored, never written into any member.
   static func matchKey(_ character: String) -> String {
-    character
+    if let canonical = try? CastMember.canonicalName(character) { return canonical }
+    let legacy =
+      character
       .components(separatedBy: .whitespacesAndNewlines)
       .filter { !$0.isEmpty }
       .joined(separator: " ")
       .lowercased()
+    return "\u{0}" + legacy
   }
 }

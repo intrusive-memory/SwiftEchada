@@ -1,3 +1,4 @@
+import EchadaVoice
 import Foundation
 @preconcurrency import MLX
 @preconcurrency import MLXAudioTTS
@@ -119,16 +120,5 @@ enum VoiceDesigner {
       candidates.append(candidate)
     }
     return candidates
-  }
-}
-
-enum VoiceDesignerError: Error, CustomStringConvertible {
-  case modelCastFailed
-
-  var description: String {
-    switch self {
-    case .modelCastFailed:
-      "Loaded model is not a Qwen3TTSModel."
-    }
   }
 }

@@ -59,9 +59,10 @@ struct CastFileTests {
     #expect(throws: ValidationError.self) { try CastFile.resolve(named: value, in: dir) }
   }
 
-  @Test("matchKey ignores case and collapses whitespace")
+  @Test("matchKey is the canonical name: case, whitespace and cue extensions are ignored")
   func matchKeyIsCaseAndWhitespaceInsensitive() {
-    #expect(CastFile.matchKey("  The   Practitioner ") == CastFile.matchKey("the practitioner"))
+    #expect(CastFile.matchKey("  The   Practitioner ") == CastFile.matchKey("THE PRACTITIONER"))
+    #expect(CastFile.matchKey("NARRATOR (V.O.)") == CastFile.matchKey("narrator"))
     #expect(CastFile.matchKey("ALICE") != CastFile.matchKey("ALICIA"))
   }
 

@@ -270,7 +270,7 @@ struct CastBodyPreservationTests {
     let roster = try CastMarkdownParser().parse(fileURL: castFile).cast
     let narr = try #require(roster.first { $0.character == "NARR" })
     #expect(!(narr.voicePrompt ?? "").isEmpty)
-    #expect(narr.voices["voxalta"] == ["voices/NARR.vox"])
+    #expect(narr.voices["voxalta"] == ["characters/NARR.dossier/voice/NARR.vox"])
 
     // EC-18, across the full pipeline.
     #expect(try bodyRegionBytes(of: castFile) == bodyBefore)

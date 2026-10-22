@@ -17,7 +17,7 @@ import Testing
 /// **Two independent gates.**
 ///
 /// 1. **Apple Intelligence** — `SystemLanguageModel.default.isAvailable`. Only
-///    `generate prompt` needs this. GitHub-hosted `macos-26` reports
+///    `generate prompt` needs this. GitHub-hosted runners (`xcode-27`) report
 ///    `false` here, so Foundation-Model paths skip on hosted CI and run only on a
 ///    developer Mac / self-hosted Apple-Intelligence runner (accepted per resolved
 ///    OQ-4; see `Docs/build-and-test.md`).
@@ -32,8 +32,8 @@ import Testing
 /// `generate vox` needs only the TTS weights — audition sentences are curated
 /// data (``AuditionSentence``), not model output, so nothing in that path touches
 /// Apple Intelligence. The full-pipeline `echada cast` path still needs BOTH,
-/// because its `generate prompt` stage calls
-/// `VoicePromptSynthesizer.requireAvailable()`; hence the conjunction gate there.
+/// because its `generate prompt` stage uses the on-device model (the default
+/// `--llm`); hence the conjunction gate there.
 /// `generate prompt` alone needs only the Foundation Model.
 
 // MARK: - TTS-weights presence check (filesystem only — no hydration)
@@ -192,7 +192,7 @@ struct ModelBackedGenerationTests {
       try await cmd.run()
     }
 
-    let voxURL = projectDir.appendingPathComponent("voices/NARR.vox")
+    let voxURL = projectDir.appendingPathComponent("characters/NARR.dossier/voice/NARR.vox")
     #expect(FileManager.default.fileExists(atPath: voxURL.path))
 
     let vox = try VoxFile(contentsOf: voxURL)
@@ -208,21 +208,20 @@ struct ModelBackedGenerationTests {
     // CAST.md now records the produced .vox under the member's voxalta voices.
     let updated = try CastMarkdownParser().parse(fileURL: castFile).cast
     let narr = try #require(updated.first { $0.character == "NARR" })
-    #expect(narr.voices["voxalta"] == ["voices/NARR.vox"])
+    #expect(narr.voices["voxalta"] == ["characters/NARR.dossier/voice/NARR.vox"])
   }
 
   /// **Gate: Foundation Model + TTS weights.**
   ///
-  /// The full `echada cast` pipeline against an episodes dir with NO PROJECT.md.
-  /// Asserts all four pipeline outputs: PROJECT.md created, cast populated
-  /// (heuristic), `voicePrompt` written (Foundation Model), and a `.vox` produced
-  /// (MLX). The whole `run()` is atomic — the prompt stage calls
-  /// `VoicePromptSynthesizer.requireAvailable()` and the vox stage sources its
-  /// audition sentence from the Foundation Model — so it can only complete where
-  /// BOTH models are present; hence the conjunction gate. On any machine missing
+  /// The full `echada cast` pipeline against an episodes dir with NO PROJECT.md
+  /// and a one-member CAST.md (echada doesn't discover cast, EC-P11). Asserts
+  /// the pipeline outputs: PROJECT.md created, `voicePrompt` written (Foundation
+  /// Model), and a `.vox` produced (MLX) in the member's dossier folder. The whole `run()` is atomic — the prompt stage needs the on-device
+  /// Foundation Model and the vox stage needs the TTS weights — so it can only
+  /// complete where BOTH models are present; hence the conjunction gate. On any machine missing
   /// either model it skips rather than failing, honoring the overriding rule.
   @Test(
-    "Full `echada cast` pipeline yields PROJECT.md, cast, voicePrompts, and .vox",
+    "Full `echada cast` pipeline yields PROJECT.md, voicePrompts, and a dossier .vox",
     .enabled(if: SystemLanguageModel.default.isAvailable && TTSWeights.present))
   func fullCastPipelineProducesAllFourOutputs() async throws {
     let (projectDir, projectFile) = try makeIsolatedProject(scripts: [
@@ -231,6 +230,9 @@ struct ModelBackedGenerationTests {
     defer { try? FileManager.default.removeItem(at: projectDir.deletingLastPathComponent()) }
 
     #expect(!FileManager.default.fileExists(atPath: projectFile.path))
+    let castFile = projectDir.appendingPathComponent("CAST.md")
+    try CastMarkdownParser().write(
+      document: CastDocument(cast: [SwiftReparto.CastMember(character: "NARR")]), to: castFile)
 
     let cmd = try CastCommand.parse(["--project", projectFile.path])
     try await cmd.run()
@@ -242,8 +244,7 @@ struct ModelBackedGenerationTests {
       try LegacyProjectCastReader.readCast(fileURL: projectFile).isEmpty,
       "PROJECT.md must stay cast-free — the roster's home is CAST.md")
 
-    // 2) Cast populated heuristically from the screenplay, into CAST.md.
-    let castFile = projectDir.appendingPathComponent("CAST.md")
+    // 2) The roster is unchanged: still just NARR.
     let roster = try CastMarkdownParser().parse(fileURL: castFile).cast
     #expect(roster.map(\.character) == ["NARR"])
     let narr = try #require(roster.first { $0.character == "NARR" })
@@ -253,8 +254,8 @@ struct ModelBackedGenerationTests {
     #expect(!prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
     // 4) A .vox file was produced by MLX TTS and recorded on the member.
-    #expect(narr.voices["voxalta"] == ["voices/NARR.vox"])
-    let voxURL = projectDir.appendingPathComponent("voices/NARR.vox")
+    #expect(narr.voices["voxalta"] == ["characters/NARR.dossier/voice/NARR.vox"])
+    let voxURL = projectDir.appendingPathComponent("characters/NARR.dossier/voice/NARR.vox")
     #expect(FileManager.default.fileExists(atPath: voxURL.path))
     let vox = try VoxFile(contentsOf: voxURL)
     #expect(vox.isValid)
