@@ -48,7 +48,8 @@ struct GeneratePromptCommandTests {
     await #expect(throws: ValidationError.self) { try await cmd.run() }
   }
 
-  @Test("A missing CAST.md fails, pointing at `echada generate cast`, and never creates it (EC-14)")
+  @Test(
+    "A missing CAST.md fails, pointing at `personaje cast-discover`, and never creates it (EC-14)")
   func missingCastFileThrowsActionably() async throws {
     let url = try writeProject(castMembers: nil)
     defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
@@ -57,7 +58,7 @@ struct GeneratePromptCommandTests {
       try await cmd.run()
       Issue.record("expected a ValidationError for the missing CAST.md")
     } catch let error as ValidationError {
-      #expect(error.message.contains("echada generate cast"))
+      #expect(error.message.contains("personaje cast-discover"))
     }
     // EC-14: the command must not have created the roster it failed over.
     let castURL = url.deletingLastPathComponent().appendingPathComponent("CAST.md")

@@ -6,7 +6,7 @@ import Testing
 
 @testable import EchadaCLICore
 
-/// Seeding fidelity for `generate cast` → CAST.md (EC-7), exercised against
+/// Seeding fidelity for the automatic migration → CAST.md (EC-7), exercised against
 /// the byte-for-byte copy of the real 309-line `confessions/PROJECT.md`
 /// fixture: when CAST.md is absent and PROJECT.md carries a legacy `cast:`
 /// block, that roster seeds the new CAST.md verbatim -- `voicePrompt`, the
@@ -14,8 +14,8 @@ import Testing
 /// no field the legacy members never had (`gender`, `actor`, `language`,
 /// `portrait`) is invented. PROJECT.md is migrated once, on the first run, and
 /// never written again.
-@Suite("generate cast — CAST.md seeding from the confessions fixture (offline)")
-struct GenerateCastSeedingTests {
+@Suite("Migration — CAST.md seeding from the confessions fixture (offline)")
+struct MigrationSeedingTests {
 
   /// A script whose CHARACTER cues cover the three legacy cast members plus a
   /// newly-appearing one (PRODUCER), so a run both matches every seeded member
@@ -76,19 +76,16 @@ struct GenerateCastSeedingTests {
     let projectURL = try makeConfessionsProject()
     defer { try? FileManager.default.removeItem(at: projectURL.deletingLastPathComponent()) }
 
-    let cmd = try GenerateCastCommand.parse(["--project", projectURL.path])
-    try await cmd.run()
+    _ = try ProjectMigration.migrateIfNeeded(projectURL: projectURL, castName: "CAST.md")
 
     let document = try CastMarkdownParser().parse(fileURL: castURL(projectURL))
     let byName = Dictionary(
       uniqueKeysWithValues: document.cast.map { ($0.character, $0) })
 
-    // Seeded legacy members lead the roster in document order; the
-    // newly-discovered PRODUCER is appended after them.
+    // Seeded legacy members keep document order; nothing is discovered from
+    // the script (EC-P11).
     #expect(
-      document.cast.map(\.character) == [
-        "NARRATOR", "ESPECTRO FAMILIAR", "THE PRACTITIONER", "PRODUCER",
-      ])
+      document.cast.map(\.character) == ["NARRATOR", "ESPECTRO FAMILIAR", "THE PRACTITIONER"])
 
     // The full voicePrompt on ESPECTRO FAMILIAR survives verbatim.
     let espectro = try #require(byName["ESPECTRO FAMILIAR"])
@@ -107,12 +104,6 @@ struct GenerateCastSeedingTests {
     #expect(byName["NARRATOR"]?.voices == ["voxalta": ["voices/NARRATOR.vox"]])
     #expect(espectro.voices == ["voxalta": ["voices/ESPECTRO_FAMILIAR.vox"]])
     #expect(practitioner.voices == ["voxalta": ["voices/THE_PRACTITIONER.vox"]])
-
-    // The newly-discovered member carries only its name.
-    let producer = try #require(byName["PRODUCER"])
-    #expect(producer.voicePrompt == nil)
-    #expect(producer.voices.isEmpty)
-    #expect(producer.extraKeys.isEmpty)
   }
 
   @Test("Seeding invents no fields: absent gender/actor/language/portrait keys stay absent")
@@ -120,8 +111,7 @@ struct GenerateCastSeedingTests {
     let projectURL = try makeConfessionsProject()
     defer { try? FileManager.default.removeItem(at: projectURL.deletingLastPathComponent()) }
 
-    let cmd = try GenerateCastCommand.parse(["--project", projectURL.path])
-    try await cmd.run()
+    _ = try ProjectMigration.migrateIfNeeded(projectURL: projectURL, castName: "CAST.md")
 
     // The confessions cast has no actor, gender, language, or portrait -- the
     // emitted CAST.md must not contain those keys at all: never `null`, never
@@ -150,16 +140,14 @@ struct GenerateCastSeedingTests {
     defer { try? FileManager.default.removeItem(at: projectURL.deletingLastPathComponent()) }
     let shaBefore = try sha256(of: projectURL)
 
-    let cmd = try GenerateCastCommand.parse(["--project", projectURL.path])
-    try await cmd.run()
+    _ = try ProjectMigration.migrateIfNeeded(projectURL: projectURL, castName: "CAST.md")
 
     #expect(try sha256(of: projectURL.appendingPathExtension("bak")) == shaBefore)
     let shaMigrated = try sha256(of: projectURL)
     #expect(shaMigrated != shaBefore)
 
     // A second run (against the now-existing CAST.md) leaves it untouched.
-    let again = try GenerateCastCommand.parse(["--project", projectURL.path])
-    try await again.run()
+    _ = try ProjectMigration.migrateIfNeeded(projectURL: projectURL, castName: "CAST.md")
     #expect(try sha256(of: projectURL) == shaMigrated)
   }
 
@@ -170,68 +158,25 @@ struct GenerateCastSeedingTests {
     let projectURL = try makeConfessionsProject()
     defer { try? FileManager.default.removeItem(at: projectURL.deletingLastPathComponent()) }
 
-    let first = try GenerateCastCommand.parse(["--project", projectURL.path])
-    try await first.run()
+    _ = try ProjectMigration.migrateIfNeeded(projectURL: projectURL, castName: "CAST.md")
     let firstBytes = try Data(contentsOf: castURL(projectURL))
 
-    let second = try GenerateCastCommand.parse(["--project", projectURL.path])
-    try await second.run()
+    _ = try ProjectMigration.migrateIfNeeded(projectURL: projectURL, castName: "CAST.md")
     let secondBytes = try Data(contentsOf: castURL(projectURL))
 
     #expect(firstBytes == secondBytes)
   }
 
-  // MARK: - --force re-sync
-
-  @Test("--force re-syncs CAST.md to the current source, keeping fields for survivors")
-  func forceResyncsSeededRoster() async throws {
-    let projectURL = try makeConfessionsProject()
-    defer { try? FileManager.default.removeItem(at: projectURL.deletingLastPathComponent()) }
-    let shaBefore = try sha256(of: projectURL)
-
-    // First run: seed + merge (NARRATOR, ESPECTRO FAMILIAR, THE PRACTITIONER,
-    // PRODUCER).
-    let seed = try GenerateCastCommand.parse(["--project", projectURL.path])
-    try await seed.run()
-
-    // The source material shrinks to a single NARRATOR scene.
-    let episodesDir = projectURL.deletingLastPathComponent().appendingPathComponent("episodes")
-    let narratorOnly = """
-      INT. THE WIRE - NIGHT
-
-      The wire hums alone.
-
-      NARRATOR
-      Everyone else has gone home.
-      """
-    try narratorOnly.write(
-      to: episodesDir.appendingPathComponent("ep1.fountain"), atomically: true, encoding: .utf8)
-
-    let force = try GenerateCastCommand.parse(["--project", projectURL.path, "--force"])
-    try await force.run()
-
-    let document = try CastMarkdownParser().parse(fileURL: castURL(projectURL))
-    #expect(document.cast.map(\.character) == ["NARRATOR"])
-
-    // The survivor keeps every seeded field.
-    let narrator = try #require(document.cast.first)
-    #expect(narrator.voicePrompt?.hasPrefix("Deep authoritative British baritone") == true)
-    #expect(narrator.voices == ["voxalta": ["voices/NARRATOR.vox"]])
-
-    // PROJECT.md was migrated on the first run; --force didn't touch it again.
-    #expect(try sha256(of: projectURL.appendingPathExtension("bak")) == shaBefore)
-  }
-
   // MARK: - --dry-run writes nothing
 
-  @Test("--dry-run creates no CAST.md and leaves PROJECT.md untouched")
+  @Test("A dry-run migration creates no CAST.md and leaves PROJECT.md untouched")
   func dryRunWritesNoCastMd() async throws {
     let projectURL = try makeConfessionsProject()
     defer { try? FileManager.default.removeItem(at: projectURL.deletingLastPathComponent()) }
     let shaBefore = try sha256(of: projectURL)
 
-    let cmd = try GenerateCastCommand.parse(["--project", projectURL.path, "--dry-run"])
-    try await cmd.run()
+    _ = try ProjectMigration.migrateIfNeeded(
+      projectURL: projectURL, castName: "CAST.md", dryRun: true)
 
     #expect(!FileManager.default.fileExists(atPath: castURL(projectURL).path))
     #expect(try sha256(of: projectURL) == shaBefore)

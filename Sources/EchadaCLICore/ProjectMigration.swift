@@ -66,7 +66,7 @@ enum ProjectMigration {
     guard withoutCast != original else { return Outcome() }
 
     let projectDir = projectURL.deletingLastPathComponent()
-    let castURL = try GenerateCastCommand.resolveCastFile(named: castName, in: projectDir)
+    let castURL = try CastFile.resolve(named: castName, in: projectDir)
     let projectName = projectURL.lastPathComponent
     let legacy = try LegacyProjectCastReader.readCast(fileURL: projectURL)
 
@@ -75,9 +75,9 @@ enum ProjectMigration {
     var document = castExists ? try castParser.parse(fileURL: castURL) : CastDocument(cast: [])
 
     var outcome = Outcome(migrated: true)
-    let existingKeys = Set(document.cast.map { GenerateCastCommand.matchKey($0.character) })
+    let existingKeys = Set(document.cast.map { CastFile.matchKey($0.character) })
     outcome.membersAdded =
-      legacy.filter { !existingKeys.contains(GenerateCastCommand.matchKey($0.character)) }.count
+      legacy.filter { !existingKeys.contains(CastFile.matchKey($0.character)) }.count
     outcome.conflicts = CastRosterVerifier.divergences(
       castRoster: document.cast, legacyRoster: legacy, castDirectory: projectDir,
       castLabel: castName, projectLabel: projectName
@@ -111,9 +111,9 @@ enum ProjectMigration {
 
     // Verify the transfer from disk before PROJECT.md loses anything.
     let written = try castParser.parse(fileURL: castURL)
-    let writtenKeys = Set(written.cast.map { GenerateCastCommand.matchKey($0.character) })
+    let writtenKeys = Set(written.cast.map { CastFile.matchKey($0.character) })
     let missing = legacy.map(\.character)
-      .filter { !writtenKeys.contains(GenerateCastCommand.matchKey($0)) }
+      .filter { !writtenKeys.contains(CastFile.matchKey($0)) }
     guard missing.isEmpty else {
       throw ProjectMigrationError.charactersMissingAfterTransfer(missing, castFile: castName)
     }

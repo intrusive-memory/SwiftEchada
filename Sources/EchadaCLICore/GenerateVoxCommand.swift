@@ -1,4 +1,5 @@
 import ArgumentParser
+import EchadaVoice
 import Foundation
 import SwiftProyecto
 import SwiftReparto
@@ -12,21 +13,28 @@ import SwiftReparto
 /// `PROJECT.md`, through SwiftReparto's `CastMarkdownParser` (EC-12).
 /// `PROJECT.md` is still consulted read-only for `title` and `tts.model`, but
 /// its legacy `cast:` block is never touched. When `CAST.md` is absent this
-/// command fails rather than creating it — only `echada generate cast` creates
-/// the roster (EC-14).
+/// command fails rather than creating it — the roster comes from
+/// `personaje cast-discover` (EC-P11).
 public struct GenerateVoxCommand: AsyncParsableCommand {
   public static let configuration = CommandConfiguration(
     commandName: "vox",
     abstract: "Generate on-device voices for cast members from their voice prompts in CAST.md.",
     discussion: """
       Consumes each cast member's `voicePrompt` in CAST.md and produces a `.vox` \
-      voice file under `voices/` beside CAST.md, recorded under the member's \
+      voice file in the character's record, recorded under the member's \
       `voices.voxalta` in CAST.md (paths relative to CAST.md's directory).
+
+      Where the `.vox` goes: beside the member's `manifest:` \
+      (`<bundle>/voice/<NAME>.vox`); else at the path `voices.voxalta` already \
+      names (regenerated in place; `echada migrate voices` moves old files); \
+      else `characters/<NAME>.dossier/voice/<NAME>.vox` (PROJECT.md \
+      `personaje.charactersDir` overrides `characters`). File names are the \
+      exact character name, so names must be canonical (`reparto canonicalize`).
 
       PROJECT.md is read for `title` and `tts.model`; an older PROJECT.md that \
       still holds a `cast:` block is first migrated into CAST.md (original saved \
-      as PROJECT.md.bak). When CAST.md is absent this command fails — run \
-      `echada generate cast` first to create it.
+      as PROJECT.md.bak). When CAST.md is absent this command fails — build \
+      it first with `personaje cast-discover`.
 
       Idempotency: members whose `.vox` already holds the requested variant \
       (TTS model + language) are skipped unless `--force-regenerate` is passed, \
@@ -123,7 +131,7 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
       throw ValidationError("Project file not found: \(project)")
     }
     let projectDir = fileURL.deletingLastPathComponent()
-    let castURL = try GenerateCastCommand.resolveCastFile(named: cast, in: projectDir)
+    let castURL = try CastFile.resolve(named: cast, in: projectDir)
 
     // A pre-v5 project still carries its roster in PROJECT.md; move it to
     // CAST.md before this stage reads anything.
@@ -133,7 +141,7 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
     guard FileManager.default.fileExists(atPath: castURL.path) else {
       throw ValidationError(
         "Cast file not found: \(castURL.path). `generate vox` reads the roster from \(cast) "
-          + "and never creates it — run `echada generate cast` first.")
+          + "and never creates it — build it first with `personaje cast-discover`.")
     }
 
     // PROJECT.md is read-only here: `title` and `tts.model` only (EC-12).
@@ -159,7 +167,7 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
     let roster = document.cast
     guard !roster.isEmpty else {
       throw ValidationError(
-        "No cast members found in \(cast). Run `echada generate cast` to discover them.")
+        "No cast members found in \(cast). Build the roster with `personaje cast-discover`.")
     }
 
     // Filter cast to a single character if requested
@@ -194,11 +202,21 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
     print("")
     fflush(stdout)
 
+    let charactersDir = try PersonajeSettings.read(fileURL: fileURL).resolvedCharactersDir
+
     if dryRun {
       print("Cast voice prompts:")
       for member in targetCast {
         let desc = member.voicePrompt ?? "(empty — will skip)"
         print("  \(member.character): \(desc)")
+        do {
+          let location = try VoiceLocation.resolve(
+            for: member, castDirectory: castURL.deletingLastPathComponent(),
+            charactersDir: charactersDir)
+          print("    → \(location.relativePath)")
+        } catch {
+          print("    ✗ \(error.localizedDescription)")
+        }
       }
       if let accentValue = resolvedAccentValue {
         print("Accent: \(accentValue)")
@@ -212,10 +230,12 @@ public struct GenerateVoxCommand: AsyncParsableCommand {
     print("Loading VoxAlta models (this may take a moment)...")
     fflush(stdout)
 
-    // `.vox` output lives in `voices/` beside CAST.md, and the paths recorded
-    // in `voices.voxalta` resolve relative to CAST.md's directory (EC-16).
+    // Each `.vox` goes where EC-23 says (the character's `.dossier`), and the
+    // paths recorded in `voices.voxalta` resolve relative to CAST.md's
+    // directory (EC-25).
     let generator = CastVoiceGenerator(
       castDirectory: castURL.deletingLastPathComponent(),
+      charactersDir: charactersDir,
       forceRegenerate: forceRegenerate,
       verbose: verbose,
       ttsModelVariant: effectiveTTSModel,

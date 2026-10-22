@@ -6,24 +6,25 @@ type: project
 
 Universal project documentation for AI agents. Agent-specific files: [CLAUDE.md](CLAUDE.md), [GEMINI.md](GEMINI.md).
 
-**Version**: 2.1.0 | **Swift**: 6.2 | **Platforms**: macOS 27+, iOS 27+
+**Version**: 3.0.0-dev | **Swift**: 6.2 | **Platforms**: macOS 27+, iOS 27+
 
 ---
 
 ## What Is This?
 
-SwiftEchada generates on-device custom voices from text prompts and manages cast data in CAST.md files for screenplay projects.
+SwiftEchada generates on-device custom voices from text prompts for the cast in a screenplay project's CAST.md, and writes them into each character's record (`characters/<NAME>.dossier/voice/`, dossier-format). Since 3.0.0 it doesn't discover cast members: CAST.md comes from `personaje cast-discover` (SwiftPersonaje).
 
 **Ownership split (v2.0.0)**: `PROJECT.md` is [SwiftProyecto](https://github.com/intrusive-memory/SwiftProyecto)'s config file (project identity, episode discovery, `tts` config). `CAST.md` is [SwiftReparto](https://github.com/intrusive-memory/SwiftReparto)'s config file (cast roster, voice prompts, voice pointers). SwiftEchada is a consumer of both: it creates voice assets and records where they went — in `CAST.md`. An older `PROJECT.md` that still holds a `cast:` block is migrated automatically the first time any generate stage opens it: the roster moves into `CAST.md`, every character is checked, the original is saved as `PROJECT.md.bak`, and the `cast:` block is removed and `schemaVersion: 5` stamped.
 
-- **Library** (`SwiftEchada`): Pure data types -- `CharacterProfile`, `CharacterInfo`, `CharacterMerger`. Depends only on SwiftReparto (a leaf package: `CastMember`, `Gender`, `CastDocument`, `CastMarkdownParser`). No ML.
-- **CLI** (`echada` / `EchadaCLICore`): Voice generation via Qwen3-TTS. Depends on SwiftVoxAlta, MLX, vox-format — and keeps SwiftProyecto for project-level `PROJECT.md` fields (`title`, `episodesDir`, `filePattern`, `tts.model`).
+- **Library** (`SwiftEchada`): Pure data types -- `CharacterProfile`. Depends only on SwiftReparto (a leaf package: `CastMember`, `Gender`, `CastDocument`, `CastMarkdownParser`, `canonicalName`). No ML.
+- **Voice library** (`EchadaVoice`): what an app links (Personaje Part B). `VoiceBuilder` (build both model sizes in one call, audition + lock, samples to `.m4a`, progress, cancellation), `VoiceLocation` (EC-23/EC-24: where a `.vox` goes and its canonical file name), and the batch `CastVoiceGenerator` the CLI uses. Depends on SwiftVoxAlta, MLX, vox-format, SwiftReparto. **No ArgumentParser, no PROJECT.md reader** — `EchadaVoiceTests` depends on it alone to keep it that way. Writes `.vox`/`.m4a` files only, never CAST.md or `manifest.json`.
+- **CLI** (`echada` / `EchadaCLICore`): commands on top of `EchadaVoice`. Keeps SwiftProyecto for project-level `PROJECT.md` fields (`title`, `episodesDir`, `filePattern`, `tts.model`), reads `personaje.charactersDir` with Yams, and SwiftLlavero for `--llm` / `echada auth`.
 
 ## Build and Test (30-second version)
 
 ```bash
 make build   # Debug build
-make test    # Unit tests (138 tests)
+make test    # Unit tests (SwiftEchadaTests + EchadaVoiceTests)
 make clean   # Clean artifacts
 ```
 
@@ -36,21 +37,28 @@ Full details: [Docs/build-and-test.md](Docs/build-and-test.md)
 | Command | Description |
 |---------|-------------|
 | `echada` (no subcommand) | Prints help. There is **no** default subcommand — invoke a command explicitly. |
-| `echada cast` | Full pipeline: bootstrap PROJECT.md and CAST.md (if absent) → `generate cast` → `generate prompt` → `generate vox`. Idempotent; single cascading `--force`. |
-| `echada generate cast` | Heuristically discover cast members from the screenplay source (no LLM) and merge into the CAST.md roster (an older PROJECT.md is first migrated into CAST.md) |
-| `echada generate prompt` | Examine the screenplay source material and write a `voicePrompt` for each cast member in CAST.md, via the on-device Foundation Model |
-| `echada generate vox` | Generate `.vox` voice identities for all cast members from their `voicePrompt` in CAST.md — this is what `echada cast` used to do before the restructure |
+| `echada cast` | Voice pipeline: bootstrap PROJECT.md and CAST.md (if absent) → `generate prompt` → `generate vox`. Idempotent; single cascading `--force`. Stops on an empty roster (build it with `personaje cast-discover`). |
+| `echada generate prompt` | Examine the screenplay source material and write a `voicePrompt` for each cast member in CAST.md, with the model chosen by `--llm` (on-device default) |
+| `echada generate vox` | Generate `.vox` voice identities from each member's `voicePrompt`, into the character record (EC-23) |
+| `echada sample <CHARACTER>` | Export playable `voice/sample-<variant>[-<model>].m4a` files beside the `.vox` (EC-28) |
+| `echada migrate voices [--apply]` | Move existing `.vox` files into the character record, dry run by default (EC-26) |
+| `echada auth` | LLM credentials (SwiftLlavero) |
 | `echada voice <prompt>` | Generate a single `.vox` from a text description (no PROJECT.md/CAST.md required) |
 | `echada test-voice` (hidden) | Integration test helper — fixed NARRATOR profile |
 
 All `cast`-touching commands take `--cast <filename>` (default `CAST.md`) — a
 bare filename resolved beside `--project`, never a path.
 
-Typical flow: `echada cast` runs the whole pipeline in one step, or run each
-stage standalone in order — `echada generate cast` (scripts → CAST.md roster) →
-`echada generate prompt` (roster → voice briefs) → `echada generate vox`
-(briefs → `.vox`). Older projects migrate on first contact; there is no
-separate migration command.
+Typical flow: `personaje cast-discover` (scripts → CAST.md roster), then
+`echada cast`, or each stage standalone — `echada generate prompt` (roster →
+voice briefs) → `echada generate vox` (briefs → `.vox` in the character
+record) → `echada sample` (playable samples). A PROJECT.md `cast:` block
+migrates to CAST.md on first contact; `echada migrate voices` moves pre-3.0
+`voices/*.vox` files into the character records.
+
+**Breaking change (v3.0.0):** `echada generate cast` was removed and `echada
+cast` no longer discovers characters; new `.vox` files go into
+`characters/<NAME>.dossier/voice/<NAME>.vox` with the exact canonical name.
 
 **Breaking change (v2.0.0):** `echada verify cast` and `echada prune cast` were
 removed. Migration off a legacy `PROJECT.md` `cast:` block is now automatic.
@@ -67,7 +75,8 @@ Full CLI reference: [Docs/api.md](Docs/api.md#cli-echada)
 
 ```
 Library:  SwiftEchada --> SwiftReparto (CAST.md schema; pure data types, no ML)
-CLI:      echada --> EchadaCLICore --> SwiftEchada + SwiftReparto + SwiftProyecto + SwiftVoxAlta + MLX + vox-format
+Voice:    EchadaVoice --> SwiftEchada + SwiftReparto + SwiftVoxAlta + MLX + vox-format (no ArgumentParser)
+CLI:      echada --> EchadaCLICore --> EchadaVoice + SwiftProyecto + SwiftLlavero + Yams + ArgumentParser
 ```
 
 SwiftReparto is a leaf (no `intrusive-memory` deps) and is the **only** writer

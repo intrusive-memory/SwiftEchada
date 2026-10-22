@@ -126,7 +126,7 @@ install: resolve
 
 # Run tests via xcodebuild
 test: resolve
-	xcodebuild test -scheme $(TEST_SCHEME) -destination '$(DESTINATION)' $(XCODE_FLAGS) -only-testing:SwiftEchadaTests
+	xcodebuild test -scheme $(TEST_SCHEME) -destination '$(DESTINATION)' $(XCODE_FLAGS) -only-testing:SwiftEchadaTests -only-testing:EchadaVoiceTests
 
 # Format Swift source files with swift-format
 lint:
