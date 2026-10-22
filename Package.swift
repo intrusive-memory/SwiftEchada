@@ -31,10 +31,9 @@ let package = Package(
   dependencies: [
     .package(
       url: "https://github.com/intrusive-memory/SwiftProyecto.git", .upToNextMajor(from: "5.3.2")),
-    // TODO: pin .upToNextMajor(from: "0.2.0") once SwiftReparto 0.2.0 is released
-    // (role, manifest, canonicalName: EC-23, EC-24).
+    // 0.2.0: role, manifest, canonicalName (EC-23, EC-24).
     .package(
-      url: "https://github.com/intrusive-memory/SwiftReparto.git", branch: "requirements/personaje"),
+      url: "https://github.com/intrusive-memory/SwiftReparto.git", .upToNextMajor(from: "0.2.0")),
     .package(
       url: "https://github.com/intrusive-memory/SwiftVoxAlta.git", .upToNextMajor(from: "0.14.2")),
     .package(

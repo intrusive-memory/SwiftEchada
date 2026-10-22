@@ -19,8 +19,7 @@ enum DependencyVersions {
   /// Declared in Package.swift, in manifest order.
   static let direct: [Direct] = [
     Direct(name: "SwiftProyecto", requirement: "5.3.2 ..< 6.0.0", resolved: "5.3.2"),
-    Direct(
-      name: "SwiftReparto", requirement: "branch requirements/personaje", resolved: "6aeab5a93019"),
+    Direct(name: "SwiftReparto", requirement: "0.2.0 ..< 1.0.0", resolved: "0.2.0"),
     Direct(name: "SwiftVoxAlta", requirement: "0.14.2 ..< 1.0.0", resolved: "0.14.2"),
     Direct(name: "SwiftLlavero", requirement: "0.1.0-beta.2 ..< 0.2.0", resolved: "0.1.0-beta.2"),
     Direct(name: "swift-argument-parser", requirement: "1.7.1 ..< 2.0.0", resolved: "1.8.2"),

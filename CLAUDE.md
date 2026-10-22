@@ -48,4 +48,4 @@ Not applicable -- SwiftEchada is a library, not an app.
 
 ---
 
-**Last Updated**: October 22, 2026 (3.0.0-dev: voices in the character record, `EchadaVoice`, `migrate voices`, `sample`; `generate cast` removed — see REQUIREMENTS.md, REQUIREMENTS-personaje.md)
+**Last Updated**: October 22, 2026 (3.0.0: voices in the character record, `EchadaVoice`, `migrate voices`, `sample`; `generate cast` removed — see REQUIREMENTS.md, REQUIREMENTS-personaje.md)

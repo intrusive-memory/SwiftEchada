@@ -51,7 +51,7 @@ package cycle involving cast data is possible by construction.
 
 | Package | Pin | Purpose | Key Types |
 |---------|-----|---------|-----------|
-| [SwiftReparto](https://github.com/intrusive-memory/SwiftReparto) | `from: "0.2.0"` (branch `requirements/personaje` until 0.2.0 is tagged) | CAST.md schema, parse, serialize; canonical names | `CastMember` (`manifest`, `role`, `canonicalName`), `Gender`, `CastDocument`, `CastMarkdownParser`, `ProjectCastImporter` |
+| [SwiftReparto](https://github.com/intrusive-memory/SwiftReparto) | `from: "0.2.0"` | CAST.md schema, parse, serialize; canonical names | `CastMember` (`manifest`, `role`, `canonicalName`), `Gender`, `CastDocument`, `CastMarkdownParser`, `ProjectCastImporter` |
 
 ### CLI-Only Dependencies
 
