@@ -1,5 +1,7 @@
 import ArgumentParser
 import Foundation
+import LlaveroCLI
+import SwiftLlavero
 import SwiftProyecto
 import SwiftReparto
 
@@ -112,9 +114,9 @@ public struct CastCommand: AsyncParsableCommand {
   @Option(
     name: .long,
     help:
-      "Language model for the prompt stage: on-device (default) or pcc (Apple Private Cloud Compute, macOS 27+). Forwarded to `generate prompt`."
+      "Language model for the prompt stage: on-device (default), pcc, or any account:model set up with `echada auth login`. Forwarded to `generate prompt`."
   )
-  public var llm: LanguageModelChoice = .onDevice
+  public var llm: ModelReference = .onDevice
 
   @Option(
     name: .long,

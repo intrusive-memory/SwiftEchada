@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import LlaveroCLI
 import SwiftProyecto
 
 import enum SwiftEchada.SwiftEchada
@@ -34,7 +35,8 @@ public struct EchadaCLI: AsyncParsableCommand {
       """,
     version: EchadaCLI.versionReport,
     subcommands: [
-      VoiceCommand.self, CastCommand.self, GenerateCommand.self, TestVoiceCommand.self,
+      VoiceCommand.self, CastCommand.self, GenerateCommand.self, LlaveroAuthCommand.self,
+      TestVoiceCommand.self,
     ]
   )
 

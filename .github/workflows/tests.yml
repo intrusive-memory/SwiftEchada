@@ -61,7 +61,7 @@ jobs:
   # what the binary links, and a silently stale table makes that claim false.
   verify-deps:
     name: Dependency Table Drift
-    runs-on: macos-26
+    runs-on: xcode-27
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -76,7 +76,7 @@ jobs:
 
   unit-tests:
     name: Unit Tests
-    runs-on: macos-26
+    runs-on: xcode-27
 
     env:
       # --- SwiftAcervo model cache (R-CI-2) ----------------------------------

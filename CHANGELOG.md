@@ -9,16 +9,34 @@ All notable changes to SwiftEchada will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Unreleased] — 3.0.0
+
+### Changed — Breaking
+
+- **macOS 27 / iOS 27 minimum** (was 26). FoundationModels' `LanguageModel`
+  protocol, which every off-device model below goes through, needs the 27 SDKs,
+  and SwiftPM applies the floor to the whole package, `EchadaCLICore` included.
+  CI and releases move to GitHub's `xcode-27` runner image.
 
 ### Added
 
-- **`--llm` on `echada generate prompt` and `echada cast`** picks the language
-  model that writes voice prompts: `on-device` (default, unchanged behavior) or
-  `pcc` (Apple Private Cloud Compute via FoundationModels'
-  `PrivateCloudComputeLanguageModel`, macOS 27+, no API key; character dialogue
-  is sent to Apple's servers). Both run through FoundationModels'
-  `LanguageModel` protocol, which is the seam future cloud providers plug into.
+- **`--llm` on `echada generate prompt` and `echada cast`** picks the model that
+  writes voice prompts: `on-device` (default, unchanged behavior), `pcc` (Apple
+  Private Cloud Compute, no key), or any `account:model` configured through
+  [SwiftLlavero](https://github.com/intrusive-memory/SwiftLlavero) —
+  `anthropic:claude-sonnet-5-5`, `openai:gpt-5.6`, `gemini`, `ollama:llama3.3`.
+  Off-device choices send the characters' dialogue to that provider, and the
+  stage says so.
+- **`echada auth login|logout|status|check`** (SwiftLlavero's
+  `LlaveroAuthCommand`). Credentials live in the Keychain and are shared with
+  every other tool that uses SwiftLlavero; environment variables
+  (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) work too.
+
+### Fixed
+
+- Every stage failed with `--cast resolves outside the project directory` when
+  the project lived under `/private` (e.g. `/tmp`) and `CAST.md` did not exist
+  yet: `standardizedFileURL` strips `/private` only from paths that exist.
 
 ## [2.0.0] - 2026-10-21
 

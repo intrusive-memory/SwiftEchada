@@ -1,12 +1,14 @@
 import Foundation
+import FoundationModels
+import SwiftLlavero
 import SwiftReparto
 
 /// Failures surfaced when the selected language model cannot synthesize a
 /// character voice prompt.
 enum VoicePromptSynthesizerError: LocalizedError {
-  /// The selected model is unusable (Apple Intelligence disabled, unsupported
-  /// hardware, the model still downloading, or Private Cloud Compute not ready).
-  case modelUnavailable(LanguageModelChoice, reason: String)
+  /// The selected model is unusable: Apple Intelligence disabled or not ready,
+  /// Private Cloud Compute not ready, or a provider account not configured.
+  case modelUnavailable(ModelReference, reason: String)
   /// The model ran but returned no usable voice prompt for the character.
   /// Carries the underlying FoundationModels error (if any) so the real cause
   /// is never swallowed.
@@ -14,8 +16,8 @@ enum VoicePromptSynthesizerError: LocalizedError {
 
   var errorDescription: String? {
     switch self {
-    case .modelUnavailable(_, let reason):
-      return "echada writes voice prompts with a language model, and the selected one is unusable. \(reason)"
+    case .modelUnavailable(let reference, let reason):
+      return "echada writes voice prompts with a language model, and '\(reference)' is unusable. \(reason)"
     case .generationFailed(let character, let underlying):
       let base =
         "The language model returned no usable voice prompt for character '\(character)'."
@@ -29,8 +31,8 @@ enum VoicePromptSynthesizerError: LocalizedError {
 }
 
 /// Synthesizes a character's `voicePrompt` from screenplay evidence using a
-/// FoundationModels-backed language model (on-device by default; see
-/// ``LanguageModelChoice``).
+/// FoundationModels language model (on-device by default; see
+/// ``LanguageModelResolver``).
 ///
 /// This is the one place echada uses a language model.
 /// Audition sentences are curated data (see ``AuditionSentence``) because they
@@ -43,13 +45,6 @@ enum VoicePromptSynthesizerError: LocalizedError {
 /// VoiceDesign's `voice:` parameter by ``CastVoiceGenerator`` to lock the
 /// character's `.vox`.
 enum VoicePromptSynthesizer {
-
-  /// Fails fast when the selected model is unusable. Call before any work.
-  static func requireAvailable(_ model: LanguageModelChoice = .onDevice) throws {
-    if let reason = model.unavailableReason {
-      throw VoicePromptSynthesizerError.modelUnavailable(model, reason: reason)
-    }
-  }
 
   /// The most dialogue lines fed to the model — enough to characterize a voice
   /// without overrunning the on-device context window.
@@ -82,9 +77,8 @@ enum VoicePromptSynthesizer {
     projectDescription: String?,
     genre: String?,
     evidence: CharacterDialogueEvidence,
-    model: LanguageModelChoice = .onDevice
+    model: any LanguageModel
   ) async throws -> String {
-    try requireAvailable(model)
 
     let prompt = buildPrompt(
       character: character,

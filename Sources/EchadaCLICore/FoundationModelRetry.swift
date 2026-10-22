@@ -1,4 +1,5 @@
 import Foundation
+import FoundationModels
 
 /// Runs an on-device Foundation Model text generation with bounded retry.
 ///
@@ -39,14 +40,14 @@ enum FoundationModelRetry {
   ///   surface the real cause; it is `nil` when the last miss was empty output.
   static func sanitizedResponse(
     to prompt: String,
-    model: LanguageModelChoice = .onDevice,
+    model: any LanguageModel,
     sanitize: (String) -> String?
   ) async -> (result: String?, lastError: Error?) {
     await sanitizedResponse(
       maxAttempts: maxAttempts,
       sanitize: sanitize,
       backoff: Self.defaultBackoff,
-      generate: { try await model.respond(to: prompt) }
+      generate: { try await LanguageModelSession(model: model).respond(to: prompt).content }
     )
   }
 
