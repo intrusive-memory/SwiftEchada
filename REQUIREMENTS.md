@@ -3,7 +3,7 @@ type: requirements
 state: draft
 created: 2026-09-25
 updated: 2026-10-21
-target_version: 2.1.0
+target_version: 3.0.0
 controlling_doc: dossier-format docs/DOSSIER-FORMAT.md (https://github.com/intrusive-memory/dossier-format)
 depends_on: SwiftReparto 0.2.0 (../SwiftReparto/REQUIREMENTS.md)
 ---
