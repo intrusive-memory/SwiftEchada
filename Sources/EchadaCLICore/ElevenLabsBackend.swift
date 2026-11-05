@@ -15,6 +15,8 @@ struct VoiceSlots: Equatable, Sendable {
 protocol ElevenLabsBackend: Sendable {
   /// The account's voice-slot usage.
   func slots() async throws -> VoiceSlots
+  /// Throws `VoicesAssignError.voiceNotFound` when `GET /v1/voices/{id}` answers 404.
+  func validateVoice(id: String) async throws
   /// Remaining credits, when the account reports them.
   func remainingCredits() async -> Int?
   /// Estimated credits for one design call whose sample text has `characters` characters.
@@ -52,6 +54,21 @@ struct LiveElevenLabsBackend: ElevenLabsBackend {
       throw VoicesDesignError.slotsUnavailable
     }
     return VoiceSlots(limit: limit, used: used)
+  }
+
+  func validateVoice(id: String) async throws {
+    guard let key = keys.apiKey(for: ElevenLabsPlugin.id) else {
+      throw HablareError.missingCredential(
+        pluginId: ElevenLabsPlugin.id,
+        environmentVariable: CredentialRequirement.elevenLabs.primaryEnvironmentVariable)
+    }
+    do {
+      _ = try await SwiftOnce(apiKey: key).voice(id)
+    } catch ElevenLabsError.voiceNotFound {
+      throw VoicesAssignError.voiceNotFound(id: id)
+    } catch ElevenLabsError.httpError(let status, _) where status == 404 {
+      throw VoicesAssignError.voiceNotFound(id: id)
+    }
   }
 
   func remainingCredits() async -> Int? { await plugin.remainingCredits() }

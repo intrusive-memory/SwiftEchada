@@ -144,6 +144,21 @@ let package = Package(
         .enableUpcomingFeature("StrictConcurrency")
       ]
     ),
+    // Real ElevenLabs calls (EL-4.7). Kept out of `make test` (which names its targets) and
+    // gated on ELEVENLABS_API_KEY and GITHUB_ACTIONS != "true". Run with `make test-live`.
+    .testTarget(
+      name: "SwiftEchadaLiveTests",
+      dependencies: [
+        "EchadaCLICore",
+        .product(name: "SwiftReparto", package: "SwiftReparto"),
+        .product(name: "SwiftHablare", package: "SwiftHablare"),
+        .product(name: "SwiftHablareOnce", package: "SwiftHablareOnce"),
+        .product(name: "SwiftOnce", package: "SwiftOnce"),
+      ],
+      swiftSettings: [
+        .enableUpcomingFeature("StrictConcurrency")
+      ]
+    ),
     // Depends on EchadaVoice only: proves the library links without
     // ArgumentParser (EC-P5).
     .testTarget(

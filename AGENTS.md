@@ -26,6 +26,7 @@ SwiftEchada generates on-device custom voices from text prompts for the cast in 
 make build   # Debug build
 make test    # Unit tests (SwiftEchadaTests + EchadaVoiceTests)
 make clean   # Clean artifacts
+make test-live  # Gated live ElevenLabs test (needs ELEVENLABS_API_KEY; one design + <=60 TTS chars; not part of make test)
 ```
 
 **Never use `swift build` or `swift test`** -- Metal shaders require xcodebuild. The Makefile handles everything.
@@ -42,6 +43,9 @@ Full details: [Docs/build-and-test.md](Docs/build-and-test.md)
 | `echada generate vox` | Generate `.vox` voice identities from each member's `voicePrompt`, into the character record (EC-23) |
 | `echada sample <CHARACTER>` | Export playable `voice/sample-<variant>[-<model>].m4a` files beside the `.vox` (EC-28) |
 | `echada migrate voices [--apply]` | Move existing `.vox` files into the character record, dry run by default (EC-26) |
+| `echada voices design --candidates-dir DIR [CHARACTER…]` | ElevenLabs step 1: design previews from each `voicePrompt` (needs `ELEVENLABS_API_KEY`); writes WAVs + `index.json`, spends no voice slot. Refuses when designs exceed free slots |
+| `echada voices design --candidates-dir DIR --pick <generated_voice_id>` | ElevenLabs step 2, after a person has listened: saves the voice into the character's `.vox` and sets `voices.elevenlabs` + `provider: elevenlabs` |
+| `echada voices assign CHARACTER --provider elevenlabs --voice-id <id>` | Validate a premade/library voice via `GET /v1/voices/{id}` (404 is an error), then write the bare id under `voices.elevenlabs` (`elevenlabs://<id>` is normalized) |
 | `echada auth` | LLM credentials (SwiftLlavero) |
 | `echada voice <prompt>` | Generate a single `.vox` from a text description (no PROJECT.md/CAST.md required) |
 | `echada test-voice` (hidden) | Integration test helper — fixed NARRATOR profile |

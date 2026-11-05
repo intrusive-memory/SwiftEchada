@@ -25,6 +25,13 @@ final class FakeElevenLabsBackend: ElevenLabsBackend, @unchecked Sendable {
   func addSlotUse() { lock.withLock { _slots.used += 1 } }
   func freeSlotUse() { lock.withLock { _slots.used -= 1 } }
 
+  /// Voice ids `GET /v1/voices/{id}` knows; anything else is a 404.
+  var knownVoiceIds: Set<String> = []
+  func validateVoice(id: String) async throws {
+    record("validate:\(id)")
+    guard knownVoiceIds.contains(id) else { throw VoicesAssignError.voiceNotFound(id: id) }
+  }
+
   func slots() async throws -> VoiceSlots { lock.withLock { _slots } }
   func remainingCredits() async -> Int? { 50_000 }
   func estimateDesignCost(characters: Int) -> Int { characters }

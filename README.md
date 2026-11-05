@@ -153,6 +153,30 @@ Other variants speak `--text`, CHARACTER.md's `sampleLine`, or a fixed neutral
 sentence, with the variant as the delivery instruction. `--json` returns
 `variant`, `model`, `language` and `sampleText` for the manifest writer.
 
+### `echada voices` — ElevenLabs voices
+
+Cloud voices for characters whose CAST.md member has `provider: elevenlabs`. Needs
+`ELEVENLABS_API_KEY` (or the shared keychain entry).
+
+```bash
+# Step 1: design previews (no voice slot used); a person then listens to the WAVs
+echada voices design --candidates-dir ./candidates NARRATOR
+# Step 2: save the chosen preview (uses one voice slot)
+echada voices design --candidates-dir ./candidates --pick <generated_voice_id>
+
+# Premade or library voice: validated with GET /v1/voices/{id}, bare id written
+echada voices assign NARRATOR --provider elevenlabs --voice-id <id>
+```
+
+`design` prints the estimated credit cost first and refuses when there are more
+voices to design than free slots. `--pick` writes the ElevenLabs fields into the
+character's existing `.vox` (the Qwen entries are kept) and sets
+`voices.elevenlabs` and `provider: elevenlabs` in CAST.md. `assign` writes the
+bare id under `voices.elevenlabs`; an `elevenlabs://<id>` input is normalized, a
+404 id is an error naming it, and other cast members are left alone. Never pick
+for a person who has not listened. `make test-live` runs one real
+design → pick → synthesize → delete round trip (not part of `make test`).
+
 ### `echada migrate voices` — move old voices into the character record
 
 ```bash

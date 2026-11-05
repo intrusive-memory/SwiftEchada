@@ -6,7 +6,7 @@ public struct VoicesCommand: AsyncParsableCommand {
   public static let configuration = CommandConfiguration(
     commandName: "voices",
     abstract: "Design and manage cloud (ElevenLabs) voices for the cast in CAST.md.",
-    subcommands: [VoicesDesignCommand.self]
+    subcommands: [VoicesDesignCommand.self, VoicesAssignCommand.self]
   )
 
   public init() {}
@@ -101,5 +101,50 @@ public struct VoicesDesignCommand: AsyncParsableCommand {
       }
       throw ExitCode.failure
     }
+  }
+}
+
+/// `echada voices assign` — point a character at an existing (premade or library) ElevenLabs voice.
+public struct VoicesAssignCommand: AsyncParsableCommand {
+  public static let configuration = CommandConfiguration(
+    commandName: "assign",
+    abstract: "Assign an existing ElevenLabs voice id to a character in CAST.md.",
+    discussion: """
+      Validates the id with `GET /v1/voices/{id}` (a 404 is an error naming the id), \
+      then writes the bare id under `voices.elevenlabs` and `provider: elevenlabs` \
+      on that member. An `elevenlabs://<id>` input is normalized to the bare id. \
+      Other cast members are unchanged. Premade voices use no voice slot.
+
+      Example:
+          echada voices assign NARRATOR --provider elevenlabs --voice-id <id>
+      """
+  )
+
+  @Argument(help: "The character to assign.")
+  public var character: String
+
+  @Option(name: .long, help: "Voice provider. Only `elevenlabs` is supported.")
+  public var provider: String
+
+  @Option(name: .customLong("voice-id"), help: "The ElevenLabs voice id (or elevenlabs://<id>).")
+  public var voiceId: String
+
+  @Option(name: .long, help: "Path to PROJECT.md file.")
+  public var project: String = "PROJECT.md"
+
+  @Option(name: .long, help: "Filename of the cast roster (default: CAST.md), beside --project.")
+  public var cast: String = "CAST.md"
+
+  public init() {}
+
+  public func run() async throws {
+    let fileURL = URL(fileURLWithPath: project)
+    guard FileManager.default.fileExists(atPath: fileURL.path) else {
+      throw ValidationError("Project file not found: \(project)")
+    }
+    let runner = VoicesAssignRunner(
+      projectURL: fileURL, castName: cast, character: character, provider: provider,
+      voiceId: voiceId, backend: try await LiveElevenLabsBackend())
+    try await runner.run()
   }
 }
