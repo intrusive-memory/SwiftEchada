@@ -58,7 +58,8 @@ struct SampleElevenLabsTests {
     return header + pcm
   }
 
-  static let previewText = "The preview line the designed voice speaks, long enough to be a real one."
+  static let previewText =
+    "The preview line the designed voice speaks, long enough to be a real one."
 
   /// A project with: HERO (designed voice, `.vox`), NARRATOR (bare id), EXTRA (`elevenlabs://`),
   /// GHOST (VoxAlta only).
@@ -85,31 +86,31 @@ struct SampleElevenLabsTests {
     try "---\ntype: project\ntitle: sw\nauthor: T\ncreated: 2026-01-01T00:00:00Z\n---\n".write(
       to: dir.appendingPathComponent("PROJECT.md"), atomically: true, encoding: .utf8)
     try """
-      ---
-      type: cast
-      schemaVersion: 1
-      cast:
-        - character: HERO
-          voices:
-            voxalta:
-              - characters/HERO.dossier/voice/HERO.vox
-            elevenlabs:
-              - characters/HERO.dossier/voice/HERO.vox
-        - character: NARRATOR
-          voices:
-            elevenlabs:
-              - 21m00Tcm4TlvDq8ikWAM
-        - character: EXTRA
-          voices:
-            elevenlabs:
-              - "elevenlabs://abc123?x=1"
-        - character: GHOST
-          voices:
-            voxalta:
-              - characters/GHOST.dossier/voice/GHOST.vox
-      ---
+    ---
+    type: cast
+    schemaVersion: 1
+    cast:
+      - character: HERO
+        voices:
+          voxalta:
+            - characters/HERO.dossier/voice/HERO.vox
+          elevenlabs:
+            - characters/HERO.dossier/voice/HERO.vox
+      - character: NARRATOR
+        voices:
+          elevenlabs:
+            - 21m00Tcm4TlvDq8ikWAM
+      - character: EXTRA
+        voices:
+          elevenlabs:
+            - "elevenlabs://abc123?x=1"
+      - character: GHOST
+        voices:
+          voxalta:
+            - characters/GHOST.dossier/voice/GHOST.vox
+    ---
 
-      """.write(
+    """.write(
       to: dir.appendingPathComponent("CAST.md"), atomically: true, encoding: .utf8)
     return dir
   }
@@ -151,7 +152,8 @@ struct SampleElevenLabsTests {
     // The VoxAlta sample is untouched.
     let existing = url.deletingLastPathComponent().appendingPathComponent("sample-neutral.m4a")
     #expect(try Data(contentsOf: existing) == Data("voxalta".utf8))
-    #expect(VoiceBuilder.elevenLabsSampleFileName(variant: "neutral") == "sample-neutral-elevenlabs.m4a")
+    #expect(
+      VoiceBuilder.elevenLabsSampleFileName(variant: "neutral") == "sample-neutral-elevenlabs.m4a")
   }
 
   @Test("--output overrides the default path")
@@ -179,7 +181,8 @@ struct SampleElevenLabsTests {
     #expect(designed.voxURL != nil)
 
     let bare = try ElevenLabsSampleRunner.resolveVoice(for: member("NARRATOR"), castDirectory: dir)
-    #expect(bare == ElevenLabsVoice(voiceId: "21m00Tcm4TlvDq8ikWAM", voxURL: nil, voxRelativePath: nil))
+    #expect(
+      bare == ElevenLabsVoice(voiceId: "21m00Tcm4TlvDq8ikWAM", voxURL: nil, voxRelativePath: nil))
 
     let scheme = try ElevenLabsSampleRunner.resolveVoice(for: member("EXTRA"), castDirectory: dir)
     #expect(scheme.voiceId == "abc123")
@@ -212,7 +215,9 @@ struct SampleElevenLabsTests {
     #expect(neutral.instruct == nil)
     #expect(neutral.text == VoiceBuilder.defaultSampleLine)
     #expect(neutral.voxPath == nil)
-    #expect(backend.synthesized.last?.voice == .catalog(pluginId: "elevenlabs", voiceId: "21m00Tcm4TlvDq8ikWAM"))
+    #expect(
+      backend.synthesized.last?.voice
+        == .catalog(pluginId: "elevenlabs", voiceId: "21m00Tcm4TlvDq8ikWAM"))
   }
 
   // MARK: Errors
@@ -313,7 +318,8 @@ struct SampleElevenLabsTests {
   func jsonShape() async throws {
     let dir = try makeProject()
     defer { try? FileManager.default.removeItem(at: dir) }
-    let result = try await runner(dir, "HERO", variant: "whisper", backend: FakeSampleBackend()).run()
+    let result = try await runner(dir, "HERO", variant: "whisper", backend: FakeSampleBackend())
+      .run()
     let data = try JSONEncoder().encode(result)
     let object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
     for key in [
@@ -334,7 +340,8 @@ struct SampleElevenLabsTests {
     #expect(command.provider == "voxalta")
     #expect(command.model == "1.7b")
     #expect(VoiceBuilder.sampleFileName(variant: "neutral", model: .large) == "sample-neutral.m4a")
-    #expect(VoiceBuilder.sampleFileName(variant: "neutral", model: .small) == "sample-neutral-0.6b.m4a")
+    #expect(
+      VoiceBuilder.sampleFileName(variant: "neutral", model: .small) == "sample-neutral-0.6b.m4a")
     command = try SampleCommand.parse(["MAYA", "--all-variants", "--json"])
     try command.validate()
   }
@@ -355,7 +362,8 @@ struct SampleElevenLabsTests {
     #expect(invalid(["MAYA", "--provider", "elevenlabs", "--all-variants"]))
     #expect(invalid(["MAYA", "--provider", "elevenlabs", "--model", "0.6b"]))
     #expect(invalid(["MAYA", "--provider", "elevenlabs", "--from-design-preview", "--dry-run"]))
-    #expect(invalid(["MAYA", "--provider", "elevenlabs", "--from-design-preview", "--variant", "x"]))
+    #expect(
+      invalid(["MAYA", "--provider", "elevenlabs", "--from-design-preview", "--variant", "x"]))
     #expect(!invalid(["MAYA", "--provider", "elevenlabs", "--variant", "whisper", "--dry-run"]))
     #expect(!invalid(["MAYA", "--provider", "elevenlabs", "--from-design-preview", "--json"]))
   }

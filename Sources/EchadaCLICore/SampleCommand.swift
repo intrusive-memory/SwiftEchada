@@ -71,12 +71,15 @@ public struct SampleCommand: AsyncParsableCommand {
 
   @Option(
     name: .long,
-    help: "Delivery instruction, mapped to an audio tag (--provider elevenlabs; default: the variant).")
+    help:
+      "Delivery instruction, mapped to an audio tag (--provider elevenlabs; default: the variant).")
   public var instruct: String?
 
   @Flag(
     name: .customLong("from-design-preview"),
-    help: "Export the design preview stored in the designed voice's .vox (--provider elevenlabs; free).")
+    help:
+      "Export the design preview stored in the designed voice's .vox (--provider elevenlabs; free)."
+  )
   public var fromDesignPreview: Bool = false
 
   @Flag(
@@ -86,7 +89,8 @@ public struct SampleCommand: AsyncParsableCommand {
 
   @Option(
     name: .long,
-    help: "Output .m4a path (--provider elevenlabs; default voice/sample-<variant>-elevenlabs.m4a).")
+    help: "Output .m4a path (--provider elevenlabs; default voice/sample-<variant>-elevenlabs.m4a)."
+  )
   public var output: String?
 
   @Flag(name: .long, help: "Render every samples.yaml entry (or neutral on every size).")

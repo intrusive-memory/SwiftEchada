@@ -347,7 +347,8 @@ public struct VoiceBuilder: Sendable {
 
     let input: AVAudioFile
     do { input = try AVAudioFile(forReading: scratch) } catch {
-      throw VoiceBuilderError.encodingFailed("not readable WAV audio: \(error.localizedDescription)")
+      throw VoiceBuilderError.encodingFailed(
+        "not readable WAV audio: \(error.localizedDescription)")
     }
     let source = input.processingFormat
     guard
@@ -363,8 +364,9 @@ public struct VoiceBuilder: Sendable {
       guard let converter = AVAudioConverter(from: source, to: target) else {
         throw VoiceBuilderError.encodingFailed("can't convert audio to \(Int(sampleRate)) Hz mono")
       }
-      let capacity = AVAudioFrameCount(
-        (Double(inBuffer.frameLength) * sampleRate / source.sampleRate).rounded(.up)) + 1024
+      let capacity =
+        AVAudioFrameCount(
+          (Double(inBuffer.frameLength) * sampleRate / source.sampleRate).rounded(.up)) + 1024
       guard let converted = AVAudioPCMBuffer(pcmFormat: target, frameCapacity: capacity) else {
         throw VoiceBuilderError.encodingFailed("couldn't allocate an audio buffer")
       }
