@@ -9,6 +9,27 @@ All notable changes to SwiftEchada will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2026-11-05
+
+### Added
+
+- `echada sample --provider elevenlabs` renders a secondary, ElevenLabs set of dossier
+  samples beside the VoxAlta ones. It resolves the member's `voices.elevenlabs` (a designed
+  voice's `.vox`, a bare voice id, or `elevenlabs://<id>`), synthesizes the variant/text with
+  the ElevenLabs plugin (default model `eleven_v4`, `--elevenlabs-model`; `--instruct`
+  becomes an audio tag as in `produciesta generate`) and writes 24 kHz mono
+  `voice/sample-<variant>-elevenlabs.m4a`. The credit cost prints before synthesis;
+  `--dry-run` prints it and exits without calling the API. A member with no
+  `voices.elevenlabs` is a clear error. The default provider stays `voxalta`, unchanged.
+- `--from-design-preview` (ElevenLabs only) exports the design preview stored in a designed
+  voice's `.vox` as `sample-neutral-elevenlabs.m4a`, with no API call and no credits. An
+  error for a stock voice.
+- `--json` for the ElevenLabs path returns `path`, `relativePath`, `provider`, `model`,
+  `voiceId`, `text`/`sampleText`, `instruct`, `variant`, `voxPath`, `creditsUsed` (0 for a
+  design preview) and `creditsEstimated`, for the dossier manifest writer.
+- `EchadaVoice`: `VoiceBuilder.writeM4AMono(wav:to:sampleRate:)` and
+  `VoiceBuilder.elevenLabsSampleFileName(variant:)`.
+
 ## [3.1.1] - 2026-11-05
 
 ### Changed
