@@ -11,7 +11,7 @@ import struct SwiftEchada.CharacterProfile
 ///
 /// Uses the VoiceDesign variant of Qwen3-TTS to synthesize audio from a text description,
 /// producing candidate voice samples that can be locked into `.vox` bundles.
-enum VoiceDesigner {
+enum QwenVoiceDesigner {
 
   /// Compose a natural-language voice description string from a `CharacterProfile`.
   ///

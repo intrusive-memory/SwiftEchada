@@ -52,7 +52,7 @@ public struct TestVoiceCommand: AsyncParsableCommand {
     // Generate candidate WAV
     print("Generating candidate voice (\(ttsModel))...")
     fflush(stdout)
-    let candidateWAV = try await VoiceDesigner.generateCandidate(
+    let candidateWAV = try await QwenVoiceDesigner.generateCandidate(
       profile: profile,
       modelManager: modelManager,
       sampleSentence: sampleSentence
@@ -60,7 +60,7 @@ public struct TestVoiceCommand: AsyncParsableCommand {
     print("Generated candidate WAV (\(candidateWAV.count) bytes)")
     fflush(stdout)
 
-    let designInstruction = VoiceDesigner.composeVoiceDescription(from: profile)
+    let designInstruction = QwenVoiceDesigner.composeVoiceDescription(from: profile)
 
     // Create voice lock (speaker embedding)
     print("Creating voice lock (\(ttsModel))...")

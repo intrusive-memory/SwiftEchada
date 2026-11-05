@@ -16,7 +16,7 @@ XCODE_FLAGS = -skipPackagePluginValidation -skipMacroValidation
 
 export GIT_LFS_SKIP_SMUDGE = 1
 
-.PHONY: all build release install clean test resolve help integration-test lint codesign-cli generate-deps verify-deps refresh-deps
+.PHONY: all build release install clean test test-live resolve help integration-test lint codesign-cli generate-deps verify-deps refresh-deps
 
 all: install
 
@@ -128,6 +128,12 @@ install: resolve
 test: resolve
 	xcodebuild test -scheme $(TEST_SCHEME) -destination '$(DESTINATION)' $(XCODE_FLAGS) -only-testing:SwiftEchadaTests -only-testing:EchadaVoiceTests
 
+# Live ElevenLabs test (spends one voice design + <= 60 TTS characters; needs ELEVENLABS_API_KEY).
+# The key is handed to the test runner through the environment and never printed.
+test-live: resolve
+	@test -n "$$ELEVENLABS_API_KEY" || { echo "ELEVENLABS_API_KEY is not set; the live test would be skipped."; exit 1; }
+	@TEST_RUNNER_ELEVENLABS_API_KEY="$$ELEVENLABS_API_KEY" xcodebuild test -scheme $(TEST_SCHEME) -destination '$(DESTINATION)' $(XCODE_FLAGS) -only-testing:SwiftEchadaLiveTests
+
 # Format Swift source files with swift-format
 lint:
 	swift format -i -r .
@@ -198,6 +204,7 @@ help:
 	@echo "  verify-deps      - Report drift in the committed dependency table (CI, non-fatal)"
 	@echo "  refresh-deps     - Purge SPM caches and re-resolve so the table is truly current"
 	@echo "  build            - Debug build with xcodebuild"
+	@echo "  test-live        - Gated live ElevenLabs test (needs ELEVENLABS_API_KEY; not part of test)"
 	@echo "  install          - Debug build + copy to ./bin (default)"
 	@echo "  release          - Release build + copy to ./bin"
 	@echo "  test             - Run unit tests with xcodebuild"

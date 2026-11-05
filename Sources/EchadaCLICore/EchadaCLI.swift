@@ -37,7 +37,7 @@ public struct EchadaCLI: AsyncParsableCommand {
     version: EchadaCLI.versionReport,
     subcommands: [
       VoiceCommand.self, CastCommand.self, GenerateCommand.self, SampleCommand.self,
-      MigrateCommand.self, LlaveroAuthCommand.self, TestVoiceCommand.self,
+      MigrateCommand.self, LlaveroAuthCommand.self, TestVoiceCommand.self, VoicesCommand.self,
     ]
   )
 

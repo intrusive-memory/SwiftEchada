@@ -18,10 +18,13 @@ enum DependencyVersions {
 
   /// Declared in Package.swift, in manifest order.
   static let direct: [Direct] = [
-    Direct(name: "SwiftProyecto", requirement: "5.3.2 ..< 6.0.0", resolved: "5.3.2"),
-    Direct(name: "SwiftReparto", requirement: "0.2.0 ..< 1.0.0", resolved: "0.2.0"),
-    Direct(name: "SwiftVoxAlta", requirement: "0.14.2 ..< 1.0.0", resolved: "0.14.2"),
-    Direct(name: "SwiftLlavero", requirement: "0.1.0-beta.2 ..< 0.2.0", resolved: "0.1.0-beta.2"),
+    Direct(name: "SwiftProyecto", requirement: "5.4.0 ..< 6.0.0", resolved: "5.4.0"),
+    Direct(name: "SwiftReparto", requirement: "0.2.1 ..< 1.0.0", resolved: "0.2.1"),
+    Direct(name: "SwiftVoxAlta", requirement: "0.15.0 ..< 1.0.0", resolved: "0.15.0"),
+    Direct(name: "SwiftHablare", requirement: "7.1.0 ..< 8.0.0", resolved: "7.1.0"),
+    Direct(name: "SwiftHablareOnce", requirement: "0.2.0 ..< 1.0.0", resolved: "0.2.0"),
+    Direct(name: "SwiftOnce", requirement: "1.1.1 ..< 2.0.0", resolved: "1.1.1"),
+    Direct(name: "SwiftLlavero", requirement: "0.1.0-beta.2 ..< 1.0.0", resolved: "0.1.0-beta.2"),
     Direct(name: "swift-argument-parser", requirement: "1.7.1 ..< 2.0.0", resolved: "1.8.2"),
     Direct(name: "Yams", requirement: "6.2.2 ..< 7.0.0", resolved: "6.2.2"),
     Direct(name: "mlx-swift", requirement: "0.31.3 ..< 1.0.0", resolved: "0.31.3"),
@@ -58,7 +61,6 @@ enum DependencyVersions {
     (name: "swift-tokenizers", resolved: "0.7.1"),
     (name: "swiftacervo", resolved: "0.25.0"),
     (name: "swiftcompartido", resolved: "7.4.0"),
-    (name: "swifthablare", resolved: "6.3.0"),
     (name: "swifttuberia", resolved: "0.9.0"),
     (name: "textbundle", resolved: "1.0.7"),
     (name: "universal", resolved: "5.3.0"),
