@@ -113,7 +113,8 @@ private func log(_ line: String) { print("[live] \(line)") }
     // else by the unique voice name.
     var deleteError: Error?
     let vox = dir.appendingPathComponent("characters/TESTER.dossier/voice/TESTER.vox")
-    let recorded = (try? VoiceAsset(contentsOf: vox))?
+    let recorded =
+      (try? VoiceAsset(contentsOf: vox))?
       .extensionFields(forEngine: "elevenlabs")?["voice_id"] as? String
     if let recorded {
       do { try await client.deleteVoice(recorded) } catch { deleteError = error }

@@ -21,7 +21,12 @@ final class FakeElevenLabsBackend: ElevenLabsBackend, @unchecked Sendable {
 
   var events: [String] { lock.withLock { _events } }
   func record(_ event: String) { lock.withLock { _events.append(event) } }
-  func nextCounter() -> Int { lock.withLock { counter += 1; return counter } }
+  func nextCounter() -> Int {
+    lock.withLock {
+      counter += 1
+      return counter
+    }
+  }
   func addSlotUse() { lock.withLock { _slots.used += 1 } }
   func freeSlotUse() { lock.withLock { _slots.used -= 1 } }
 
@@ -148,7 +153,8 @@ struct VoicesDesignTests {
     let dir = FileManager.default.temporaryDirectory
       .appendingPathComponent("voices-design-\(UUID().uuidString)")
     let fm = FileManager.default
-    try fm.createDirectory(at: dir.appendingPathComponent("episodes"), withIntermediateDirectories: true)
+    try fm.createDirectory(
+      at: dir.appendingPathComponent("episodes"), withIntermediateDirectories: true)
     try Self.projectText.write(
       to: dir.appendingPathComponent("PROJECT.md"), atomically: true, encoding: .utf8)
     try Self.castText.write(
@@ -167,7 +173,8 @@ struct VoicesDesignTests {
       to: dir.appendingPathComponent("episodes/ep1.fountain"), atomically: true, encoding: .utf8)
     // NARRATOR's existing VoxAlta .vox, holding a qwen3-tts entry that must survive.
     let voxURL = dir.appendingPathComponent("characters/NARRATOR.dossier/voice/NARRATOR.vox")
-    try fm.createDirectory(at: voxURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try fm.createDirectory(
+      at: voxURL.deletingLastPathComponent(), withIntermediateDirectories: true)
     var seed = VoiceAsset(name: "NARRATOR", description: "A seeded qwen3 voice for tests.")
     try seed.addSampleAudio(Data("qwen".utf8), engine: "qwen3-tts", model: "1.7b")
     try seed.write(to: voxURL)
@@ -293,7 +300,8 @@ struct VoicesDesignTests {
     -> VoiceCandidateIndex
   {
     _ = try await runner(dir, backend: backend, roles: ["narrator"]).run()
-    return try #require(try VoiceCandidateIndex.load(from: dir.appendingPathComponent("candidates")))
+    return try #require(
+      try VoiceCandidateIndex.load(from: dir.appendingPathComponent("candidates")))
   }
 
   @Test("pick writes the .vox extension, keeps qwen3 entries, and updates only one CAST.md member")
@@ -335,8 +343,11 @@ struct VoicesDesignTests {
     let dir = try makeProject()
     defer { try? FileManager.default.removeItem(at: dir) }
     let backend = FakeElevenLabsBackend()
-    _ = try await runner(dir, backend: backend, characters: ["HERO"], sample: String(repeating: "y", count: 150)).run()
-    let index = try #require(try VoiceCandidateIndex.load(from: dir.appendingPathComponent("candidates")))
+    _ = try await runner(
+      dir, backend: backend, characters: ["HERO"], sample: String(repeating: "y", count: 150)
+    ).run()
+    let index = try #require(
+      try VoiceCandidateIndex.load(from: dir.appendingPathComponent("candidates")))
 
     _ = try await runner(dir, backend: backend, pick: index.candidates[0].generatedVoiceId).run()
 

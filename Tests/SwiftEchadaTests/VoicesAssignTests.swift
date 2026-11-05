@@ -38,9 +38,10 @@ struct VoicesAssignTests {
     return dir
   }
 
-  private func runner(_ dir: URL, backend: FakeElevenLabsBackend, voiceId: String,
-    character: String = "NARRATOR", provider: String = "elevenlabs") -> VoicesAssignRunner
-  {
+  private func runner(
+    _ dir: URL, backend: FakeElevenLabsBackend, voiceId: String,
+    character: String = "NARRATOR", provider: String = "elevenlabs"
+  ) -> VoicesAssignRunner {
     VoicesAssignRunner(
       projectURL: dir.appendingPathComponent("PROJECT.md"), castName: "CAST.md",
       character: character, provider: provider, voiceId: voiceId, backend: backend, log: { _ in })
@@ -96,7 +97,9 @@ struct VoicesAssignTests {
     defer { try? FileManager.default.removeItem(at: dir) }
     let backend = FakeElevenLabsBackend()
     backend.knownVoiceIds = ["abc123"]
-    try await runner(dir, backend: backend, voiceId: "elevenlabs://abc123?lang=en", character: "hero").run()
+    try await runner(
+      dir, backend: backend, voiceId: "elevenlabs://abc123?lang=en", character: "hero"
+    ).run()
     #expect(backend.events == ["validate:abc123"])
     let hero = try #require(try roster(dir).first { $0.character == "HERO" })
     #expect(hero.voices["elevenlabs"] == ["abc123"])

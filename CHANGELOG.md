@@ -9,6 +9,21 @@ All notable changes to SwiftEchada will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2026-11-04
+
+### Added
+
+- `echada voices design` (two-step ElevenLabs voice design: previews, then `--pick`) and
+  `echada voices assign CHARACTER --provider elevenlabs --voice-id <id>` (validates via
+  `GET /v1/voices/{id}`, writes the bare id under `voices.elevenlabs`).
+- Gated live test target `SwiftEchadaLiveTests` and `make test-live`.
+- New dependencies: SwiftHablare 7.x, SwiftHablareOnce, SwiftOnce.
+
+### Changed
+
+- SwiftVoxAlta floor is now 0.15.0.
+- Internal rename `VoiceDesigner` to `QwenVoiceDesigner`.
+
 ## [3.0.0] - 2026-10-22
 
 Voices move into the character record (`REQUIREMENTS.md`, EC-23..EC-30), and

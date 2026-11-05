@@ -61,7 +61,8 @@ public struct VoicesDesignCommand: AsyncParsableCommand {
 
   @Option(
     name: .customLong("sample-text"),
-    help: "Sample line (100-1,000 characters) for characters with no usable dialogue in the episodes.")
+    help:
+      "Sample line (100-1,000 characters) for characters with no usable dialogue in the episodes.")
   public var sampleText: String?
 
   @Option(
@@ -71,7 +72,8 @@ public struct VoicesDesignCommand: AsyncParsableCommand {
 
   @Option(
     name: .customLong("candidates-dir"),
-    help: "Directory for preview WAVs and index.json (design), or where they were written (--pick).")
+    help: "Directory for preview WAVs and index.json (design), or where they were written (--pick)."
+  )
   public var candidatesDir: String?
 
   @Option(

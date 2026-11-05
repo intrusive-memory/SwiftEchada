@@ -27,7 +27,8 @@ enum VoicesDesignError: LocalizedError, Equatable {
     case .noCharacters(let why):
       return "No characters to design: \(why)"
     case .unknownCharacter(let name, let available):
-      return "Character '\(name)' not found in CAST.md. Available: \(available.joined(separator: ", "))"
+      return
+        "Character '\(name)' not found in CAST.md. Available: \(available.joined(separator: ", "))"
     case .missingVoicePrompt(let character):
       return "\(character): no voicePrompt in CAST.md; run `echada generate prompt` first."
     case .noSampleText(let character):
@@ -255,7 +256,9 @@ struct VoicesDesignRunner {
         continue
       }
       do {
-        jobs.append(Job(member: member, prompt: prompt, sample: try sampleText(for: member, context: context)))
+        jobs.append(
+          Job(member: member, prompt: prompt, sample: try sampleText(for: member, context: context))
+        )
       } catch let error as VoicesDesignError {
         outcome.failures.append(error)
       }
@@ -279,7 +282,9 @@ struct VoicesDesignRunner {
 
     let dir = URL(fileURLWithPath: candidatesDir, isDirectory: true)
     try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-    var index = try VoiceCandidateIndex.load(from: dir) ?? VoiceCandidateIndex(project: context.title, candidates: [])
+    var index =
+      try VoiceCandidateIndex.load(from: dir)
+      ?? VoiceCandidateIndex(project: context.title, candidates: [])
     index.project = context.title
 
     for job in jobs {
@@ -313,8 +318,12 @@ struct VoicesDesignRunner {
       outcome.designed.append(character)
     }
     try index.write(to: dir)
-    log("Wrote \(index.candidates.count) candidate(s) and \(VoiceCandidateIndex.fileName) to \(dir.path)")
-    log("Listen, then: echada voices design --candidates-dir \(candidatesDir) --pick <generated_voice_id>")
+    log(
+      "Wrote \(index.candidates.count) candidate(s) and \(VoiceCandidateIndex.fileName) to \(dir.path)"
+    )
+    log(
+      "Listen, then: echada voices design --candidates-dir \(candidatesDir) --pick <generated_voice_id>"
+    )
     return outcome
   }
 
@@ -367,14 +376,16 @@ struct VoicesDesignRunner {
     }
     // Only a voice this tool designed (recorded in the .vox) is ever deleted on redesign;
     // a bare library id in CAST.md belongs to the library.
-    let oldVoiceId = asset.extensionFields(forEngine: ElevenLabsProviderID.value)?["voice_id"] as? String
+    let oldVoiceId =
+      asset.extensionFields(forEngine: ElevenLabsProviderID.value)?["voice_id"] as? String
 
     let designer = backend.designer(voiceName: voiceName, designModel: entry.designModel)
     try await designer.save(candidate, into: &asset)
     try FileManager.default.createDirectory(
       at: location.url.deletingLastPathComponent(), withIntermediateDirectories: true)
     try asset.write(to: location.url)
-    let newVoiceId = asset.extensionFields(forEngine: ElevenLabsProviderID.value)?["voice_id"] as? String
+    let newVoiceId =
+      asset.extensionFields(forEngine: ElevenLabsProviderID.value)?["voice_id"] as? String
 
     // CAST.md: parse → mutate one member → write.
     let castParser = CastMarkdownParser()
@@ -390,7 +401,8 @@ struct VoicesDesignRunner {
     // EL-4.5: the previous voice goes only after the new one is saved.
     if let oldVoiceId, oldVoiceId != newVoiceId {
       do {
-        try await designer.delete(.catalog(pluginId: ElevenLabsProviderID.value, voiceId: oldVoiceId))
+        try await designer.delete(
+          .catalog(pluginId: ElevenLabsProviderID.value, voiceId: oldVoiceId))
         log("\(character): deleted previous voice \(oldVoiceId)")
       } catch {
         throw VoicesDesignError.oldVoiceNotDeleted(

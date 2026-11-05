@@ -19,7 +19,8 @@ enum VoicesAssignError: LocalizedError, Equatable {
     case .voiceNotFound(let id):
       return "ElevenLabs has no voice with id '\(id)' (GET /v1/voices/\(id) returned 404)."
     case .unknownCharacter(let name, let available):
-      return "Character '\(name)' not found in CAST.md. Available: \(available.joined(separator: ", "))"
+      return
+        "Character '\(name)' not found in CAST.md. Available: \(available.joined(separator: ", "))"
     case .castNotFound(let path):
       return "Cast file not found: \(path)"
     }
