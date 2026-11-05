@@ -35,7 +35,17 @@ let package = Package(
     .package(
       url: "https://github.com/intrusive-memory/SwiftReparto.git", .upToNextMajor(from: "0.2.1")),
     .package(
-      url: "https://github.com/intrusive-memory/SwiftVoxAlta.git", .upToNextMajor(from: "0.14.2")),
+      url: "https://github.com/intrusive-memory/SwiftVoxAlta.git", .upToNextMajor(from: "0.15.0")),
+    // 7.1.0: VoiceAsset, VoiceDesignRequest, VoiceCandidate (`echada voices design`, EL-4).
+    .package(
+      url: "https://github.com/intrusive-memory/SwiftHablare.git", .upToNextMajor(from: "7.1.0")),
+    // 0.2.0: ElevenLabsPlugin + ElevenLabsDesigner.
+    .package(
+      url: "https://github.com/intrusive-memory/SwiftHablareOnce.git",
+      .upToNextMajor(from: "0.2.0")),
+    // Voice-slot counts (`subscription()`); SwiftHablareOnce keeps its client internal.
+    .package(
+      url: "https://github.com/intrusive-memory/SwiftOnce.git", .upToNextMajor(from: "1.1.1")),
     .package(
       url: "https://github.com/intrusive-memory/SwiftLlavero.git",
       .upToNextMajor(from: "0.1.0-beta.2")),
@@ -91,6 +101,9 @@ let package = Package(
         .product(name: "SwiftVoxAlta", package: "SwiftVoxAlta"),
         .product(name: "SwiftLlavero", package: "SwiftLlavero"),
         .product(name: "LlaveroCLI", package: "SwiftLlavero"),
+        .product(name: "SwiftHablare", package: "SwiftHablare"),
+        .product(name: "SwiftHablareOnce", package: "SwiftHablareOnce"),
+        .product(name: "SwiftOnce", package: "SwiftOnce"),
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
         .product(name: "MLX", package: "mlx-swift"),
         .product(name: "MLXAudioTTS", package: "mlx-audio-swift"),
@@ -122,6 +135,7 @@ let package = Package(
         .product(name: "SwiftReparto", package: "SwiftReparto"),
         .product(name: "VoxFormat", package: "vox-format"),
         .product(name: "SwiftVoxAlta", package: "SwiftVoxAlta"),
+        .product(name: "SwiftHablare", package: "SwiftHablare"),
       ],
       resources: [
         .copy("Fixtures")

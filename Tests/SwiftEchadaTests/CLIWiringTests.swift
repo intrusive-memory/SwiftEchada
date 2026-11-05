@@ -52,6 +52,15 @@ struct CLIWiringTests {
     #expect(identifiers.contains(ObjectIdentifier(VoiceCommand.self)))
   }
 
+  @Test("EchadaCLI.subcommands contains voices, whose only subcommand is design")
+  func rootContainsVoices() {
+    let identifiers = Set(EchadaCLI.configuration.subcommands.map(ObjectIdentifier.init))
+    #expect(identifiers.contains(ObjectIdentifier(VoicesCommand.self)))
+    #expect(
+      VoicesCommand.configuration.subcommands.map(ObjectIdentifier.init)
+        == [ObjectIdentifier(VoicesDesignCommand.self)])
+  }
+
   @Test("verify and prune are gone: migration is automatic in 2.0")
   func rootHasNoMigrationVerbs() {
     let names = Set(
