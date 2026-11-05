@@ -125,6 +125,10 @@ struct VoicesDesignRunner {
   var designModel: String
   var candidatesDir: String?
   var pick: String?
+  /// `--all`: with no names, select every cast member that has a `voicePrompt`.
+  var all: Bool = false
+  /// `--switch`: also set `provider: elevenlabs` on `--pick`. Default is additive (voices only).
+  var switchProvider: Bool = false
   var backend: any ElevenLabsBackend
   var log: @Sendable (String) -> Void = { print($0) }
 
@@ -192,6 +196,10 @@ struct VoicesDesignRunner {
           selected.append(member)
         }
       }
+    } else if all {
+      selected = roster.filter {
+        !($0.voicePrompt?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+      }
     } else {
       selected = roster.filter { Self.provider(of: $0) == ElevenLabsProviderID.value }
     }
@@ -204,8 +212,13 @@ struct VoicesDesignRunner {
     guard !selected.isEmpty else {
       throw VoicesDesignError.noCharacters(
         characters.isEmpty
-          ? "no cast member has `provider: elevenlabs`"
+          ? (all
+            ? "no cast member has a voicePrompt"
+            : "no cast member has `provider: elevenlabs`")
             + (roles.isEmpty ? "" : " with role \(roles.joined(separator: ","))")
+            + (all
+              ? ""
+              : "; name the characters to design, or pass --all to design every cast member that has a voicePrompt")
           : "none of the named characters match the --role filter")
     }
     return selected
@@ -394,7 +407,9 @@ struct VoicesDesignRunner {
       throw VoicesDesignError.unknownCharacter(character, available: document.cast.map(\.character))
     }
     document.cast[at].voices[ElevenLabsProviderID.value] = [location.relativePath]
-    document.cast[at].setExtra(try AnyCodable(ElevenLabsProviderID.value), forKey: "provider")
+    if switchProvider {
+      document.cast[at].setExtra(try AnyCodable(ElevenLabsProviderID.value), forKey: "provider")
+    }
     try castParser.write(document: document, to: context.castURL)
     log("\(character): saved \(voiceName) (\(newVoiceId ?? "?")) → \(location.relativePath)")
 

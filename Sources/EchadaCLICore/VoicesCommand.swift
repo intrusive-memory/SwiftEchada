@@ -19,8 +19,9 @@ public struct VoicesDesignCommand: AsyncParsableCommand {
     commandName: "design",
     abstract: "Design ElevenLabs voices from each character's voicePrompt, then save a chosen one.",
     discussion: """
-      Step 1 — design. Selects the named CHARACTERs, or every cast member with \
-      `provider: elevenlabs` (narrow with --role). The description is the \
+      Step 1 — design. Selects the named CHARACTERs; with no names, every cast member with \
+      `provider: elevenlabs`, or with --all every cast member that has a \
+      `voicePrompt` (narrow with --role). The description is the \
       `voicePrompt`; the sample line is the character's first dialogue line of \
       100-1,000 characters in the project's episodes, else --sample-text (never \
       invented). Refuses when there are more voices to design than free voice \
@@ -30,8 +31,12 @@ public struct VoicesDesignCommand: AsyncParsableCommand {
       Step 2 — pick. After listening, `--pick <generated_voice_id>` (with the \
       same --candidates-dir) creates the permanent voice named \
       `<project> — <CHARACTER>`, writes the ElevenLabs fields into the \
-      character's existing .vox (the qwen3-tts entries are kept), and sets \
-      `voices.elevenlabs` and `provider: elevenlabs` in CAST.md. If the \
+      character's existing .vox (the qwen3-tts entries are kept), and adds \
+      `voices.elevenlabs` in CAST.md. ElevenLabs voices are additive: \
+      `voices.voxalta` and any existing `provider:` are left untouched, so the \
+      character still renders in VoxAlta. Render in ElevenLabs per run with \
+      `produciesta generate --provider elevenlabs`, or pass --switch to also \
+      set `provider: elevenlabs` permanently. If the \
       character already had a designed ElevenLabs voice, it is deleted only \
       after the new one is saved. Never pick for a person who has not listened.
 
@@ -43,8 +48,21 @@ public struct VoicesDesignCommand: AsyncParsableCommand {
       """
   )
 
-  @Argument(help: "Characters to design. Default: every cast member with `provider: elevenlabs`.")
+  @Argument(
+    help:
+      "Characters to design. Default: every cast member with `provider: elevenlabs` (or pass --all)."
+  )
   public var characters: [String] = []
+
+  @Flag(
+    name: .long,
+    help: "With no names, design every cast member that has a voicePrompt.")
+  public var all: Bool = false
+
+  @Flag(
+    name: .customLong("switch"),
+    help: "With --pick, also set `provider: elevenlabs` (otherwise voices are additive).")
+  public var switchProvider: Bool = false
 
   @Option(name: .long, help: "Path to PROJECT.md file.")
   public var project: String = "PROJECT.md"
@@ -95,7 +113,7 @@ public struct VoicesDesignCommand: AsyncParsableCommand {
     let runner = VoicesDesignRunner(
       projectURL: fileURL, castName: cast, characters: characters, roles: roles,
       sampleTextOverride: sampleText, designModel: designModel, candidatesDir: candidatesDir,
-      pick: pick, backend: backend)
+      pick: pick, all: all, switchProvider: switchProvider, backend: backend)
     let outcome = try await runner.run()
     if !outcome.failures.isEmpty {
       for failure in outcome.failures {
@@ -113,8 +131,9 @@ public struct VoicesAssignCommand: AsyncParsableCommand {
     abstract: "Assign an existing ElevenLabs voice id to a character in CAST.md.",
     discussion: """
       Validates the id with `GET /v1/voices/{id}` (a 404 is an error naming the id), \
-      then writes the bare id under `voices.elevenlabs` and `provider: elevenlabs` \
-      on that member. An `elevenlabs://<id>` input is normalized to the bare id. \
+      then writes the bare id under `voices.elevenlabs` on that member. It does not \
+      touch `provider:` or `voices.voxalta` (ElevenLabs voices are additive); pass \
+      --switch to also set `provider: elevenlabs`. An `elevenlabs://<id>` input is normalized to the bare id. \
       Other cast members are unchanged. Premade voices use no voice slot.
 
       Example:
@@ -131,6 +150,11 @@ public struct VoicesAssignCommand: AsyncParsableCommand {
   @Option(name: .customLong("voice-id"), help: "The ElevenLabs voice id (or elevenlabs://<id>).")
   public var voiceId: String
 
+  @Flag(
+    name: .customLong("switch"),
+    help: "Also set `provider: elevenlabs` on the member (otherwise voices are additive).")
+  public var switchProvider: Bool = false
+
   @Option(name: .long, help: "Path to PROJECT.md file.")
   public var project: String = "PROJECT.md"
 
@@ -146,7 +170,7 @@ public struct VoicesAssignCommand: AsyncParsableCommand {
     }
     let runner = VoicesAssignRunner(
       projectURL: fileURL, castName: cast, character: character, provider: provider,
-      voiceId: voiceId, backend: try await LiveElevenLabsBackend())
+      voiceId: voiceId, switchProvider: switchProvider, backend: try await LiveElevenLabsBackend())
     try await runner.run()
   }
 }

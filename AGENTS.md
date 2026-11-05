@@ -44,8 +44,8 @@ Full details: [Docs/build-and-test.md](Docs/build-and-test.md)
 | `echada sample <CHARACTER>` | Export playable `voice/sample-<variant>[-<model>].m4a` files beside the `.vox` (EC-28) |
 | `echada migrate voices [--apply]` | Move existing `.vox` files into the character record, dry run by default (EC-26) |
 | `echada voices design --candidates-dir DIR [CHARACTER…]` | ElevenLabs step 1: design previews from each `voicePrompt` (needs `ELEVENLABS_API_KEY`); writes WAVs + `index.json`, spends no voice slot. Refuses when designs exceed free slots |
-| `echada voices design --candidates-dir DIR --pick <generated_voice_id>` | ElevenLabs step 2, after a person has listened: saves the voice into the character's `.vox` and sets `voices.elevenlabs` + `provider: elevenlabs` |
-| `echada voices assign CHARACTER --provider elevenlabs --voice-id <id>` | Validate a premade/library voice via `GET /v1/voices/{id}` (404 is an error), then write the bare id under `voices.elevenlabs` (`elevenlabs://<id>` is normalized) |
+| `echada voices design --candidates-dir DIR --pick <generated_voice_id>` | ElevenLabs step 2, after a person has listened: saves the voice into the character's `.vox` and adds `voices.elevenlabs`. Additive: `provider:` and `voices.voxalta` are untouched unless `--switch` (sets `provider: elevenlabs`). With no names it selects `provider: elevenlabs` members; `--all` selects every member with a `voicePrompt` |
+| `echada voices assign CHARACTER --provider elevenlabs --voice-id <id>` | Validate a premade/library voice via `GET /v1/voices/{id}` (404 is an error), then write the bare id under `voices.elevenlabs` (`elevenlabs://<id>` is normalized). Additive like `--pick`; `--switch` also sets `provider: elevenlabs` |
 | `echada auth` | LLM credentials (SwiftLlavero) |
 | `echada voice <prompt>` | Generate a single `.vox` from a text description (no PROJECT.md/CAST.md required) |
 | `echada test-voice` (hidden) | Integration test helper — fixed NARRATOR profile |

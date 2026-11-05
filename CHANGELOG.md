@@ -9,6 +9,21 @@ All notable changes to SwiftEchada will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.1] - 2026-11-05
+
+### Changed
+
+- ElevenLabs voices are now additive. `echada voices design --pick` and `echada voices assign`
+  add `voices.elevenlabs` only; they no longer write `provider: elevenlabs` and leave an
+  existing `provider:` untouched, so the character can still render in VoxAlta. Pass the new
+  `--switch` flag to either to also set `provider: elevenlabs` (the old behaviour).
+
+### Added
+
+- `echada voices design --all` selects every cast member that has a `voicePrompt`. With no
+  names and no `provider: elevenlabs` members, the error now says to name characters or pass
+  `--all`.
+
 ## [3.1.0] - 2026-11-04
 
 ### Added
