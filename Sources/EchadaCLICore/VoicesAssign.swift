@@ -34,6 +34,8 @@ struct VoicesAssignRunner {
   var character: String
   var provider: String
   var voiceId: String
+  /// `--switch`: also set `provider: elevenlabs`. Default is additive (voices only).
+  var switchProvider: Bool = false
   var backend: any ElevenLabsBackend
   var log: @Sendable (String) -> Void = { print($0) }
 
@@ -72,7 +74,9 @@ struct VoicesAssignRunner {
     try await backend.validateVoice(id: id)
 
     document.cast[at].voices[ElevenLabsProviderID.value] = [id]
-    document.cast[at].setExtra(try AnyCodable(ElevenLabsProviderID.value), forKey: "provider")
+    if switchProvider {
+      document.cast[at].setExtra(try AnyCodable(ElevenLabsProviderID.value), forKey: "provider")
+    }
     try parser.write(document: document, to: castURL)
     log("\(document.cast[at].character): assigned ElevenLabs voice \(id)")
   }

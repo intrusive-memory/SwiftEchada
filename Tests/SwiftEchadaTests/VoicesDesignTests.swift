@@ -183,14 +183,14 @@ struct VoicesDesignTests {
 
   private func runner(
     _ dir: URL, backend: FakeElevenLabsBackend, characters: [String] = [], roles: [String] = [],
-    sample: String? = nil, pick: String? = nil
+    sample: String? = nil, pick: String? = nil, all: Bool = false, switchProvider: Bool = false
   ) -> VoicesDesignRunner {
     VoicesDesignRunner(
       projectURL: dir.appendingPathComponent("PROJECT.md"), castName: "CAST.md",
       characters: characters, roles: roles, sampleTextOverride: sample,
       designModel: "eleven_multilingual_ttv_v2",
-      candidatesDir: dir.appendingPathComponent("candidates").path, pick: pick, backend: backend,
-      log: { _ in })
+      candidatesDir: dir.appendingPathComponent("candidates").path, pick: pick, all: all,
+      switchProvider: switchProvider, backend: backend, log: { _ in })
   }
 
   private func castRoster(_ dir: URL) throws -> [CastMember] {
@@ -335,7 +335,94 @@ struct VoicesDesignTests {
     #expect(
       narrator.voices["elevenlabs"] == ["characters/NARRATOR.dossier/voice/NARRATOR.vox"])
     #expect(narrator.voices["voxalta"] == ["characters/NARRATOR.dossier/voice/NARRATOR.vox"])
+    // Additive: NARRATOR already had `provider: elevenlabs` in the fixture; unchanged.
     #expect(try narrator[extra: "provider"]?.decode(String.self) == "elevenlabs")
+  }
+
+  /// Rewrites CAST.md so the given provider value (or none) is on NARRATOR and HERO.
+  private func setProviders(_ dir: URL, to value: String?) throws {
+    let url = dir.appendingPathComponent("CAST.md")
+    var text = try String(contentsOf: url, encoding: .utf8)
+    let replacement = value.map { "$1provider: \($0)\n" } ?? ""
+    text = text.replacingOccurrences(
+      of: "( +)provider: elevenlabs\n", with: replacement, options: .regularExpression)
+    try text.write(to: url, atomically: true, encoding: .utf8)
+  }
+
+  @Test("pick leaves provider absent, or an existing provider: voxalta, and keeps voices.voxalta")
+  func pickIsAdditive() async throws {
+    for existing in [nil, "voxalta"] as [String?] {
+      let dir = try makeProject()
+      defer { try? FileManager.default.removeItem(at: dir) }
+      try setProviders(dir, to: existing)
+      let backend = FakeElevenLabsBackend()
+      let sample = String(repeating: "x", count: 150)
+      _ = try await runner(dir, backend: backend, characters: ["NARRATOR"], sample: sample).run()
+      let index = try #require(
+        try VoiceCandidateIndex.load(from: dir.appendingPathComponent("candidates")))
+      _ = try await runner(dir, backend: backend, pick: index.candidates[0].generatedVoiceId).run()
+      let narrator = try #require(try castRoster(dir).first { $0.character == "NARRATOR" })
+      #expect(narrator.voices["elevenlabs"] != nil)
+      #expect(narrator.voices["voxalta"] == ["characters/NARRATOR.dossier/voice/NARRATOR.vox"])
+      #expect(try narrator[extra: "provider"]?.decode(String.self) == existing)
+    }
+  }
+
+  @Test("pick --switch sets provider: elevenlabs")
+  func pickSwitch() async throws {
+    let dir = try makeProject()
+    defer { try? FileManager.default.removeItem(at: dir) }
+    try setProviders(dir, to: "voxalta")
+    let backend = FakeElevenLabsBackend()
+    _ = try await runner(
+      dir, backend: backend, characters: ["NARRATOR"], sample: String(repeating: "x", count: 150)
+    ).run()
+    let index = try #require(
+      try VoiceCandidateIndex.load(from: dir.appendingPathComponent("candidates")))
+    _ = try await runner(
+      dir, backend: backend, pick: index.candidates[0].generatedVoiceId, switchProvider: true
+    ).run()
+    let narrator = try #require(try castRoster(dir).first { $0.character == "NARRATOR" })
+    #expect(try narrator[extra: "provider"]?.decode(String.self) == "elevenlabs")
+    #expect(narrator.voices["voxalta"] == ["characters/NARRATOR.dossier/voice/NARRATOR.vox"])
+  }
+
+  @Test("naming characters works when no member has provider: elevenlabs")
+  func namedWithoutProvider() async throws {
+    let dir = try makeProject()
+    defer { try? FileManager.default.removeItem(at: dir) }
+    try setProviders(dir, to: nil)
+    let outcome = try await runner(
+      dir, backend: FakeElevenLabsBackend(), characters: ["VILLAIN"],
+      sample: String(repeating: "x", count: 150)
+    ).run()
+    #expect(outcome.designed == ["VILLAIN"])
+  }
+
+  @Test("with no names and no elevenlabs members, the error points at naming or --all")
+  func noSelectionHint() async throws {
+    let dir = try makeProject()
+    defer { try? FileManager.default.removeItem(at: dir) }
+    try setProviders(dir, to: nil)
+    do {
+      _ = try await runner(dir, backend: FakeElevenLabsBackend()).run()
+      Issue.record("expected failure")
+    } catch let error as VoicesDesignError {
+      let text = error.localizedDescription
+      #expect(text.contains("--all"))
+      #expect(text.contains("name the characters"))
+    }
+  }
+
+  @Test("--all selects every member with a voicePrompt regardless of provider")
+  func allSelection() async throws {
+    let dir = try makeProject()
+    defer { try? FileManager.default.removeItem(at: dir) }
+    try setProviders(dir, to: nil)
+    let outcome = try await runner(
+      dir, backend: FakeElevenLabsBackend(), sample: String(repeating: "x", count: 150), all: true
+    ).run()
+    #expect(outcome.designed == ["NARRATOR", "HERO", "VILLAIN"])
   }
 
   @Test("pick creates a .vox when the character has none")

@@ -155,23 +155,32 @@ sentence, with the variant as the delivery instruction. `--json` returns
 
 ### `echada voices` — ElevenLabs voices
 
-Cloud voices for characters whose CAST.md member has `provider: elevenlabs`. Needs
+Cloud voices that sit beside each character's VoxAlta voice (additive). Needs
 `ELEVENLABS_API_KEY` (or the shared keychain entry).
 
 ```bash
 # Step 1: design previews (no voice slot used); a person then listens to the WAVs
 echada voices design --candidates-dir ./candidates NARRATOR
+# No names: members with `provider: elevenlabs`; --all: every member with a voicePrompt
+echada voices design --candidates-dir ./candidates --all
 # Step 2: save the chosen preview (uses one voice slot)
 echada voices design --candidates-dir ./candidates --pick <generated_voice_id>
 
 # Premade or library voice: validated with GET /v1/voices/{id}, bare id written
 echada voices assign NARRATOR --provider elevenlabs --voice-id <id>
+
+# Opt in to making ElevenLabs the character's renderer (sets `provider: elevenlabs`)
+echada voices design --candidates-dir ./candidates --pick <generated_voice_id> --switch
+echada voices assign NARRATOR --provider elevenlabs --voice-id <id> --switch
 ```
 
 `design` prints the estimated credit cost first and refuses when there are more
 voices to design than free slots. `--pick` writes the ElevenLabs fields into the
-character's existing `.vox` (the Qwen entries are kept) and sets
-`voices.elevenlabs` and `provider: elevenlabs` in CAST.md. `assign` writes the
+character's existing `.vox` (the Qwen entries are kept) and adds
+`voices.elevenlabs` in CAST.md. Neither `--pick` nor `assign` writes or changes
+`provider:`, so the character still renders in VoxAlta; choose ElevenLabs per run with
+`produciesta generate --provider elevenlabs` (or PROJECT.md `tts.providerId`), or pass
+`--switch` to also set `provider: elevenlabs` permanently. `assign` writes the
 bare id under `voices.elevenlabs`; an `elevenlabs://<id>` input is normalized, a
 404 id is an error naming it, and other cast members are left alone. Never pick
 for a person who has not listened. `make test-live` runs one real

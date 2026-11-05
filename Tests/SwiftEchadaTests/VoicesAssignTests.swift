@@ -40,11 +40,12 @@ struct VoicesAssignTests {
 
   private func runner(
     _ dir: URL, backend: FakeElevenLabsBackend, voiceId: String,
-    character: String = "NARRATOR", provider: String = "elevenlabs"
+    character: String = "NARRATOR", provider: String = "elevenlabs", switchProvider: Bool = false
   ) -> VoicesAssignRunner {
     VoicesAssignRunner(
       projectURL: dir.appendingPathComponent("PROJECT.md"), castName: "CAST.md",
-      character: character, provider: provider, voiceId: voiceId, backend: backend, log: { _ in })
+      character: character, provider: provider, voiceId: voiceId,
+      switchProvider: switchProvider, backend: backend, log: { _ in })
   }
 
   private func roster(_ dir: URL) throws -> [CastMember] {
@@ -82,7 +83,7 @@ struct VoicesAssignTests {
     let narrator = try #require(after.first { $0.character == "NARRATOR" })
     #expect(narrator.voices["elevenlabs"] == ["21m00Tcm4TlvDq8ikWAM"])
     #expect(narrator.voices["voxalta"] == ["characters/NARRATOR.dossier/voice/NARRATOR.vox"])
-    #expect(try narrator[extra: "provider"]?.decode(String.self) == "elevenlabs")
+    #expect(narrator[extra: "provider"] == nil)  // additive: provider stays absent
     for (old, new) in zip(before, after) where old.character != "NARRATOR" {
       #expect(old == new)
     }
@@ -103,6 +104,25 @@ struct VoicesAssignTests {
     #expect(backend.events == ["validate:abc123"])
     let hero = try #require(try roster(dir).first { $0.character == "HERO" })
     #expect(hero.voices["elevenlabs"] == ["abc123"])
+    // HERO had `provider: voxalta`; assign must not touch it.
+    #expect(try hero[extra: "provider"]?.decode(String.self) == "voxalta")
+  }
+
+  @Test("--switch also sets provider: elevenlabs and keeps voices.voxalta")
+  func switchSetsProvider() async throws {
+    let dir = try makeProject()
+    defer { try? FileManager.default.removeItem(at: dir) }
+    let backend = FakeElevenLabsBackend()
+    backend.knownVoiceIds = ["abc123"]
+    try await runner(dir, backend: backend, voiceId: "abc123", switchProvider: true).run()
+    let narrator = try #require(try roster(dir).first { $0.character == "NARRATOR" })
+    #expect(try narrator[extra: "provider"]?.decode(String.self) == "elevenlabs")
+    #expect(narrator.voices["elevenlabs"] == ["abc123"])
+    #expect(narrator.voices["voxalta"] == ["characters/NARRATOR.dossier/voice/NARRATOR.vox"])
+    try await runner(
+      dir, backend: backend, voiceId: "abc123", character: "HERO", switchProvider: true
+    ).run()
+    let hero = try #require(try roster(dir).first { $0.character == "HERO" })
     #expect(try hero[extra: "provider"]?.decode(String.self) == "elevenlabs")
   }
 
