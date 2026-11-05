@@ -30,15 +30,15 @@ let package = Package(
   ],
   dependencies: [
     .package(
-      url: "https://github.com/intrusive-memory/SwiftProyecto.git", .upToNextMajor(from: "5.3.2")),
+      url: "https://github.com/intrusive-memory/SwiftProyecto.git", .upToNextMajor(from: "5.4.0")),
     // 0.2.0: role, manifest, canonicalName (EC-23, EC-24).
     .package(
-      url: "https://github.com/intrusive-memory/SwiftReparto.git", .upToNextMajor(from: "0.2.0")),
+      url: "https://github.com/intrusive-memory/SwiftReparto.git", .upToNextMajor(from: "0.2.1")),
     .package(
       url: "https://github.com/intrusive-memory/SwiftVoxAlta.git", .upToNextMajor(from: "0.14.2")),
     .package(
       url: "https://github.com/intrusive-memory/SwiftLlavero.git",
-      .upToNextMinor(from: "0.1.0-beta.2")),
+      .upToNextMajor(from: "0.1.0-beta.2")),
     .package(url: "https://github.com/apple/swift-argument-parser", .upToNextMajor(from: "1.7.1")),
     // Reads PROJECT.md's `personaje:` block, which SwiftProyecto doesn't model.
     .package(url: "https://github.com/jpsim/Yams.git", .upToNextMajor(from: "6.2.2")),
