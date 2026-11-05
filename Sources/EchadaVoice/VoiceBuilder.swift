@@ -331,6 +331,79 @@ public struct VoiceBuilder: Sendable {
     model == .default ? "sample-\(variant).m4a" : "sample-\(variant)-\(model.rawValue).m4a"
   }
 
+  /// `sample-<variant>-elevenlabs.m4a`: the ElevenLabs set, beside the VoxAlta samples.
+  public static func elevenLabsSampleFileName(variant: String) -> String {
+    "sample-\(variant)-elevenlabs.m4a"
+  }
+
+  /// Transcodes WAV data of any sample rate or channel count to an AAC `.m4a`
+  /// at `sampleRate` Hz, mono: the encoding of the VoxAlta samples. Audio that
+  /// already matches is encoded as it is; anything else is converted first.
+  public static func writeM4AMono(wav: Data, to output: URL, sampleRate: Double = 24_000) throws {
+    let scratch = FileManager.default.temporaryDirectory
+      .appendingPathComponent("echada-sample-\(UUID().uuidString).wav")
+    try wav.write(to: scratch)
+    defer { try? FileManager.default.removeItem(at: scratch) }
+
+    let input: AVAudioFile
+    do { input = try AVAudioFile(forReading: scratch) } catch {
+      throw VoiceBuilderError.encodingFailed("not readable WAV audio: \(error.localizedDescription)")
+    }
+    let source = input.processingFormat
+    guard
+      let target = AVAudioFormat(
+        commonFormat: .pcmFormatFloat32, sampleRate: sampleRate, channels: 1, interleaved: false),
+      let inBuffer = AVAudioPCMBuffer(
+        pcmFormat: source, frameCapacity: AVAudioFrameCount(input.length))
+    else { throw VoiceBuilderError.encodingFailed("couldn't allocate an audio buffer") }
+    try input.read(into: inBuffer)
+
+    var outBuffer = inBuffer
+    if source.sampleRate != sampleRate || source.channelCount != 1 {
+      guard let converter = AVAudioConverter(from: source, to: target) else {
+        throw VoiceBuilderError.encodingFailed("can't convert audio to \(Int(sampleRate)) Hz mono")
+      }
+      let capacity = AVAudioFrameCount(
+        (Double(inBuffer.frameLength) * sampleRate / source.sampleRate).rounded(.up)) + 1024
+      guard let converted = AVAudioPCMBuffer(pcmFormat: target, frameCapacity: capacity) else {
+        throw VoiceBuilderError.encodingFailed("couldn't allocate an audio buffer")
+      }
+      var fed = false
+      var failure: NSError?
+      let status = converter.convert(to: converted, error: &failure) { _, inputStatus in
+        if fed {
+          inputStatus.pointee = .endOfStream
+          return nil
+        }
+        fed = true
+        inputStatus.pointee = .haveData
+        return inBuffer
+      }
+      if status == .error {
+        throw VoiceBuilderError.encodingFailed(failure?.localizedDescription ?? "conversion failed")
+      }
+      outBuffer = converted
+    }
+
+    try FileManager.default.createDirectory(
+      at: output.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try? FileManager.default.removeItem(at: output)
+    let settings: [String: Any] = [
+      AVFormatIDKey: kAudioFormatMPEG4AAC,
+      AVSampleRateKey: sampleRate,
+      AVNumberOfChannelsKey: 1,
+      AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue,
+    ]
+    do {
+      let file = try AVAudioFile(
+        forWriting: output, settings: settings, commonFormat: outBuffer.format.commonFormat,
+        interleaved: outBuffer.format.isInterleaved)
+      try file.write(from: outBuffer)
+    } catch {
+      throw VoiceBuilderError.encodingFailed(error.localizedDescription)
+    }
+  }
+
   /// Transcodes WAV data to an AAC `.m4a` file with AVFoundation.
   static func writeM4A(wav: Data, to output: URL) throws {
     let scratch = FileManager.default.temporaryDirectory

@@ -153,6 +153,32 @@ Other variants speak `--text`, CHARACTER.md's `sampleLine`, or a fixed neutral
 sentence, with the variant as the delivery instruction. `--json` returns
 `variant`, `model`, `language` and `sampleText` for the manifest writer.
 
+#### ElevenLabs samples (`--provider elevenlabs`)
+
+A secondary set beside the VoxAlta samples. The default provider stays
+`voxalta`, unchanged.
+
+```bash
+echada sample MAYA --provider elevenlabs --variant whisper --dry-run   # cost only, no API call
+echada sample MAYA --provider elevenlabs --variant whisper --json      # voice/sample-whisper-elevenlabs.m4a
+echada sample MAYA --provider elevenlabs --from-design-preview --json  # voice/sample-neutral-elevenlabs.m4a, free
+```
+
+It resolves the character's `voices.elevenlabs` (a designed voice's `.vox`
+carrying `extensions.elevenlabs.voice_id`, a bare voice id, or
+`elevenlabs://<id>`) and synthesizes with the ElevenLabs plugin, default model
+`eleven_v4` (`--elevenlabs-model`). `--instruct` (default: the variant, none for
+`neutral`) becomes an audio tag exactly as in `produciesta generate`. Output is
+24 kHz mono AAC `.m4a`, `voice/sample-<variant>-elevenlabs.m4a` (`--output`
+overrides). The credit cost prints before synthesis; `--dry-run` prints it and
+exits with no API call. `--from-design-preview` exports the picked design
+preview stored inside a designed voice's `.vox` as
+`sample-neutral-elevenlabs.m4a`: no API call, no credits (an error for a stock
+voice, which has no `.vox`). A member with no `voices.elevenlabs` is an error.
+`--json` returns `path`, `relativePath`, `provider`, `model`, `voiceId`, `text`
+(also as `sampleText`), `instruct`, `variant`, `voxPath`, `creditsUsed` (0 for a
+design preview or dry run) and `creditsEstimated`, for the manifest writer.
+
 ### `echada voices` — ElevenLabs voices
 
 Cloud voices that sit beside each character's VoxAlta voice (additive). Needs
