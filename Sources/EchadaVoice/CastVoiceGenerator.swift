@@ -539,6 +539,7 @@ package struct CastVoiceGenerator {
           to: vox, data: voiceLock.clonePromptData, modelRepo: modelRepo, language: languageTag)
         try VoxExporter.addSampleAudio(
           to: vox, data: candidate.candidateWAV, modelRepo: modelRepo, language: languageTag)
+        VoxSampleText.record(candidate.sampleSentence, forSample: candidate.candidateWAV, in: vox)
         try FileManager.default.createDirectory(
           at: candidate.voxURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         try vox.write(to: candidate.voxURL)

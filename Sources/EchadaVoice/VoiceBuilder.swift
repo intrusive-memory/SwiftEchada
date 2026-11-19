@@ -72,7 +72,8 @@ public struct VoiceSample: Codable, Equatable, Sendable {
   public let variant: String
   public let model: VoiceModelSize
   public let language: String
-  /// The words spoken, for the manifest's `sampleText`.
+  /// The words spoken, for the manifest's `sampleText`. Empty for a `neutral`
+  /// sample whose `.vox` was made before #70 was fixed and never recorded its text.
   public let sampleText: String
   /// Relative to the CAST.md directory: `<character dir>/voice/sample-<variant>[-<model>].m4a`.
   public let relativePath: String
@@ -226,6 +227,7 @@ public struct VoiceBuilder: Sendable {
           to: vox, data: voiceLock.clonePromptData, modelRepo: size.repo, language: languageTag)
         try VoxExporter.addSampleAudio(
           to: vox, data: audition.wav, modelRepo: size.repo, language: languageTag)
+        VoxSampleText.record(audition.sampleText, forSample: audition.wav, in: vox)
         await manager.unloadModel()
       }
     } catch {
@@ -287,8 +289,10 @@ public struct VoiceBuilder: Sendable {
         throw VoiceBuilderError.modelMissing(character: member.character, model: model.rawValue)
       }
       wav = embedded
-      spoken = try AuditionSentence.auditionSentence(
-        language: language, character: member.character, variant: nil)
+      // The text recorded when the sample was embedded (#70). Never recompute
+      // it from today's audition pool: `--audition-variant`, echada < 2.0.0
+      // and pool edits all make that guess wrong. Unknown means empty.
+      spoken = VoxSampleText.text(forSample: embedded, in: vox) ?? ""
     } else {
       guard
         let clone = vox.clonePromptData(

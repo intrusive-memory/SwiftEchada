@@ -131,6 +131,7 @@ public struct VoiceCommand: AsyncParsableCommand {
       to: vox, data: voiceLock.clonePromptData, modelRepo: modelRepo, language: languageTag)
     try VoxExporter.addSampleAudio(
       to: vox, data: candidateWAV, modelRepo: modelRepo, language: languageTag)
+    VoxSampleText.record(sampleSentence, forSample: candidateWAV, in: vox)
     try vox.write(to: outputURL)
 
     print("Wrote \(outputURL.path)")

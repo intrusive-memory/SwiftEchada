@@ -30,7 +30,7 @@ let package = Package(
   ],
   dependencies: [
     .package(
-      url: "https://github.com/intrusive-memory/SwiftProyecto.git", .upToNextMajor(from: "5.4.0")),
+      url: "https://github.com/intrusive-memory/SwiftProyecto.git", .upToNextMajor(from: "5.4.1")),
     // 0.2.0: role, manifest, canonicalName (EC-23, EC-24).
     .package(
       url: "https://github.com/intrusive-memory/SwiftReparto.git", .upToNextMajor(from: "0.2.1")),
