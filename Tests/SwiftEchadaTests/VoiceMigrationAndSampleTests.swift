@@ -37,7 +37,9 @@ enum SyntheticVox {
     return wav
   }
 
-  static func write(at url: URL, name: String, sizes: [String] = ["1.7b"]) throws {
+  static func write(
+    at url: URL, name: String, sizes: [String] = ["1.7b"], sampleText: String? = nil
+  ) throws {
     try FileManager.default.createDirectory(
       at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
     let vox = VoxFile(
@@ -60,6 +62,7 @@ enum SyntheticVox {
           "format": "wav",
         ] as [String: Any])
     }
+    if let sampleText { VoxSampleText.record(sampleText, forSample: wav(), in: vox) }
     try vox.write(to: url)
   }
 }
@@ -218,7 +221,8 @@ struct VoiceSampleTests {
     #expect(neutral.relativePath == "characters/MAYA.dossier/voice/sample-neutral.m4a")
     #expect(neutral.variant == "neutral")
     #expect(neutral.model == .large)
-    #expect(!neutral.sampleText.isEmpty)
+    // No recorded text (a .vox from before #70): report nothing, never a guess.
+    #expect(neutral.sampleText.isEmpty)
 
     let small = try await builder.renderSample(for: member, model: .small)
     #expect(small.relativePath == "characters/MAYA.dossier/voice/sample-neutral-0.6b.m4a")
@@ -226,6 +230,24 @@ struct VoiceSampleTests {
     let m4a = try AVAudioFile(forReading: dir.appendingPathComponent(neutral.relativePath))
     #expect(m4a.length > 0)
     #expect(m4a.fileFormat.settings[AVFormatIDKey] as? UInt32 == kAudioFormatMPEG4AAC)
+  }
+
+  @Test("neutral reports the text recorded in the .vox, not today's audition pool (#70)")
+  func neutralReportsRecordedText() async throws {
+    let dir = FileManager.default.temporaryDirectory
+      .appendingPathComponent("sample-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: dir) }
+    let member = CastMember(character: "MAYA", language: "en")
+    // Not any pool entry the name hash would pick: what --audition-variant or
+    // an older echada would have spoken.
+    let spoken = "An audition line no pool entry contains."
+    try SyntheticVox.write(
+      at: dir.appendingPathComponent("characters/MAYA.dossier/voice/MAYA.vox"), name: "MAYA",
+      sizes: ["1.7b", "0.6b"], sampleText: spoken)
+
+    let builder = VoiceBuilder(castDirectory: dir)
+    #expect(try await builder.renderSample(for: member).sampleText == spoken)
+    #expect(try await builder.renderSample(for: member, model: .small).sampleText == spoken)
   }
 
   @Test("A missing .vox or model size is reported, not invented")

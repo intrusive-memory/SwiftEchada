@@ -180,7 +180,12 @@ public struct SampleCommand: AsyncParsableCommand {
         for: member, variant: job.variant, text: job.text, model: job.model,
         language: job.language, sampleLine: sampleLine, instruct: job.instruct)
       samples.append(sample)
-      if !json { print("\(sample.relativePath)  \"\(sample.sampleText)\"") }
+      if !json {
+        print(
+          sample.sampleText.isEmpty
+            ? "\(sample.relativePath)  (text not recorded in this .vox)"
+            : "\(sample.relativePath)  \"\(sample.sampleText)\"")
+      }
     }
 
     if json {

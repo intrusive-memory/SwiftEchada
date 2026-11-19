@@ -9,6 +9,20 @@ All notable changes to SwiftEchada will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `echada sample` (`neutral`) now reports the text the embedded sample actually speaks
+  ([#70](https://github.com/intrusive-memory/SwiftEchada/issues/70)). It used to recompute
+  `sampleText` from the current audition pool, so the text was wrong for voices made with
+  `--audition-variant`, by echada < 2.0.0, or before any pool edit. echada now records the
+  text when it embeds a sample (`echada cast`, `generate vox`, `voice`, and
+  `EchadaVoice`'s `VoiceBuilder`), under `extensions.echada.sample_text` in the `.vox`
+  manifest, keyed by the SHA-256 of the sample audio. A `.vox` made before this fix has no
+  recorded text: `sampleText` is empty (and the plain output says so) rather than a guess.
+  Regenerate the voice, or pass `--text`, to get text that matches the audio.
+
 ## [3.2.0] - 2026-11-05
 
 ### Added
